@@ -27,10 +27,25 @@ class Plant:
         pass
 
     def grow(self):
-        pass
+        if not self._can_grow():
+            return
+
+        for nutrient in self.micronutrient_inventory:
+            self.micronutrient_inventory[nutrient] -= self.variety.radius
+
+        self.size += self.variety.radius
 
     def _can_produce(self):
         return all(
             self.micronutrient_inventory[nutrient] + coeff >= 0
             for nutrient, coeff in self.variety.nutrient_coefficents.items()
+        )
+
+    def _can_grow(self):
+        return (
+            all(
+                self.micronutrient_inventory[nutrient] >= 2 * self.variety.radius
+                for nutrient in self.micronutrient_inventory
+            )
+            and self.size < self.max_size
         )
