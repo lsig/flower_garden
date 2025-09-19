@@ -66,6 +66,40 @@ class TestPlantProduction:
             Micronutrient.B: 4.5,
         }
 
+    def test_cant_produce_more_than_max(self):
+        self.plant.micronutrient_inventory = {
+            Micronutrient.R: 8.5,
+            Micronutrient.G: 0.5,
+            Micronutrient.B: 5,
+        }
+
+        assert self.plant._can_produce() is True
+
+        self.plant.produce()
+
+        assert self.plant.micronutrient_inventory == {
+            Micronutrient.R: 10.0,
+            Micronutrient.G: 0.0,
+            Micronutrient.B: 4.5,
+        }
+
+    def test_inventory_lowers_at_max_capacity(self):
+        self.plant.micronutrient_inventory = {
+            Micronutrient.R: 10.0,
+            Micronutrient.G: 0.5,
+            Micronutrient.B: 5,
+        }
+
+        assert self.plant._can_produce() is True
+
+        self.plant.produce()
+
+        assert self.plant.micronutrient_inventory == {
+            Micronutrient.R: 10.0,
+            Micronutrient.G: 0.0,
+            Micronutrient.B: 4.5,
+        }
+
 
 class TestPlantGrowth:
     def setup_method(self, method):

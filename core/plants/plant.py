@@ -21,7 +21,10 @@ class Plant:
             return
 
         for nutrient, coeff in self.variety.nutrient_coefficents.items():
-            self.micronutrient_inventory[nutrient] += coeff
+            new_inventory = self.micronutrient_inventory[nutrient] + coeff
+            self.micronutrient_inventory[nutrient] = min(
+                self.reservoir_capacity, new_inventory
+            )
 
     def exchange(self):
         pass
@@ -36,6 +39,7 @@ class Plant:
         self.size += self.variety.radius
 
     def _can_produce(self):
+        # NOTE: Should production stop if nutrient is full?
         return all(
             self.micronutrient_inventory[nutrient] + coeff >= 0
             for nutrient, coeff in self.variety.nutrient_coefficents.items()
