@@ -1,12 +1,12 @@
 from core.micronutrients import Micronutrient
 from core.plants.plant import Plant
-from core.plants.plant_dto import PlantDTO
+from core.plants.plant_variety import PlantVariety
 from core.plants.species import Species
 
 
 class TestPlantProduction:
     def setup_method(self, method):
-        test_variety = PlantDTO(
+        test_variety = PlantVariety(
             name="Test Rhodo",
             radius=1,
             species=Species.RHODODENDRON,

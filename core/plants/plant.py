@@ -1,10 +1,10 @@
 from core.micronutrients import Micronutrient
-from core.plants.plant_dto import PlantDTO
+from core.plants.plant_variety import PlantVariety
 from core.point import Position
 
 
 class Plant:
-    def __init__(self, variety: PlantDTO, position: Position) -> None:
+    def __init__(self, variety: PlantVariety, position: Position) -> None:
         self.variety = variety
         self.position = position
 

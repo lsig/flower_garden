@@ -5,7 +5,7 @@ from core.plants.species import Species
 
 
 @dataclass(frozen=True)
-class PlantDTO:
+class PlantVariety:
     name: str
     radius: int
     species: Species
