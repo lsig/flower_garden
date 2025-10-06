@@ -10,7 +10,7 @@ class TestPlantProduction:
             name="Test Rhodo",
             radius=1,
             species=Species.RHODODENDRON,
-            nutrient_coefficents={
+            nutrient_coefficients={
                 Micronutrient.R: 2.0,
                 Micronutrient.G: -0.5,
                 Micronutrient.B: -0.5,

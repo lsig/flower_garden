@@ -10,7 +10,7 @@ class TestPlantGrowth:
             name="Test Geranium",
             radius=2,
             species=Species.GERANIUM,
-            nutrient_coefficents={
+            nutrient_coefficients={
                 Micronutrient.R: -1.0,
                 Micronutrient.G: 4.0,
                 Micronutrient.B: -1.0,

@@ -9,4 +9,4 @@ class PlantVariety:
     name: str
     radius: int
     species: Species
-    nutrient_coefficents: dict[Micronutrient, float]
+    nutrient_coefficients: dict[Micronutrient, float]

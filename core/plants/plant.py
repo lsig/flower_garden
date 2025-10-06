@@ -20,7 +20,7 @@ class Plant:
         if not self._can_produce():
             return
 
-        for nutrient, coeff in self.variety.nutrient_coefficents.items():
+        for nutrient, coeff in self.variety.nutrient_coefficients.items():
             new_inventory = self.micronutrient_inventory[nutrient] + coeff
             self.micronutrient_inventory[nutrient] = min(
                 self.reservoir_capacity, new_inventory
@@ -42,7 +42,7 @@ class Plant:
         # NOTE: Should production stop if nutrient is full?
         return all(
             self.micronutrient_inventory[nutrient] + coeff >= 0
-            for nutrient, coeff in self.variety.nutrient_coefficents.items()
+            for nutrient, coeff in self.variety.nutrient_coefficients.items()
         )
 
     def _can_grow(self):
