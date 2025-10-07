@@ -39,14 +39,16 @@ class Plant:
             for nutrient, coeff in self.variety.nutrient_coefficients.items()
         )
 
-    def grow(self):
+    def grow(self) -> float:
         if not self._can_grow():
-            return
+            return 0.0
 
         for nutrient in self.micronutrient_inventory:
             self.micronutrient_inventory[nutrient] -= self.variety.radius
 
         self.size += self.variety.radius
+
+        return self.variety.radius
 
     def _can_grow(self):
         return (

@@ -28,8 +28,9 @@ class TestPlantGrowth:
 
         assert self.plant._can_grow() is True
 
-        self.plant.grow()
+        growth = self.plant.grow()
 
+        assert growth == self.plant.variety.radius
         assert self.plant.size == 52
         assert self.plant.micronutrient_inventory == {
             Micronutrient.R: 8.0,
