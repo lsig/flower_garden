@@ -20,20 +20,21 @@ class Nursery:
 
         varieties = []
         for item in data["varieties"]:
-            variety = PlantVariety(
-                name=item["name"],
-                radius=item["radius"],
-                species=Species[item["species"]],
-                nutrient_coefficients={
-                    Micronutrient[k]: v
-                    for k, v in item["nutrient_coefficients"].items()
-                },
-            )
-
-            self._validate_variety(variety)
-
             count = item.get("count", 1)
-            varieties.extend([variety] * count)
+
+            # NOTE: Create separate instances for each count
+            for _ in range(count):
+                variety = PlantVariety(
+                    name=item["name"],
+                    radius=item["radius"],
+                    species=Species[item["species"]],
+                    nutrient_coefficients={
+                        Micronutrient[k]: v
+                        for k, v in item["nutrient_coefficients"].items()
+                    },
+                )
+                self._validate_variety(variety)
+                varieties.append(variety)
 
         self.varieties = varieties
         return varieties
