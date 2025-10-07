@@ -1,10 +1,10 @@
 import time
-from typing import Type
 
 from core.engine import Engine
 from core.garden import Garden
 from core.gardener import Gardener
 from core.nursery import Nursery
+from core.ui.visualizer import GardenVisualizer
 
 
 class GameRunner:
@@ -21,7 +21,7 @@ class GameRunner:
         self.time_limit = time_limit
         self.nursery = Nursery()
 
-    def run(self, gardener_class: Type[Gardener]) -> dict:
+    def _setup_engine(self, gardener_class: type[Gardener]) -> Engine:
         if self.varieties_file:
             varieties = self.nursery.load_from_file(self.varieties_file)
         elif self.random_count:
@@ -43,6 +43,10 @@ class GameRunner:
             )
 
         engine = Engine(garden)
+        return engine, garden, placement_time
+
+    def run(self, gardener_class: type[Gardener]) -> dict:
+        engine, garden, placement_time = self._setup_engine(gardener_class)
         engine.run_simulation(turns=self.simulation_turns)
 
         return {
@@ -50,3 +54,8 @@ class GameRunner:
             "placement_time": placement_time,
             "plants_placed": len(garden.plants),
         }
+
+    def run_gui(self, gardener_class: type[Gardener]):
+        engine, garden, placement_time = self._setup_engine(gardener_class)
+        visualizer = GardenVisualizer(garden, engine, turns=self.simulation_turns)
+        visualizer.run()
