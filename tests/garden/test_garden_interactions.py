@@ -1,11 +1,35 @@
+from core.micronutrients import Micronutrient
+from core.plants.plant_variety import PlantVariety
+from core.plants.species import Species
 from core.point import Position
 from tests.garden.garden_setup import TestGarden
 
 
 class TestGardenInteractions(TestGarden):
     def test_get_interacting_plants_no_interactions(self):
-        plant1 = self.garden.add_plant(self.rhodo_variety, Position(0, 0))
-        plant2 = self.garden.add_plant(self.rhodo_variety, Position(10, 10))
+        rhodo1 = PlantVariety(
+            name="Test Rhododendron",
+            radius=2,
+            species=Species.RHODODENDRON,
+            nutrient_coefficients={
+                Micronutrient.R: 3.0,
+                Micronutrient.G: -1.0,
+                Micronutrient.B: -1.0,
+            },
+        )
+        rhodo2 = PlantVariety(
+            name="Test Rhododendron",
+            radius=2,
+            species=Species.RHODODENDRON,
+            nutrient_coefficients={
+                Micronutrient.R: 3.0,
+                Micronutrient.G: -1.0,
+                Micronutrient.B: -1.0,
+            },
+        )
+
+        plant1 = self.garden.add_plant(rhodo1, Position(0, 0))
+        plant2 = self.garden.add_plant(rhodo2, Position(10, 10))
 
         interactions1 = self.garden.get_interacting_plants(plant1)
         interactions2 = self.garden.get_interacting_plants(plant2)
@@ -14,9 +38,29 @@ class TestGardenInteractions(TestGarden):
         assert len(interactions2) == 0
 
     def test_same_species_do_not_interact(self):
-        # Place two Geraniums close enough that roots would overlap
-        plant1 = self.garden.add_plant(self.geranium_variety, Position(5, 5))
-        plant2 = self.garden.add_plant(self.geranium_variety, Position(6.5, 5))
+        geranium1 = PlantVariety(
+            name="Test Geranium",
+            radius=1,
+            species=Species.GERANIUM,
+            nutrient_coefficients={
+                Micronutrient.R: -0.5,
+                Micronutrient.G: 2.0,
+                Micronutrient.B: -0.5,
+            },
+        )
+        geranium2 = PlantVariety(
+            name="Test Geranium",
+            radius=1,
+            species=Species.GERANIUM,
+            nutrient_coefficients={
+                Micronutrient.R: -0.5,
+                Micronutrient.G: 2.0,
+                Micronutrient.B: -0.5,
+            },
+        )
+
+        plant1 = self.garden.add_plant(geranium1, Position(5, 5))
+        plant2 = self.garden.add_plant(geranium2, Position(6.5, 5))
 
         # But same species should NOT interact
         interactions1 = self.garden.get_interacting_plants(plant1)

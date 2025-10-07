@@ -8,6 +8,7 @@ class Garden:
         self.width = width
         self.height = height
         self.plants: list[Plant] = []
+        self._used_varieties: set[int] = set()
 
     def _calculate_distance(self, pos1: Position, pos2: Position) -> float:
         dx = pos1.x - pos2.x
@@ -19,6 +20,9 @@ class Garden:
 
     def can_place_plant(self, variety: PlantVariety, position: Position) -> bool:
         if not self.within_bounds(position):
+            return False
+
+        if id(variety) in self._used_varieties:
             return False
 
         for existing_plant in self.plants:
@@ -35,6 +39,7 @@ class Garden:
 
         plant = Plant(variety=variety, position=position)
         self.plants.append(plant)
+        self._used_varieties.add(id(variety))
         return plant
 
     def get_interacting_plants(self, plant: Plant) -> list[Plant]:
