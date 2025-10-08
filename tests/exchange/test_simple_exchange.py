@@ -7,7 +7,7 @@ class TestSimpleExchange(TestNutrientExchange):
     def test_exchange_between_two_plants(self):
         # Rhodo produces R, Geranium produces G
         plant1 = self.garden.add_plant(self.rhodo_variety, Position(5, 5))
-        plant2 = self.garden.add_plant(self.geranium_variety, Position(6.5, 5))
+        plant2 = self.garden.add_plant(self.geranium_variety, Position(7, 5))
 
         # Set inventories
         plant1.micronutrient_inventory[Micronutrient.R] = 12.0  # Offers 3.0
@@ -31,7 +31,7 @@ class TestSimpleExchange(TestNutrientExchange):
 
     def test_exchange_uses_minimum_offer(self):
         plant1 = self.garden.add_plant(self.rhodo_variety, Position(5, 5))
-        plant2 = self.garden.add_plant(self.geranium_variety, Position(6.5, 5))
+        plant2 = self.garden.add_plant(self.geranium_variety, Position(7, 5))
 
         # Plant1 offers more than plant2
         plant1.micronutrient_inventory[Micronutrient.R] = 20.0  # Offers 5.0
@@ -46,7 +46,7 @@ class TestSimpleExchange(TestNutrientExchange):
 
     def test_no_exchange_when_offer_is_zero(self):
         plant1 = self.garden.add_plant(self.rhodo_variety, Position(5, 5))
-        plant2 = self.garden.add_plant(self.geranium_variety, Position(6.5, 5))
+        plant2 = self.garden.add_plant(self.geranium_variety, Position(7, 5))
 
         # Plant1 has nothing to offer
         plant1.micronutrient_inventory[Micronutrient.R] = 0.0
@@ -61,7 +61,7 @@ class TestSimpleExchange(TestNutrientExchange):
 
     def test_exchange_respects_reservoir_capacity(self):
         plant1 = self.garden.add_plant(self.rhodo_variety, Position(5, 5))
-        plant2 = self.garden.add_plant(self.geranium_variety, Position(6.5, 5))
+        plant2 = self.garden.add_plant(self.geranium_variety, Position(7, 5))
 
         # Plant1 at capacity for G
         plant1.micronutrient_inventory[Micronutrient.R] = 12.0
