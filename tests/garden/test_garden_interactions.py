@@ -75,7 +75,7 @@ class TestGardenInteractions(TestGarden):
         # For interaction: distance < 3 (2+1)
         # Place geranium at distance 1.5: legal and interacting
         plant1 = self.garden.add_plant(self.rhodo_variety, Position(5, 5))
-        plant2 = self.garden.add_plant(self.geranium_variety, Position(6.5, 5))
+        plant2 = self.garden.add_plant(self.geranium_variety, Position(7, 5))
 
         interactions1 = self.garden.get_interacting_plants(plant1)
         interactions2 = self.garden.get_interacting_plants(plant2)
@@ -89,12 +89,8 @@ class TestGardenInteractions(TestGarden):
         # Place all three species close enough to interact
         # Rhodo (r=2), Geranium (r=1), Begonia (r=3)
         plant1 = self.garden.add_plant(self.rhodo_variety, Position(5, 5))
-        plant2 = self.garden.add_plant(
-            self.geranium_variety, Position(6.5, 5)
-        )  # dist 1.5 < 3
-        plant3 = self.garden.add_plant(
-            self.begonia_variety, Position(6, 8)
-        )  # dist ~3.2 < 5
+        plant2 = self.garden.add_plant(self.geranium_variety, Position(7, 5))  # dist 2
+        plant3 = self.garden.add_plant(self.begonia_variety, Position(6, 8))  # dist 3
 
         interactions1 = self.garden.get_interacting_plants(plant1)
 
@@ -130,7 +126,7 @@ class TestGardenInteractions(TestGarden):
 
     def test_get_all_interactions_one_pair(self):
         plant1 = self.garden.add_plant(self.rhodo_variety, Position(5, 5))
-        plant2 = self.garden.add_plant(self.geranium_variety, Position(6.5, 5))
+        plant2 = self.garden.add_plant(self.geranium_variety, Position(7, 5))
 
         interactions = self.garden.get_all_interactions()
 
@@ -141,7 +137,7 @@ class TestGardenInteractions(TestGarden):
         # Triangle of three different species, all interacting
         _plant1 = self.garden.add_plant(self.rhodo_variety, Position(5, 5))
         _plant2 = self.garden.add_plant(
-            self.geranium_variety, Position(6.5, 5)
+            self.geranium_variety, Position(7, 5)
         )  # dist 1.5 < 3
         _plant3 = self.garden.add_plant(
             self.begonia_variety, Position(6, 8)

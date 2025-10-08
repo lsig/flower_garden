@@ -27,8 +27,9 @@ class Garden:
 
         for existing_plant in self.plants:
             distance = self._calculate_distance(position, existing_plant.position)
+            min_distance = max(variety.radius, existing_plant.variety.radius)
 
-            if distance < variety.radius:
+            if distance < min_distance:
                 return False
 
         return True
