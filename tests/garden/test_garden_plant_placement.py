@@ -64,11 +64,11 @@ class TestGardenPlantPlacement(TestGarden):
         # Geranium only needs distance >= 1 from rhodo
         plant1 = self.garden.add_plant(self.rhodo_variety, Position(5, 5))
         plant2 = self.garden.add_plant(
-            self.geranium_variety, Position(6, 5)
+            self.geranium_variety, Position(7, 5)
         )  # Distance = 1
 
         assert plant1 is not None
-        assert plant2 is not None  # Succeeds because 1 >= 1
+        assert plant2 is not None  # Succeeds because 2 >= 2
         assert len(self.garden.plants) == 2
 
     def test_cannot_plant_same_variety_instance_twice(self):
