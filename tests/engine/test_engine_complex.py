@@ -7,7 +7,7 @@ class TestEngineComplexScenarios(TestEngine):
     def test_three_species_ecosystem(self):
         # Create a small ecosystem with all three species
         plant1 = self.garden.add_plant(self.rhodo_variety, Position(5, 5))
-        plant2 = self.garden.add_plant(self.geranium_variety, Position(6.5, 5))
+        plant2 = self.garden.add_plant(self.geranium_variety, Position(7, 5))
         plant3 = self.garden.add_plant(self.begonia_variety, Position(5, 9))
 
         engine = Engine(self.garden)

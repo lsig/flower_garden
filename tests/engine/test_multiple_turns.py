@@ -35,7 +35,7 @@ class TestEngineMultipleTurns(TestEngine):
     def test_interacting_plants_grow_through_exchange(self):
         # Two interacting plants of different species
         plant1 = self.garden.add_plant(self.rhodo_variety, Position(5, 5))
-        plant2 = self.garden.add_plant(self.geranium_variety, Position(6.5, 5))
+        plant2 = self.garden.add_plant(self.geranium_variety, Position(7, 5))
 
         engine = Engine(self.garden)
 

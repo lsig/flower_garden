@@ -8,7 +8,7 @@ class TestEngineSingleTurn(TestEngine):
     def test_run_turn_executes_all_phases(self):
         # Place two interacting plants
         plant1 = self.garden.add_plant(self.rhodo_variety, Position(5, 5))
-        plant2 = self.garden.add_plant(self.geranium_variety, Position(6.5, 5))
+        plant2 = self.garden.add_plant(self.geranium_variety, Position(7, 5))
 
         engine = Engine(self.garden)
 
@@ -41,7 +41,7 @@ class TestEngineSingleTurn(TestEngine):
 
     def test_evening_exchange_transfers_nutrients(self):
         plant1 = self.garden.add_plant(self.rhodo_variety, Position(5, 5))
-        plant2 = self.garden.add_plant(self.geranium_variety, Position(6.5, 5))
+        plant2 = self.garden.add_plant(self.geranium_variety, Position(7, 5))
 
         # Set up inventories for exchange
         plant1.micronutrient_inventory[Micronutrient.R] = 12.0
