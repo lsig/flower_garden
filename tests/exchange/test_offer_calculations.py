@@ -6,7 +6,7 @@ from tests.exchange.setup_exchange import TestNutrientExchange
 class TestOfferCalculations(TestNutrientExchange):
     def test_offer_with_single_partner(self):
         plant1 = self.garden.add_plant(self.rhodo_variety, Position(5, 5))
-        plant2 = self.garden.add_plant(self.geranium_variety, Position(6.5, 5))
+        plant2 = self.garden.add_plant(self.geranium_variety, Position(7, 5))
 
         # Set R inventory to 12 for rhodo
         plant1.micronutrient_inventory[Micronutrient.R] = 12.0
@@ -18,7 +18,7 @@ class TestOfferCalculations(TestNutrientExchange):
     def test_offer_split_among_multiple_partners(self):
         # Place rhodo with two different species nearby
         plant1 = self.garden.add_plant(self.rhodo_variety, Position(5, 5))
-        plant2 = self.garden.add_plant(self.geranium_variety, Position(6.5, 5))
+        plant2 = self.garden.add_plant(self.geranium_variety, Position(7, 5))
         plant3 = self.garden.add_plant(self.begonia_variety, Position(6, 8))
 
         # Set R inventory to 12 for rhodo

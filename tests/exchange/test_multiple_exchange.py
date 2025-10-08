@@ -7,7 +7,7 @@ class TestMultipleExchanges(TestNutrientExchange):
     def test_execute_processes_all_interactions(self):
         # Create three plants that can all interact
         plant1 = self.garden.add_plant(self.rhodo_variety, Position(5, 5))
-        plant2 = self.garden.add_plant(self.geranium_variety, Position(6.5, 5))
+        plant2 = self.garden.add_plant(self.geranium_variety, Position(7, 5))
         plant3 = self.garden.add_plant(
             self.begonia_variety, Position(5, 9)
         )  # Far enough away
@@ -32,7 +32,7 @@ class TestMultipleExchanges(TestNutrientExchange):
     def test_plant_with_two_partners_splits_offer(self):
         # Rhodo in center, with Geranium and Begonia close enough to interact
         plant1 = self.garden.add_plant(self.rhodo_variety, Position(5, 5))
-        plant2 = self.garden.add_plant(self.geranium_variety, Position(6.5, 5))
+        plant2 = self.garden.add_plant(self.geranium_variety, Position(7, 5))
         plant3 = self.garden.add_plant(self.begonia_variety, Position(5, 9))
 
         assert plant1 is not None
