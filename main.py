@@ -1,9 +1,14 @@
+import random
+
 from core.runner import GameRunner
 from core.settings import settings
 
 
 def main():
     args = settings()
+
+    if args.seed:
+        random.seed(args.seed)
 
     if args.file_path:
         runner = GameRunner(varieties_file=args.file_path, simulation_turns=args.turns)
