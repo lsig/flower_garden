@@ -21,7 +21,9 @@ class GameRunner:
         self.time_limit = time_limit
         self.nursery = Nursery()
 
-    def _setup_engine(self, gardener_class: type[Gardener]) -> Engine:
+    def _setup_engine(
+        self, gardener_class: type[Gardener]
+    ) -> tuple[Engine, Garden, float]:
         if self.varieties_file:
             varieties = self.nursery.load_from_file(self.varieties_file)
         elif self.random_count:
