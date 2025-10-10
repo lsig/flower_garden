@@ -6,7 +6,7 @@ from tests.engine.setup_engine import TestEngine
 
 class TestEngineMultipleTurns(TestEngine):
     def test_run_simulation_executes_multiple_turns(self):
-        plant = self.garden.add_plant(self.rhodo_variety, Position(5, 5))
+        _plant = self.garden.add_plant(self.rhodo_variety, Position(5, 5))
 
         engine = Engine(self.garden)
         history = engine.run_simulation(turns=5)

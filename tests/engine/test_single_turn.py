@@ -7,8 +7,8 @@ from tests.engine.setup_engine import TestEngine
 class TestEngineSingleTurn(TestEngine):
     def test_run_turn_executes_all_phases(self):
         # Place two interacting plants
-        plant1 = self.garden.add_plant(self.rhodo_variety, Position(5, 5))
-        plant2 = self.garden.add_plant(self.geranium_variety, Position(7, 5))
+        _plant1 = self.garden.add_plant(self.rhodo_variety, Position(5, 5))
+        _plant2 = self.garden.add_plant(self.geranium_variety, Position(7, 5))
 
         engine = Engine(self.garden)
 
