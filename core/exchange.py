@@ -14,6 +14,22 @@ class NutrientExchange:
         num_partners = len(partners)
         return total_offer / num_partners if num_partners > 0 else 0.0
 
+    def _should_exchange(self, plant1: Plant, plant2: Plant) -> bool:
+        nutrient1 = plant1._get_produced_nutrient()
+        nutrient2 = plant2._get_produced_nutrient()
+
+        plant1_has_surplus = (
+            plant1.micronutrient_inventory[nutrient1]
+            > plant1.micronutrient_inventory[nutrient2]
+        )
+
+        plant2_has_surplus = (
+            plant2.micronutrient_inventory[nutrient2]
+            > plant2.micronutrient_inventory[nutrient1]
+        )
+
+        return plant1_has_surplus and plant2_has_surplus
+
     def _exchange_nutrients(self, plant1: Plant, plant2: Plant) -> None:
         offer1 = self.offers[id(plant1)]
         offer2 = self.offers[id(plant2)]
@@ -32,9 +48,14 @@ class NutrientExchange:
 
     def execute(self) -> None:
         interactions = self.garden.get_all_interactions()
+        eligible_exchanges = []
 
         for plant in self.garden.plants:
             self.offers[id(plant)] = self._calculate_offer_to_partner(plant)
 
         for plant1, plant2 in interactions:
+            if self._should_exchange(plant1, plant2):
+                eligible_exchanges.append((plant1, plant2))
+
+        for plant1, plant2 in eligible_exchanges:
             self._exchange_nutrients(plant1, plant2)

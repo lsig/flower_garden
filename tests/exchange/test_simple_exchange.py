@@ -34,8 +34,11 @@ class TestSimpleExchange(TestNutrientExchange):
         plant2 = self.garden.add_plant(self.geranium_variety, Position(7, 5))
 
         # Plant1 offers more than plant2
-        plant1.micronutrient_inventory[Micronutrient.R] = 20.0  # Offers 5.0
-        plant2.micronutrient_inventory[Micronutrient.G] = 4.0  # Offers 1.0
+        plant1.micronutrient_inventory[Micronutrient.R] = 18.0
+        plant1.micronutrient_inventory[Micronutrient.G] = 4.0
+
+        plant2.micronutrient_inventory[Micronutrient.G] = 4.0
+        plant2.micronutrient_inventory[Micronutrient.R] = 3.0
 
         initial_r = plant1.micronutrient_inventory[Micronutrient.R]
 

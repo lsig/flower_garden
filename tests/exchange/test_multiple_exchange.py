@@ -18,16 +18,16 @@ class TestMultipleExchanges(TestNutrientExchange):
         assert plant3 is not None
 
         # Set inventories
-        plant1.micronutrient_inventory[Micronutrient.R] = 12.0
-        plant2.micronutrient_inventory[Micronutrient.G] = 12.0
-        plant3.micronutrient_inventory[Micronutrient.B] = 12.0
+        plant1.micronutrient_inventory[Micronutrient.R] = 16.0
+        plant2.micronutrient_inventory[Micronutrient.G] = 16.0
+        plant3.micronutrient_inventory[Micronutrient.B] = 16.0
 
         self.exchange.execute()
 
         # All plants should have exchanged
-        assert plant1.micronutrient_inventory[Micronutrient.R] < 12.0
-        assert plant2.micronutrient_inventory[Micronutrient.G] < 12.0
-        assert plant3.micronutrient_inventory[Micronutrient.B] < 12.0
+        assert plant1.micronutrient_inventory[Micronutrient.R] < 16.0
+        assert plant2.micronutrient_inventory[Micronutrient.G] < 16.0
+        assert plant3.micronutrient_inventory[Micronutrient.B] < 16.0
 
     def test_plant_with_two_partners_splits_offer(self):
         # Rhodo in center, with Geranium and Begonia close enough to interact
@@ -52,8 +52,16 @@ class TestMultipleExchanges(TestNutrientExchange):
         assert len(partners) == 2
 
         plant1.micronutrient_inventory[Micronutrient.R] = 16.0  # Offers 4.0 total
+        plant1.micronutrient_inventory[Micronutrient.B] = 10.0
+        plant1.micronutrient_inventory[Micronutrient.G] = 10.0
+
         plant2.micronutrient_inventory[Micronutrient.G] = 12.0  # Offers 3.0
+        plant2.micronutrient_inventory[Micronutrient.R] = 8.0
+        plant2.micronutrient_inventory[Micronutrient.B] = 8.0
+
         plant3.micronutrient_inventory[Micronutrient.B] = 12.0  # Offers 3.0
+        plant3.micronutrient_inventory[Micronutrient.G] = 8.0
+        plant3.micronutrient_inventory[Micronutrient.R] = 8.0
 
         initial_r = plant1.micronutrient_inventory[Micronutrient.R]
 
