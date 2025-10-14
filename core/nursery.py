@@ -11,7 +11,7 @@ class Nursery:
         self.varieties: list[PlantVariety] = []
 
     def load_from_file(self, filepath: str) -> list[PlantVariety]:
-        with open(filepath, 'r') as f:
+        with open(filepath) as f:
             data = json.load(f)
 
         seed = data.get('seed')
@@ -59,24 +59,25 @@ class Nursery:
                     f'Must be between {min_val} and {max_val}.'
                 )
 
-        if variety.species == Species.RHODODENDRON:
-            if not (r > 0 and g < 0 and b < 0):
-                raise ValueError(
-                    f'Invalid coefficients for Rhododendron {variety.name}. '
-                    f'Must have R > 0, G < 0, B < 0. Got R={r}, G={g}, B={b}.'
-                )
-        elif variety.species == Species.GERANIUM:
-            if not (g > 0 and r < 0 and b < 0):
-                raise ValueError(
-                    f'Invalid coefficients for Geranium {variety.name}. '
-                    f'Must have G > 0, R < 0, B < 0. Got R={r}, G={g}, B={b}.'
-                )
-        elif variety.species == Species.BEGONIA:
-            if not (b > 0 and r < 0 and g < 0):
-                raise ValueError(
-                    f'Invalid coefficients for Begonia {variety.name}. '
-                    f'Must have B > 0, R < 0, G < 0. Got R={r}, G={g}, B={b}.'
-                )
+        match variety.species:
+            case Species.RHODODENDRON:
+                if not (r > 0 and g < 0 and b < 0):
+                    raise ValueError(
+                        f'Invalid coefficients for Rhododendron {variety.name}. '
+                            f'Must have R > 0, G < 0, B < 0. Got R={r}, G={g}, B={b}.'
+                    )
+            case Species.GERANIUM:
+                if not (g > 0 and r < 0 and b < 0):
+                    raise ValueError(
+                        f'Invalid coefficients for Geranium {variety.name}. '
+                            f'Must have G > 0, R < 0, B < 0. Got R={r}, G={g}, B={b}.'
+                    )
+            case Species.BEGONIA:
+                if not (b > 0 and r < 0 and g < 0):
+                    raise ValueError(
+                        f'Invalid coefficients for Begonia {variety.name}. '
+                            f'Must have B > 0, R < 0, G < 0. Got R={r}, G={g}, B={b}.'
+                    )
 
         if r + g + b <= 0:
             raise ValueError(

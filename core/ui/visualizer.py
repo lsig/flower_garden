@@ -102,7 +102,7 @@ class GardenVisualizer:
         if not self.debug_mode:
             return
 
-        for idx, plant in enumerate(self.garden.plants):
+        for plant in self.garden.plants:
             pos = self.garden_to_screen(plant.position.x, plant.position.y)
 
             # Get coefficients
