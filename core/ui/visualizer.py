@@ -7,9 +7,7 @@ from core.plants.species import Species
 
 
 class GardenVisualizer:
-    def __init__(
-        self, garden: Garden, engine: Engine, turns: int, width=1280, height=800
-    ):
+    def __init__(self, garden: Garden, engine: Engine, turns: int, width=1280, height=800):
         pygame.init()
 
         self.garden = garden
@@ -19,7 +17,7 @@ class GardenVisualizer:
         self.simulation_turns = turns
 
         self.screen = pygame.display.set_mode((width, height))
-        pygame.display.set_caption("Flower Garden Simulation")
+        pygame.display.set_caption('Flower Garden Simulation')
 
         self.bg_color = (240, 240, 240)
         self.grid_color = (200, 200, 200)
@@ -50,17 +48,13 @@ class GardenVisualizer:
 
     def garden_to_screen(self, x, y):
         """Convert garden coordinates to screen coordinates."""
-        return int(x * self.scale_x + self.offset_x), int(
-            y * self.scale_y + self.offset_y
-        )
+        return int(x * self.scale_x + self.offset_x), int(y * self.scale_y + self.offset_y)
 
     def draw_grid(self):
         """Draw garden boundaries and grid."""
         garden_width_px = self.garden.width * self.scale_x
         garden_height_px = self.garden.height * self.scale_y
-        border_rect = pygame.Rect(
-            self.offset_x, self.offset_y, garden_width_px, garden_height_px
-        )
+        border_rect = pygame.Rect(self.offset_x, self.offset_y, garden_width_px, garden_height_px)
         pygame.draw.rect(self.screen, (0, 0, 0), border_rect, 2)
 
         for i in range(1, int(self.garden.width)):
@@ -119,13 +113,13 @@ class GardenVisualizer:
 
             # Create debug text lines
             debug_lines = [
-                f"#{plant.variety.name[:10]}",
-                f"Size: {plant.size:.1f}/{plant.max_size}",
-                f"R:{plant.micronutrient_inventory[Micronutrient.R]:.1f}",
-                f"G:{plant.micronutrient_inventory[Micronutrient.G]:.1f}",
-                f"B:{plant.micronutrient_inventory[Micronutrient.B]:.1f}",
-                f"Cap: {plant.reservoir_capacity}",
-                f"Coef: ({r_coeff:+.1f},{g_coeff:+.1f},{b_coeff:+.1f})",
+                f'#{plant.variety.name[:10]}',
+                f'Size: {plant.size:.1f}/{plant.max_size}',
+                f'R:{plant.micronutrient_inventory[Micronutrient.R]:.1f}',
+                f'G:{plant.micronutrient_inventory[Micronutrient.G]:.1f}',
+                f'B:{plant.micronutrient_inventory[Micronutrient.B]:.1f}',
+                f'Cap: {plant.reservoir_capacity}',
+                f'Coef: ({r_coeff:+.1f},{g_coeff:+.1f},{b_coeff:+.1f})',
             ]
 
             # Draw semi-transparent background
@@ -142,9 +136,7 @@ class GardenVisualizer:
             self.screen.blit(debug_surface, (box_x, box_y))
 
             # Draw border
-            pygame.draw.rect(
-                self.screen, (0, 0, 0), (box_x, box_y, box_width, box_height), 1
-            )
+            pygame.draw.rect(self.screen, (0, 0, 0), (box_x, box_y, box_width, box_height), 1)
 
             # Draw text lines
             for i, line in enumerate(debug_lines):
@@ -158,12 +150,12 @@ class GardenVisualizer:
 
         # Draw simulation stats
         info_lines = [
-            f"Turn: {self.turn}",
-            f"Total Growth: {self.garden.total_growth():.2f}",
-            f"Plants: {len(self.garden.plants)}",
-            "",
-            f"{'PAUSED' if self.paused else 'RUNNING'}",
-            f"{'DEBUG ON' if self.debug_mode else 'DEBUG OFF'}",  # NEW: Show debug status
+            f'Turn: {self.turn}',
+            f'Total Growth: {self.garden.total_growth():.2f}',
+            f'Plants: {len(self.garden.plants)}',
+            '',
+            f'{"PAUSED" if self.paused else "RUNNING"}',
+            f'{"DEBUG ON" if self.debug_mode else "DEBUG OFF"}',  # NEW: Show debug status
         ]
         for line in info_lines:
             if line:  # Skip empty debug line when not in debug mode
@@ -175,11 +167,11 @@ class GardenVisualizer:
 
         # Draw controls
         control_lines = [
-            "Controls:",
-            "SPACE: Play/Pause",
-            "RIGHT: Step forward",
-            "D: Debug mode",  # NEW: Add debug control
-            "Q: Quit",
+            'Controls:',
+            'SPACE: Play/Pause',
+            'RIGHT: Step forward',
+            'D: Debug mode',  # NEW: Add debug control
+            'Q: Quit',
         ]
         for line in control_lines:
             text = self.small_font.render(line, True, (0, 0, 0))
@@ -189,19 +181,17 @@ class GardenVisualizer:
         y_offset += 20
 
         # Draw species legend
-        title = self.font.render("Species:", True, (0, 0, 0))
+        title = self.font.render('Species:', True, (0, 0, 0))
         self.screen.blit(title, (info_pane_x, y_offset))
         y_offset += 40
 
         for species, color in self.species_colors.items():
-            name = species.name.replace("_", " ").title()
+            name = species.name.replace('_', ' ').title()
             text = self.small_font.render(name, True, (0, 0, 0))
 
             circle_y = y_offset + text.get_height() // 2
             pygame.draw.circle(self.screen, color, (info_pane_x + 15, circle_y), 10)
-            pygame.draw.circle(
-                self.screen, (0, 0, 0), (info_pane_x + 15, circle_y), 10, 1
-            )
+            pygame.draw.circle(self.screen, (0, 0, 0), (info_pane_x + 15, circle_y), 10, 1)
 
             self.screen.blit(text, (info_pane_x + 35, y_offset))
             y_offset += 35

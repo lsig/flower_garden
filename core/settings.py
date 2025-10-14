@@ -15,17 +15,17 @@ from gardeners.group10.gardener import Gardener10
 from gardeners.random_gardener import RandomGardener
 
 GARDENERS = {
-    "g1": Gardener1,
-    "g2": Gardener2,
-    "g3": Gardener3,
-    "g4": Gardener4,
-    "g5": Gardener5,
-    "g6": Gardener6,
-    "g7": Gardener7,
-    "g8": Gardener8,
-    "g9": Gardener9,
-    "g10": Gardener10,
-    "gr": RandomGardener,
+    'g1': Gardener1,
+    'g2': Gardener2,
+    'g3': Gardener3,
+    'g4': Gardener4,
+    'g5': Gardener5,
+    'g6': Gardener6,
+    'g7': Gardener7,
+    'g8': Gardener8,
+    'g9': Gardener9,
+    'g10': Gardener10,
+    'gr': RandomGardener,
 }
 
 
@@ -40,46 +40,44 @@ class Settings:
 
 
 def settings() -> Settings:
-    parser = argparse.ArgumentParser(description="Run a flower garden simulation.")
+    parser = argparse.ArgumentParser(description='Run a flower garden simulation.')
 
     parser.add_argument(
-        "--gardener",
+        '--gardener',
         required=True,
         type=str,
         choices=list(GARDENERS.keys()),
-        help="Which gardener to run (g1-g10 or gr for random)",
+        help='Which gardener to run (g1-g10 or gr for random)',
     )
 
-    parser.add_argument(
-        "--turns", type=int, default=100, help="Number of turns in the game"
-    )
+    parser.add_argument('--turns', type=int, default=100, help='Number of turns in the game')
 
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument(
-        "--json_path",
+        '--json_path',
         type=str,
-        help="Path to configuration file (mutually exclusive with --random)",
+        help='Path to configuration file (mutually exclusive with --random)',
     )
     group.add_argument(
-        "--random",
-        action="store_true",
-        help="Use random generation (requires --count, optional --seed)",
+        '--random',
+        action='store_true',
+        help='Use random generation (requires --count, optional --seed)',
     )
 
     parser.add_argument(
-        "--count", type=int, default=20, help="Number of plants (only with --random)"
+        '--count', type=int, default=20, help='Number of plants (only with --random)'
     )
     parser.add_argument(
-        "--seed",
+        '--seed',
         type=int,
         default=91,
-        help="Seed for random number generator (only with --random)",
+        help='Seed for random number generator (only with --random)',
     )
-    parser.add_argument("--gui", action="store_true", help="Enable GUI")
+    parser.add_argument('--gui', action='store_true', help='Enable GUI')
     args = parser.parse_args()
 
     if args.json_path and (args.count != 20 or args.seed != 91):
-        parser.error("--count and --seed can only be used with --random")
+        parser.error('--count and --seed can only be used with --random')
 
     return Settings(
         gardener=GARDENERS[args.gardener],

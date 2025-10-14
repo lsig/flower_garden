@@ -19,13 +19,11 @@ class NutrientExchange:
         nutrient2 = plant2._get_produced_nutrient()
 
         plant1_has_surplus = (
-            plant1.micronutrient_inventory[nutrient1]
-            > plant1.micronutrient_inventory[nutrient2]
+            plant1.micronutrient_inventory[nutrient1] > plant1.micronutrient_inventory[nutrient2]
         )
 
         plant2_has_surplus = (
-            plant2.micronutrient_inventory[nutrient2]
-            > plant2.micronutrient_inventory[nutrient1]
+            plant2.micronutrient_inventory[nutrient2] > plant2.micronutrient_inventory[nutrient1]
         )
 
         return plant1_has_surplus and plant2_has_surplus

@@ -20,11 +20,11 @@ def main():
     else:
         result = runner.run(args.gardener)
 
-        print(f"\nResults for {args.gardener.__name__}:")
-        print(f"  Final Growth: {result['final_growth']:.2f}")
-        print(f"  Plants Placed: {result['plants_placed']}")
-        print(f"  Placement Time: {result['placement_time']:.2f}s")
+        print(f'\nResults for {args.gardener.__name__}:')
+        print(f'  Final Growth: {result["final_growth"]:.2f}')
+        print(f'  Plants Placed: {result["plants_placed"]}')
+        print(f'  Placement Time: {result["placement_time"]:.2f}s')
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

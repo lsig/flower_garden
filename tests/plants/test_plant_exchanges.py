@@ -7,7 +7,7 @@ from core.plants.species import Species
 class TestPlantExchange:
     def setup_method(self, method):
         rhodo_variety = PlantVariety(
-            name="Test Rhododendron",
+            name='Test Rhododendron',
             radius=2,
             species=Species.RHODODENDRON,
             nutrient_coefficients={
@@ -19,7 +19,7 @@ class TestPlantExchange:
         self.rhodo = Plant(variety=rhodo_variety, position=(0, 0))
 
         geranium_variety = PlantVariety(
-            name="Test Geranium",
+            name='Test Geranium',
             radius=2,
             species=Species.GERANIUM,
             nutrient_coefficients={
@@ -31,7 +31,7 @@ class TestPlantExchange:
         self.geranium = Plant(variety=geranium_variety, position=(5, 5))
 
         begonia_variety = PlantVariety(
-            name="Test Begonia",
+            name='Test Begonia',
             radius=2,
             species=Species.BEGONIA,
             nutrient_coefficients={
@@ -106,15 +106,9 @@ class TestPlantExchange:
         self.rhodo.receive_nutrient(Micronutrient.G, 2.0)
         self.rhodo.receive_nutrient(Micronutrient.B, 3.0)
 
-        assert self.rhodo.micronutrient_inventory[Micronutrient.R] == min(
-            initial_r + 1.0, 20.0
-        )
-        assert self.rhodo.micronutrient_inventory[Micronutrient.G] == min(
-            initial_g + 2.0, 20.0
-        )
-        assert self.rhodo.micronutrient_inventory[Micronutrient.B] == min(
-            initial_b + 3.0, 20.0
-        )
+        assert self.rhodo.micronutrient_inventory[Micronutrient.R] == min(initial_r + 1.0, 20.0)
+        assert self.rhodo.micronutrient_inventory[Micronutrient.G] == min(initial_g + 2.0, 20.0)
+        assert self.rhodo.micronutrient_inventory[Micronutrient.B] == min(initial_b + 3.0, 20.0)
 
     def test_different_species_produce_different_nutrients(self):
         assert self.rhodo._get_produced_nutrient() == Micronutrient.R

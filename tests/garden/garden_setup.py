@@ -9,7 +9,7 @@ class TestGarden:
         self.garden = Garden(width=16, height=10)
 
         self.rhodo_variety = PlantVariety(
-            name="Test Rhododendron",
+            name='Test Rhododendron',
             radius=2,
             species=Species.RHODODENDRON,
             nutrient_coefficients={
@@ -20,7 +20,7 @@ class TestGarden:
         )
 
         self.geranium_variety = PlantVariety(
-            name="Test Geranium",
+            name='Test Geranium',
             radius=1,
             species=Species.GERANIUM,
             nutrient_coefficients={
@@ -31,7 +31,7 @@ class TestGarden:
         )
 
         self.begonia_variety = PlantVariety(
-            name="Test Begonia",
+            name='Test Begonia',
             radius=3,
             species=Species.BEGONIA,
             nutrient_coefficients={

@@ -7,7 +7,7 @@ from core.plants.species import Species
 class TestPlantProduction:
     def setup_method(self, method):
         test_variety = PlantVariety(
-            name="Test Rhodo",
+            name='Test Rhodo',
             radius=1,
             species=Species.RHODODENDRON,
             nutrient_coefficients={

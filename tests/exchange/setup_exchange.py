@@ -11,7 +11,7 @@ class TestNutrientExchange:
         self.exchange = NutrientExchange(self.garden)
 
         self.rhodo_variety = PlantVariety(
-            name="Test Rhododendron",
+            name='Test Rhododendron',
             radius=2,
             species=Species.RHODODENDRON,
             nutrient_coefficients={
@@ -22,7 +22,7 @@ class TestNutrientExchange:
         )
 
         self.geranium_variety = PlantVariety(
-            name="Test Geranium",
+            name='Test Geranium',
             radius=1,
             species=Species.GERANIUM,
             nutrient_coefficients={
@@ -33,7 +33,7 @@ class TestNutrientExchange:
         )
 
         self.begonia_variety = PlantVariety(
-            name="Test Begonia",
+            name='Test Begonia',
             radius=3,
             species=Species.BEGONIA,
             nutrient_coefficients={

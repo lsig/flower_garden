@@ -8,9 +8,7 @@ class TestMultipleExchanges(TestNutrientExchange):
         # Create three plants that can all interact
         plant1 = self.garden.add_plant(self.rhodo_variety, Position(5, 5))
         plant2 = self.garden.add_plant(self.geranium_variety, Position(7, 5))
-        plant3 = self.garden.add_plant(
-            self.begonia_variety, Position(5, 9)
-        )  # Far enough away
+        plant3 = self.garden.add_plant(self.begonia_variety, Position(5, 9))  # Far enough away
 
         # Verify all plants were placed
         assert plant1 is not None
@@ -43,9 +41,9 @@ class TestMultipleExchanges(TestNutrientExchange):
         partners2 = self.garden.get_interacting_plants(plant2)
         partners3 = self.garden.get_interacting_plants(plant3)
 
-        print(f"Plant1 partners: {len(partners1)}")
-        print(f"Plant2 partners: {len(partners2)}")
-        print(f"Plant3 partners: {len(partners3)}")
+        print(f'Plant1 partners: {len(partners1)}')
+        print(f'Plant2 partners: {len(partners2)}')
+        print(f'Plant3 partners: {len(partners3)}')
 
         # Verify plant1 actually has 2 partners
         partners = self.garden.get_interacting_plants(plant1)

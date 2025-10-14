@@ -63,9 +63,7 @@ class TestGardenPlantPlacement(TestGarden):
         # Rhodo radius = 2, Geranium radius = 1
         # Geranium only needs distance >= 1 from rhodo
         plant1 = self.garden.add_plant(self.rhodo_variety, Position(5, 5))
-        plant2 = self.garden.add_plant(
-            self.geranium_variety, Position(7, 5)
-        )  # Distance = 1
+        plant2 = self.garden.add_plant(self.geranium_variety, Position(7, 5))  # Distance = 1
 
         assert plant1 is not None
         assert plant2 is not None  # Succeeds because 2 >= 2
@@ -88,7 +86,7 @@ class TestGardenPlantPlacement(TestGarden):
     def test_can_plant_different_instances_of_same_variety_type(self):
         # Create two separate instances with identical values
         variety1 = PlantVariety(
-            name="Rhodo A",
+            name='Rhodo A',
             radius=2,
             species=Species.RHODODENDRON,
             nutrient_coefficients={
@@ -99,7 +97,7 @@ class TestGardenPlantPlacement(TestGarden):
         )
 
         variety2 = PlantVariety(
-            name="Rhodo A",
+            name='Rhodo A',
             radius=2,
             species=Species.RHODODENDRON,
             nutrient_coefficients={

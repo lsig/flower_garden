@@ -25,9 +25,7 @@ class Plant:
 
         for nutrient, coeff in self.variety.nutrient_coefficients.items():
             new_inventory = self.micronutrient_inventory[nutrient] + coeff
-            self.micronutrient_inventory[nutrient] = min(
-                self.reservoir_capacity, new_inventory
-            )
+            self.micronutrient_inventory[nutrient] = min(self.reservoir_capacity, new_inventory)
 
             # NOTE: Make sure nutrients store don't go negative
             assert self.micronutrient_inventory[nutrient] >= 0
@@ -66,9 +64,7 @@ class Plant:
 
     def receive_nutrient(self, nutrient: Micronutrient, amount: float) -> None:
         new_amount = self.micronutrient_inventory[nutrient] + amount
-        self.micronutrient_inventory[nutrient] = min(
-            self.reservoir_capacity, new_amount
-        )
+        self.micronutrient_inventory[nutrient] = min(self.reservoir_capacity, new_amount)
 
     def give_nutrient(self, amount: float) -> None:
         nutrient = self._get_produced_nutrient()

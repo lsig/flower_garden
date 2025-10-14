@@ -21,15 +21,13 @@ class GameRunner:
         self.time_limit = time_limit
         self.nursery = Nursery()
 
-    def _setup_engine(
-        self, gardener_class: type[Gardener]
-    ) -> tuple[Engine, Garden, float]:
+    def _setup_engine(self, gardener_class: type[Gardener]) -> tuple[Engine, Garden, float]:
         if self.varieties_file:
             varieties = self.nursery.load_from_file(self.varieties_file)
         elif self.random_count:
             varieties = self.nursery.generate_random_varieties(self.random_count)
         else:
-            raise ValueError("Must provide either varieties_file or random_count")
+            raise ValueError('Must provide either varieties_file or random_count')
 
         garden = Garden()
         gardener = gardener_class(garden, varieties)
@@ -40,8 +38,8 @@ class GameRunner:
 
         if placement_time > self.time_limit:
             print(
-                f"Warning: Placement exceeded time limit "
-                f"({placement_time:.2f}s > {self.time_limit}s)"
+                f'Warning: Placement exceeded time limit '
+                f'({placement_time:.2f}s > {self.time_limit}s)'
             )
 
         engine = Engine(garden)
@@ -52,9 +50,9 @@ class GameRunner:
         engine.run_simulation(turns=self.simulation_turns)
 
         return {
-            "final_growth": garden.total_growth(),
-            "placement_time": placement_time,
-            "plants_placed": len(garden.plants),
+            'final_growth': garden.total_growth(),
+            'placement_time': placement_time,
+            'plants_placed': len(garden.plants),
         }
 
     def run_gui(self, gardener_class: type[Gardener]):

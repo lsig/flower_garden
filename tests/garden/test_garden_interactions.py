@@ -8,7 +8,7 @@ from tests.garden.garden_setup import TestGarden
 class TestGardenInteractions(TestGarden):
     def test_get_interacting_plants_no_interactions(self):
         rhodo1 = PlantVariety(
-            name="Test Rhododendron",
+            name='Test Rhododendron',
             radius=2,
             species=Species.RHODODENDRON,
             nutrient_coefficients={
@@ -18,7 +18,7 @@ class TestGardenInteractions(TestGarden):
             },
         )
         rhodo2 = PlantVariety(
-            name="Test Rhododendron",
+            name='Test Rhododendron',
             radius=2,
             species=Species.RHODODENDRON,
             nutrient_coefficients={
@@ -39,7 +39,7 @@ class TestGardenInteractions(TestGarden):
 
     def test_same_species_do_not_interact(self):
         geranium1 = PlantVariety(
-            name="Test Geranium",
+            name='Test Geranium',
             radius=1,
             species=Species.GERANIUM,
             nutrient_coefficients={
@@ -49,7 +49,7 @@ class TestGardenInteractions(TestGarden):
             },
         )
         geranium2 = PlantVariety(
-            name="Test Geranium",
+            name='Test Geranium',
             radius=1,
             species=Species.GERANIUM,
             nutrient_coefficients={
@@ -102,9 +102,7 @@ class TestGardenInteractions(TestGarden):
     def test_get_interacting_plants_at_exact_boundary(self):
         # Rhodo (r=2) and Geranium (r=1): interaction boundary at distance = 3
         plant1 = self.garden.add_plant(self.rhodo_variety, Position(5, 5))
-        plant2 = self.garden.add_plant(
-            self.geranium_variety, Position(8, 5)
-        )  # Distance = 3
+        plant2 = self.garden.add_plant(self.geranium_variety, Position(8, 5))  # Distance = 3
 
         interactions1 = self.garden.get_interacting_plants(plant1)
         interactions2 = self.garden.get_interacting_plants(plant2)
@@ -136,12 +134,8 @@ class TestGardenInteractions(TestGarden):
     def test_get_all_interactions_no_duplicates(self):
         # Triangle of three different species, all interacting
         _plant1 = self.garden.add_plant(self.rhodo_variety, Position(5, 5))
-        _plant2 = self.garden.add_plant(
-            self.geranium_variety, Position(7, 5)
-        )  # dist 1.5 < 3
-        _plant3 = self.garden.add_plant(
-            self.begonia_variety, Position(6, 8)
-        )  # close to both
+        _plant2 = self.garden.add_plant(self.geranium_variety, Position(7, 5))  # dist 1.5 < 3
+        _plant3 = self.garden.add_plant(self.begonia_variety, Position(6, 8))  # close to both
 
         interactions = self.garden.get_all_interactions()
 

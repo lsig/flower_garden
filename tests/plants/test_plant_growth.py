@@ -7,7 +7,7 @@ from core.plants.species import Species
 class TestPlantGrowth:
     def setup_method(self, method):
         test_variety = PlantVariety(
-            name="Test Geranium",
+            name='Test Geranium',
             radius=2,
             species=Species.GERANIUM,
             nutrient_coefficients={
