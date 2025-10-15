@@ -29,3 +29,6 @@ jobs:
 
       - name: Run tests
         run: uv run pytest
+
+      - name: Smoke test
+        run: uv run main.py --gardener gr --random
