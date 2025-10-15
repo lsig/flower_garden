@@ -7,7 +7,9 @@ from core.plants.species import Species
 
 
 class GardenVisualizer:
-    def __init__(self, garden: Garden, engine: Engine, turns: int, width=1280, height=800):
+    def __init__(
+        self, garden: Garden, engine: Engine, gardener_name: str, turns: int, width=1280, height=800
+    ):
         pygame.init()
 
         self.garden = garden
@@ -15,6 +17,7 @@ class GardenVisualizer:
         self.width = width
         self.height = height
         self.simulation_turns = turns
+        self.gardener = gardener_name
 
         self.screen = pygame.display.set_mode((width, height))
         pygame.display.set_caption('Flower Garden Simulation')
@@ -150,6 +153,7 @@ class GardenVisualizer:
 
         # Draw simulation stats
         info_lines = [
+            f'{self.gardener}',
             f'Turn: {self.turn}',
             f'Total Growth: {self.garden.total_growth():.2f}',
             f'Plants: {len(self.garden.plants)}',

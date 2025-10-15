@@ -57,5 +57,7 @@ class GameRunner:
 
     def run_gui(self, gardener_class: type[Gardener]):
         engine, garden, placement_time = self._setup_engine(gardener_class)
-        visualizer = GardenVisualizer(garden, engine, turns=self.simulation_turns)
+        visualizer = GardenVisualizer(
+            garden, engine, gardener_class.__name__, turns=self.simulation_turns
+        )
         visualizer.run()
