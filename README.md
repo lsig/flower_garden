@@ -95,8 +95,8 @@ uv run python main.py --random --gui --turns 200 --gardener gr
 
 ##### Example 2: Run a Simulation with JSON file
 
-To create a simulation using the JSOON file, and increase the number of turns in the simulation. No GUI.
+To create a simulation using the JSON file, and increase the number of turns in the simulation. No GUI.
 
 ```bash
-uv run python main.py --json_path /path/to/my.json --turns 200
+uv run python main.py --json_path /path/to/my.json --turns 200 --gardener gr
 ```
