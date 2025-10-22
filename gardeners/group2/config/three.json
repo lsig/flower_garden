@@ -1,0 +1,44 @@
+{
+  "seed": 42,
+  "varieties": [
+    {
+      "name": "Slow RHODODENDRON",
+      "radius": 1,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {"R": 0.5, "G": -0.1, "B": -0.1},
+      "count": 40
+    },
+    {
+      "name": "Greedy GERANIUM",
+      "radius": 2,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -3.5, 
+        "G": 5.0, 
+        "B": -1.0
+    },
+      "count": 8
+    },
+    {
+      "name": "Slow BEGONIA",
+      "radius": 1,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.2, 
+        "G": -0.8, 
+        "B": 1.2
+    },
+      "count": 30
+    },
+    {
+      "name": "Greedy RHODODENDRON",
+      "radius": 3,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 5.5, 
+        "G": -5.0, 
+        "B": -0.3},
+      "count": 2
+    }
+  ]
+}
