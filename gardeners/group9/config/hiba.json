@@ -3,7 +3,7 @@
   "varieties": [
     {
       "name": "Rhododendron indicum",
-      "radius": 5,
+      "radius": 3,
       "species": "RHODODENDRON",
       "nutrient_coefficients": {
         "R": 5.0,
@@ -13,7 +13,7 @@
     },
     {
       "name": "Geranium Pelargoniums",
-      "radius": 3,
+      "radius": 1,
       "species": "GERANIUM",
       "nutrient_coefficients": {
         "R": -0.1,
@@ -23,7 +23,7 @@
     },
     {
     "name": "Begonia Semperflorens",
-    "radius": 5,
+    "radius": 3,
     "species": "BEGONIA",
     "nutrient_coefficients": {
     "R": -0.1,
