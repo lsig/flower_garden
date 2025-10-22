@@ -8,4 +8,6 @@ class Gardener4(Gardener):
         super().__init__(garden, varieties)
 
     def cultivate_garden(self) -> None:
+        # use garden.add_plant(...) to add plants to the garden
+        #
         pass
