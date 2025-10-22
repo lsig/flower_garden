@@ -9,7 +9,7 @@ from core.plants.species import Species
 from core.micronutrients import Micronutrient 
 from core.plants.plant import Plant
 
-class Greedy(Gardener):
+class GreedyVersion1(Gardener):
 
     STEP = 0.2 
 
