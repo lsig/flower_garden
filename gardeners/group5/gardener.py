@@ -3,11 +3,11 @@ from __future__ import annotations
 import math
 import random
 from collections import defaultdict
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any
 
 from core.engine import Engine
-
 from core.garden import Garden
 from core.gardener import Gardener
 from core.micronutrients import Micronutrient
@@ -18,9 +18,9 @@ from core.point import Position
 
 class Gardener5(Gardener):
     """
-    Group 5 gardener: builds small R–G–B clusters (triads) with inter-plant
+    Group 5 gardener: builds small R-G-B clusters (triads) with inter-plant
     distances near the inter-species interaction threshold to keep neighbor
-    degree low (2–3), which helps with the 1/4-offer splitting rule.
+    degree low (2-3), which helps with the 1/4-offer splitting rule.
     """
 
     # ---------------------------
@@ -30,25 +30,25 @@ class Gardener5(Gardener):
     @staticmethod
     def _get_name(v: Any) -> str:
         if isinstance(v, dict):
-            return str(v.get("name", "VAR"))
-        return getattr(v, "name", "VAR")
+            return str(v.get('name', 'VAR'))
+        return getattr(v, 'name', 'VAR')
 
     @staticmethod
     def _get_species(v: Any) -> str:
         if isinstance(v, dict):
-            s = v.get("species", "UNKNOWN")
-            return str(getattr(s, "name", s)).upper()
-        s = getattr(v, "species", "UNKNOWN")
-        return str(getattr(s, "name", s)).upper()
+            s = v.get('species', 'UNKNOWN')
+            return str(getattr(s, 'name', s)).upper()
+        s = getattr(v, 'species', 'UNKNOWN')
+        return str(getattr(s, 'name', s)).upper()
 
     @staticmethod
     def _get_species_enum(v: Any) -> Species:
         if isinstance(v, dict):
-            s = v.get("species", Species.RHODODENDRON)
+            s = v.get('species', Species.RHODODENDRON)
             if isinstance(s, Species):
                 return s
             return Species[str(s).upper()]
-        s = getattr(v, "species", Species.RHODODENDRON)
+        s = getattr(v, 'species', Species.RHODODENDRON)
         if isinstance(s, Species):
             return s
         return Species[str(s).upper()]
@@ -56,19 +56,19 @@ class Gardener5(Gardener):
     @staticmethod
     def _get_radius(v: Any) -> float:
         if isinstance(v, dict):
-            return float(v.get("radius", 1.0))
-        return float(getattr(v, "radius", 1.0))
+            return float(v.get('radius', 1.0))
+        return float(getattr(v, 'radius', 1.0))
 
     @staticmethod
-    def _get_coeff_vector(v: Any) -> Tuple[float, float, float]:
+    def _get_coeff_vector(v: Any) -> tuple[float, float, float]:
         if isinstance(v, dict):
-            coeffs = v.get("nutrient_coefficients", {})
+            coeffs = v.get('nutrient_coefficients', {})
             return (
-                float(coeffs.get("R", 0.0)),
-                float(coeffs.get("G", 0.0)),
-                float(coeffs.get("B", 0.0)),
+                float(coeffs.get('R', 0.0)),
+                float(coeffs.get('G', 0.0)),
+                float(coeffs.get('B', 0.0)),
             )
-        coeffs = getattr(v, "nutrient_coefficients", {})
+        coeffs = getattr(v, 'nutrient_coefficients', {})
         if Micronutrient.R in coeffs:
             return (
                 float(coeffs[Micronutrient.R]),
@@ -77,7 +77,7 @@ class Gardener5(Gardener):
             )
         return (0.0, 0.0, 0.0)
 
-    def _make_variety_key(self, variety: Any) -> Tuple[Any, ...]:
+    def _make_variety_key(self, variety: Any) -> tuple[Any, ...]:
         coeffs = tuple(round(c, 3) for c in self._get_coeff_vector(variety))
         return (
             self._get_species_enum(variety).name,
@@ -98,14 +98,14 @@ class Gardener5(Gardener):
 
     @dataclass
     class _VarType:
-        key: Tuple[Any, ...]
+        key: tuple[Any, ...]
         species: Species
         radius: float
         prototype: PlantVariety
-        indices: List[int]
+        indices: list[int]
         used: int = 0
 
-        def reserve(self) -> Optional[int]:
+        def reserve(self) -> int | None:
             if self.used >= len(self.indices):
                 return None
             idx = self.indices[self.used]
@@ -118,21 +118,21 @@ class Gardener5(Gardener):
 
     @dataclass
     class _TripletEval:
-        key: Tuple[Tuple[Any, ...], Tuple[Any, ...], Tuple[Any, ...]]
+        key: tuple[tuple[Any, ...], tuple[Any, ...], tuple[Any, ...]]
         total_growth: float
-        per_species_growth: Dict[Species, float]
+        per_species_growth: dict[Species, float]
         sustaining: bool
-        relative_positions: Dict[Species, Tuple[float, float]]
+        relative_positions: dict[Species, tuple[float, float]]
         cluster_extent: float
-        pair_distances: Dict[Tuple[Species, Species], float]
+        pair_distances: dict[tuple[Species, Species], float]
 
     @dataclass
     class _TripletPlan:
-        r_type: "Gardener5._VarType"
-        g_type: "Gardener5._VarType"
-        b_type: "Gardener5._VarType"
-        layout: "Gardener5._TripletEval"
-        indices: Dict[Species, int]
+        r_type: Gardener5._VarType
+        g_type: Gardener5._VarType
+        b_type: Gardener5._VarType
+        layout: Gardener5._TripletEval
+        indices: dict[Species, int]
 
     class _SpatialHash:
         """Uniform grid spatial hash for fast neighborhood checks."""
@@ -143,12 +143,12 @@ class Gardener5(Gardener):
             self.height = height
             self.get_radius = get_radius
             self.get_species = get_species
-            self.grid: Dict[Tuple[int, int], List[Gardener5._Placement]] = defaultdict(list)
+            self.grid: dict[tuple[int, int], list[Gardener5._Placement]] = defaultdict(list)
 
-        def _key(self, x: float, y: float) -> Tuple[int, int]:
+        def _key(self, x: float, y: float) -> tuple[int, int]:
             return (int(x // self.cell), int(y // self.cell))
 
-        def _neighbor_keys(self, x: float, y: float, radius: float) -> Iterable[Tuple[int, int]]:
+        def _neighbor_keys(self, x: float, y: float, radius: float) -> Iterable[tuple[int, int]]:
             cr = int(math.ceil((radius + self.cell) / self.cell))
             cx, cy = self._key(x, y)
             for dx in range(-cr, cr + 1):
@@ -178,8 +178,8 @@ class Gardener5(Gardener):
         def can_place(
             self,
             cand: Gardener5._Placement,
-            varieties: List[Any],
-            extras: Optional[List[Gardener5._Placement]] = None,
+            varieties: list[Any],
+            extras: list[Gardener5._Placement] | None = None,
             allow_cross_existing: bool = False,
             allow_cross_extras: bool = True,
         ) -> bool:
@@ -197,7 +197,9 @@ class Gardener5(Gardener):
                     md = self._min_center_distance(a_r, b_r)
                     if d2 < md * md:
                         return False
-                    if self._cross_too_close(allow_cross_existing, a_species, b_species, d2, a_r, b_r):
+                    if self._cross_too_close(
+                        allow_cross_existing, a_species, b_species, d2, a_r, b_r
+                    ):
                         return False
             if extras:
                 for p in extras:
@@ -211,7 +213,9 @@ class Gardener5(Gardener):
                     md = self._min_center_distance(a_r, b_r)
                     if d2 < md * md:
                         return False
-                    if self._cross_too_close(allow_cross_extras, a_species, b_species, d2, a_r, b_r):
+                    if self._cross_too_close(
+                        allow_cross_extras, a_species, b_species, d2, a_r, b_r
+                    ):
                         return False
             return True
 
@@ -222,8 +226,8 @@ class Gardener5(Gardener):
     # Public API
     # ---------------------------
 
-    def _build_type_groups(self, rng: random.Random) -> Dict[Species, List[_VarType]]:
-        groups: Dict[Tuple[Any, ...], Gardener5._VarType] = {}
+    def _build_type_groups(self, rng: random.Random) -> dict[Species, list[Gardener5._VarType]]:
+        groups: dict[tuple[Any, ...], Gardener5._VarType] = {}
         for idx, variety in enumerate(self.varieties):
             key = self._make_variety_key(variety)
             if key not in groups:
@@ -236,7 +240,7 @@ class Gardener5(Gardener):
                 )
             groups[key].indices.append(idx)
 
-        by_species: Dict[Species, List[Gardener5._VarType]] = {
+        by_species: dict[Species, list[Gardener5._VarType]] = {
             Species.RHODODENDRON: [],
             Species.GERANIUM: [],
             Species.BEGONIA: [],
@@ -263,16 +267,26 @@ class Gardener5(Gardener):
         r_var: PlantVariety,
         g_var: PlantVariety,
         b_var: PlantVariety,
-    ) -> Optional[Dict[Tuple[Species, Species], float]]:
+    ) -> dict[tuple[Species, Species], float] | None:
         pairs = [
-            (Species.RHODODENDRON, Species.GERANIUM, self._get_radius(r_var), self._get_radius(g_var)),
-            (Species.RHODODENDRON, Species.BEGONIA, self._get_radius(r_var), self._get_radius(b_var)),
+            (
+                Species.RHODODENDRON,
+                Species.GERANIUM,
+                self._get_radius(r_var),
+                self._get_radius(g_var),
+            ),
+            (
+                Species.RHODODENDRON,
+                Species.BEGONIA,
+                self._get_radius(r_var),
+                self._get_radius(b_var),
+            ),
             (Species.GERANIUM, Species.BEGONIA, self._get_radius(g_var), self._get_radius(b_var)),
         ]
 
-        distances: List[float] = []
-        mins: List[float] = []
-        maxs: List[float] = []
+        distances: list[float] = []
+        mins: list[float] = []
+        maxs: list[float] = []
         for _, _, ra, rb in pairs:
             dist = self._interaction_distance(ra, rb)
             distances.append(dist)
@@ -299,7 +313,9 @@ class Gardener5(Gardener):
         }
 
     @staticmethod
-    def _solve_triangle_geometry(distances: Dict[Tuple[Species, Species], float]) -> Optional[Dict[Species, Tuple[float, float]]]:
+    def _solve_triangle_geometry(
+        distances: dict[tuple[Species, Species], float],
+    ) -> dict[Species, tuple[float, float]] | None:
         d_rg = distances[(Species.RHODODENDRON, Species.GERANIUM)]
         d_rb = distances[(Species.RHODODENDRON, Species.BEGONIA)]
         d_gb = distances[(Species.GERANIUM, Species.BEGONIA)]
@@ -323,7 +339,14 @@ class Gardener5(Gardener):
         r_var: PlantVariety,
         g_var: PlantVariety,
         b_var: PlantVariety,
-    ) -> Optional[Tuple[Dict[Species, Tuple[float, float]], float, Dict[Tuple[Species, Species], float]]]:
+    ) -> (
+        tuple[
+            dict[Species, tuple[float, float]],
+            float,
+            dict[tuple[Species, Species], float],
+        ]
+        | None
+    ):
         distances = self._compute_triangle_distances(r_var, g_var, b_var)
         if distances is None:
             return None
@@ -335,9 +358,7 @@ class Gardener5(Gardener):
         cx = sum(pt[0] for pt in positions.values()) / 3.0
         cy = sum(pt[1] for pt in positions.values()) / 3.0
 
-        relative = {
-            species: (pt[0] - cx, pt[1] - cy) for species, pt in positions.items()
-        }
+        relative = {species: (pt[0] - cx, pt[1] - cy) for species, pt in positions.items()}
 
         radius_map = {
             Species.RHODODENDRON: self._get_radius(r_var),
@@ -345,8 +366,7 @@ class Gardener5(Gardener):
             Species.BEGONIA: self._get_radius(b_var),
         }
         cluster_extent = max(
-            math.hypot(dx, dy) + radius_map[species]
-            for species, (dx, dy) in relative.items()
+            math.hypot(dx, dy) + radius_map[species] for species, (dx, dy) in relative.items()
         )
 
         return relative, cluster_extent + 0.25, distances
@@ -356,9 +376,11 @@ class Gardener5(Gardener):
         r_var: PlantVariety,
         g_var: PlantVariety,
         b_var: PlantVariety,
-        layout: Tuple[Dict[Species, Tuple[float, float]], float, Dict[Tuple[Species, Species], float]],
-        key: Tuple[Tuple[Any, ...], Tuple[Any, ...], Tuple[Any, ...]],
-    ) -> Optional[_TripletEval]:
+        layout: tuple[
+            dict[Species, tuple[float, float]], float, dict[tuple[Species, Species], float]
+        ],
+        key: tuple[tuple[Any, ...], tuple[Any, ...], tuple[Any, ...]],
+    ) -> Gardener5._TripletEval | None:
         relative, cluster_extent, distances = layout
 
         garden = Garden(width=20.0, height=20.0)
@@ -369,7 +391,7 @@ class Gardener5(Gardener):
             Species.BEGONIA: b_var,
         }
 
-        plants: Dict[Species, Any] = {}
+        plants: dict[Species, Any] = {}
         for species, variety in mapping.items():
             dx, dy = relative[species]
             pos = Position(anchor_x + dx, anchor_y + dy)
@@ -379,7 +401,7 @@ class Gardener5(Gardener):
             plants[species] = plant
 
         engine = Engine(garden)
-        per_turn_growth: List[float] = []
+        per_turn_growth: list[float] = []
         for _ in range(400):
             growth = engine.run_turn()
             per_turn_growth.append(growth)
@@ -389,9 +411,7 @@ class Gardener5(Gardener):
         total_growth = sum(plant.size for plant in garden.plants)
         per_species_growth = {species: plants[species].size for species in mapping}
         recent_growth = sum(per_turn_growth[-30:]) if per_turn_growth else 0.0
-        min_ratio = min(
-            plants[species].size / plants[species].max_size for species in mapping
-        )
+        min_ratio = min(plants[species].size / plants[species].max_size for species in mapping)
         sustaining = min_ratio >= 0.5 or recent_growth > 0.5
 
         return self._TripletEval(
@@ -406,10 +426,10 @@ class Gardener5(Gardener):
 
     def _get_triplet_eval(
         self,
-        r_type: _VarType,
-        g_type: _VarType,
-        b_type: _VarType,
-    ) -> Optional[_TripletEval]:
+        r_type: Gardener5._VarType,
+        g_type: Gardener5._VarType,
+        b_type: Gardener5._VarType,
+    ) -> Gardener5._TripletEval | None:
         cache_key = (r_type.key, g_type.key, b_type.key)
         if cache_key in self._triplet_cache:
             return self._triplet_cache[cache_key]
@@ -431,8 +451,8 @@ class Gardener5(Gardener):
 
     def _build_triplet_plans(
         self,
-        by_species: Dict[Species, List[_VarType]],
-    ) -> Tuple[List[_TripletPlan], float]:
+        by_species: dict[Species, list[Gardener5._VarType]],
+    ) -> tuple[list[Gardener5._TripletPlan], float]:
         r_types = by_species.get(Species.RHODODENDRON, [])
         g_types = by_species.get(Species.GERANIUM, [])
         b_types = by_species.get(Species.BEGONIA, [])
@@ -440,7 +460,15 @@ class Gardener5(Gardener):
         if not (r_types and g_types and b_types):
             return [], 0.0
 
-        candidates: List[Tuple[float, _VarType, _VarType, _VarType, _TripletEval]] = []
+        candidates: list[
+            tuple[
+                float,
+                Gardener5._VarType,
+                Gardener5._VarType,
+                Gardener5._VarType,
+                Gardener5._TripletEval,
+            ]
+        ] = []
         for r_type in r_types:
             for g_type in g_types:
                 for b_type in b_types:
@@ -451,10 +479,18 @@ class Gardener5(Gardener):
 
         candidates.sort(key=lambda item: item[0], reverse=True)
 
-        plans: List[Gardener5._TripletPlan] = []
+        plans: list[Gardener5._TripletPlan] = []
         cluster_extent = 0.0
         while True:
-            chosen: Optional[Tuple[_VarType, _VarType, _VarType, _TripletEval]] = None
+            chosen: (
+                tuple[
+                    Gardener5._VarType,
+                    Gardener5._VarType,
+                    Gardener5._VarType,
+                    Gardener5._TripletEval,
+                ]
+                | None
+            ) = None
             for _, r_type, g_type, b_type, evaluation in candidates:
                 if r_type.available and g_type.available and b_type.available:
                     chosen = (r_type, g_type, b_type, evaluation)
@@ -488,10 +524,10 @@ class Gardener5(Gardener):
 
     def __init__(self, garden: Garden, varieties: list[PlantVariety]):
         super().__init__(garden, varieties)
-        seed = getattr(garden, "seed", 42)
+        seed = getattr(garden, 'seed', 42)
         self._rng = random.Random(seed)
-        self._triplet_cache: Dict[
-            Tuple[Tuple[Any, ...], Tuple[Any, ...], Tuple[Any, ...]],
+        self._triplet_cache: dict[
+            tuple[tuple[Any, ...], tuple[Any, ...], tuple[Any, ...]],
             Gardener5._TripletEval,
         ] = {}
 
@@ -514,8 +550,8 @@ class Gardener5(Gardener):
             get_species=self._get_species_enum,
         )
 
-        placements: List[Gardener5._Placement] = []
-        placed: List[bool] = [False] * len(self.varieties)
+        placements: list[Gardener5._Placement] = []
+        placed: list[bool] = [False] * len(self.varieties)
 
         if cluster_extent <= 0.0:
             cluster_extent = max(self._get_radius(v) for v in self.varieties) + 0.5
@@ -568,18 +604,18 @@ class Gardener5(Gardener):
     # ---------------------------
 
     @staticmethod
-    def _rotate_point(x: float, y: float, angle: float) -> Tuple[float, float]:
+    def _rotate_point(x: float, y: float, angle: float) -> tuple[float, float]:
         cos_a = math.cos(angle)
         sin_a = math.sin(angle)
         return (x * cos_a - y * sin_a, x * sin_a + y * cos_a)
 
     def _place_triplet_plan(
         self,
-        plan: _TripletPlan,
-        anchor: Tuple[float, float],
+        plan: Gardener5._TripletPlan,
+        anchor: tuple[float, float],
         space: _SpatialHash,
-        placements: List[_Placement],
-        placed: List[bool],
+        placements: list[Gardener5._Placement],
+        placed: list[bool],
         width: float,
         height: float,
         rng: random.Random,
@@ -593,7 +629,7 @@ class Gardener5(Gardener):
             shift_x = rng.uniform(-jitter_scale, jitter_scale)
             shift_y = rng.uniform(-jitter_scale, jitter_scale)
 
-            coords: Dict[Species, Tuple[float, float]] = {}
+            coords: dict[Species, tuple[float, float]] = {}
             valid = True
             for species, rel in plan.layout.relative_positions.items():
                 rx, ry = self._rotate_point(rel[0], rel[1], angle)
@@ -606,7 +642,7 @@ class Gardener5(Gardener):
             if not valid or len(coords) < 3:
                 continue
 
-            temp: List[Gardener5._Placement] = []
+            temp: list[Gardener5._Placement] = []
             feasible = True
             for species in (Species.RHODODENDRON, Species.GERANIUM, Species.BEGONIA):
                 idx = plan.indices[species]
@@ -644,8 +680,8 @@ class Gardener5(Gardener):
         self,
         idx: int,
         space: _SpatialHash,
-        placements: List[_Placement],
-        placed: List[bool],
+        placements: list[Gardener5._Placement],
+        placed: list[bool],
         width: float,
         height: float,
         rng: random.Random,
@@ -671,9 +707,9 @@ class Gardener5(Gardener):
         return False
 
     @staticmethod
-    def _tri_lattice(width: float, height: float, spacing: float) -> List[Tuple[float, float]]:
+    def _tri_lattice(width: float, height: float, spacing: float) -> list[tuple[float, float]]:
         """Generate a triangular (hex) lattice covering the rectangle."""
-        pts: List[Tuple[float, float]] = []
+        pts: list[tuple[float, float]] = []
         row_h = spacing * math.sqrt(3) / 2.0
         rows = int(math.ceil(height / row_h)) + 2
         cols = int(math.ceil(width / spacing)) + 2
