@@ -1,0 +1,38 @@
+{
+  "seed": 100,
+  "varieties": [
+    {
+      "name": "Sunburst RHODODENDRON",
+      "radius": 2,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 1.2,
+        "G": -0.4,
+        "B": -0.6
+      },
+      "count": 2
+    },
+    {
+      "name": "Tropical GERANIUM",
+      "radius": 2,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.3,
+        "G": 2.0,
+        "B": -0.7
+      },
+      "count": 1
+    },
+    {
+      "name": "Golden BEGONIA",
+      "radius": 2,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.5,
+        "G": -0.2,
+        "B": 1.3
+      },
+      "count": 4
+    }
+  ]
+}

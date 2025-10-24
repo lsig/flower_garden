@@ -1,0 +1,38 @@
+{
+  "seed": 21,
+  "varieties": [
+    {
+      "name": "Rhododendron indicum",
+      "radius": 1,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 2.0,
+        "G": -0.1,
+        "B": -0.1
+      }
+    },
+    {
+      "name": "Geranium Pelargoniums",
+      "radius": 1,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.1,
+        "G": 2.0,
+        "B": -0.1
+      }
+    },
+    {
+    "name": "Begonia Semperflorens",
+    "radius": 1,
+    "species": "BEGONIA",
+    "nutrient_coefficients": {
+    "R": -0.1,
+    "G": -0.1,
+    "B": 2.0
+    }
+    }
+]
+}
+
+
+
