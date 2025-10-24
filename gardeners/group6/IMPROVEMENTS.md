@@ -36,28 +36,7 @@ This document outlines potential improvements to the Group 6 gardener algorithm,
 
 ---
 
-### 2. Interaction Robustness Score
-
-**Problem**: Two plants at barely-touching distance (5.99) are less stable than tightly-packed (3.0).
-
-**Idea**: Favor interactions that have "safety margin" - less likely to separate during plant growth.
-
-**Implementation**:
-- Calculate interaction distance for each cross-species pair
-- Apply robustness penalty: closer = better
-- Formula: `robustness_bonus = 1 / (1 + interaction_distance / max_safe_distance)`
-- Higher bonus for tight clusters
-
-**Where**: `algorithms/scoring.py` in `measure_garden_quality()`
-
-**Notes**:
-- This matters because growing plants increase radius
-- Distant interactions may break as plants grow larger
-- Tight clusters are more resilient to layout changes
-
----
-
-### 3. Species Coverage Score Component
+### 2. Species Coverage Score Component
 
 **Problem**: Algorithm may create solutions dominated by 1-2 species, missing beneficial interactions.
 
@@ -79,7 +58,7 @@ This document outlines potential improvements to the Group 6 gardener algorithm,
 
 ## 🔧 Placement & Layout Improvements
 
-### 4. Two-Phase Placement Strategy
+### 3. Two-Phase Placement Strategy
 
 **Problem**: Initial random scattering wastes iterations; tight clusters could fill space more efficiently.
 
@@ -116,7 +95,7 @@ def two_phase_placement():
 
 ---
 
-### 5. Adaptive Separation Stopping Condition
+### 4. Adaptive Separation Stopping Condition
 
 **Problem**: Fixed iteration limits may over-separate (breaking edges) or under-separate (leaving overlaps).
 
@@ -166,7 +145,7 @@ def separate_overlapping_plants(...):
 
 ## 🚀 Force Layout Refinements
 
-### 6. Attraction Strength Scaling by Nutrient Fit
+### 5. Attraction Strength Scaling by Nutrient Fit
 
 **Problem**: Some plant pairs are much more beneficial than others; current attraction treats all cross-species pairs equally.
 
@@ -202,7 +181,7 @@ force_magnitude = -displacement * 0.3 * damping * (1.0 + nutrient_bonus)
 
 ## 📊 Multi-Start & Execution Improvements
 
-### 7. Variety Rotation in Multi-Start
+### 6. Variety Rotation in Multi-Start
 
 **Problem**: Each multi-start run uses same random variety subset; limits exploration.
 
@@ -226,7 +205,7 @@ force_magnitude = -displacement * 0.3 * damping * (1.0 + nutrient_bonus)
 
 ## 💡 Space Utilization Improvements
 
-### 8. Grid-Based Greedy Filling
+### 7. Grid-Based Greedy Filling
 
 **Problem**: After multi-start optimization, garden may still have usable empty pockets.
 
@@ -279,7 +258,6 @@ These should be implemented first:
 |------|--------|-----------------|-----------|
 | **Species Coverage Score** | 🟢 Low | 🟡 Medium | One-line addition to scoring |
 | **Nutrient Flow Score** | 🟡 Medium | 🟢 High | Better metric = better optimization |
-| **Interaction Robustness** | 🟡 Medium | 🟡 Medium | Improves score quality |
 | **Adaptive Separation** | 🟡 Medium | 🟡 Medium | Prevents over-separation waste |
 | **Variety Rotation** | 🟢 Low | 🟡 Medium | Free improvement in multi-start |
 | **Attraction Scaling** | 🟡 Medium | 🟢 High | Smarter force allocation |
@@ -298,13 +276,11 @@ These should be implemented first:
 
 **Phase 2 (Next)**: Layout Optimization
 1. Attraction Strength Scaling by Nutrient Fit
-2. Interaction Robustness in scoring
-3. Two-Phase Placement Strategy
+2. Two-Phase Placement Strategy
 
 **Phase 3 (Polish)**: Advanced Features
-1. Repulsion Scaling by Radius
-2. Grid-Based Gap Filling
-3. Performance monitoring & tuning
+1. Grid-Based Gap Filling
+2. Performance monitoring & tuning
 
 ---
 
