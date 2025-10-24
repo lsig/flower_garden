@@ -73,23 +73,11 @@ This document outlines potential improvements to the Group 6 gardener algorithm,
 
 ## 🚀 Force Layout Refinements
 
-### 5. Attraction Strength Scaling by Nutrient Fit
-
-**Idea**: Cross-species attraction currently treats all pairs equally. But a Rhododendron-Geranium pair is much more beneficial than a Rhododendron-Geranium-Begonia trio where nutrients don't cycle efficiently. By scaling attraction force based on how complementary the plants are (how well their nutrients match), we pull high-value pairs together more aggressively and let low-value pairs settle naturally.
-
-**Implementation**:
-- For each cross-species pair, calculate nutrient complementarity (compare their coefficients)
-- High complementarity (one produces what other needs) = stronger attraction force
-- Low complementarity = weaker attraction force
-- Pair-wise adjustment during each iteration
-
-**Where**: `algorithms/attraction.py` in `create_beneficial_interactions()`
-
 ---
 
 ## 📊 Multi-Start & Execution Improvements
 
-### 6. Variety Rotation in Multi-Start
+### 5. Variety Rotation in Multi-Start
 
 **Idea**: Each multi-start seed currently scatter-randomizes the entire variety set independently. There's a chance two seeds end up trying the same combination, wasting that run. By systematically rotating which varieties each seed attempts (seed 0 tries varieties 0,2,4...; seed 1 tries 1,3,5...), we ensure coverage across the variety space and avoid redundant optimization.
 
@@ -104,7 +92,7 @@ This document outlines potential improvements to the Group 6 gardener algorithm,
 
 ## 💡 Space Utilization Improvements
 
-### 7. Grid-Based Greedy Filling
+### 6. Grid-Based Greedy Filling
 
 **Idea**: After multi-start finds the best layout, the garden still has unused space. Some plants didn't make it into the selected layout. Rather than starting from scratch, we can scan the empty regions and try to place remaining plants in pockets of free space. It's a quick post-processing step that fills gaps without re-optimizing existing clusters.
 
@@ -128,7 +116,6 @@ These should be implemented first:
 | **Nutrient Flow Score** | 🟡 Medium | 🟢 High | Better metric = better optimization |
 | **Adaptive Separation** | 🟡 Medium | 🟡 Medium | Prevents over-separation waste |
 | **Variety Rotation** | 🟢 Low | 🟡 Medium | Free improvement in multi-start |
-| **Attraction Scaling** | 🟡 Medium | 🟢 High | Smarter force allocation |
 | **Two-Phase Placement** | 🟡 Medium | 🟡 Medium | Better space utilization |
 | **Grid-Based Filling** | 🟡 Medium | 🟡 Medium | Post-processing safety net |
 
@@ -143,8 +130,7 @@ These should be implemented first:
 4. Variety Rotation (free improvement)
 
 **Phase 2 (Next)**: Layout Optimization
-1. Attraction Strength Scaling by Nutrient Fit
-2. Two-Phase Placement Strategy
+1. Two-Phase Placement Strategy
 
 **Phase 3 (Polish)**: Advanced Features
 1. Grid-Based Gap Filling
