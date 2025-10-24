@@ -21,6 +21,7 @@ def scatter_seeds_randomly(varieties: List[PlantVariety], W: float = 16.0, H: fl
     # Random positions with margin from edges to prevent boundary clustering
     margin = 1.0
     X = np.zeros((N, 2))
+    # TODO: we use random here, so we might need to ensure we are using the right random seed.
     X[:, 0] = np.random.uniform(margin, W - margin, N)
     X[:, 1] = np.random.uniform(margin, H - margin, N)
     

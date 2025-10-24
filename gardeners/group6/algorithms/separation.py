@@ -51,6 +51,7 @@ def separate_overlapping_plants(
                     forces[j] -= direction * force_magnitude
                 elif dist <= 1e-6:
                     # Handle exact overlaps with random push
+                    # TODO: we use random here, so we might need to ensure we are using the right random seed.
                     random_dir = np.random.randn(2)
                     random_dir /= np.linalg.norm(random_dir)
                     forces[i] += random_dir * min_dist * 0.5
@@ -67,6 +68,7 @@ def separate_overlapping_plants(
         
         # Add jitter periodically to escape local minima
         if (iteration + 1) % jitter_interval == 0:
+            # TODO: we use random here, so we might need to ensure we are using the right random seed.
             X += np.random.randn(*X.shape) * jitter_amount
     
     return X
