@@ -7,25 +7,38 @@ from core.plants.plant_variety import PlantVariety
 from core.plants.species import Species
 
 
-def scatter_seeds(varieties: List[PlantVariety], W: float = 16.0, H: float = 10.0) -> Tuple[np.ndarray, List[int], np.ndarray]:
-    """Scatter plant seeds randomly across the garden."""
-    N = len(varieties)
+def scatter_seeds_randomly(varieties: List[PlantVariety], W: float = 16.0, H: float = 10.0, target_count: int = None) -> Tuple[np.ndarray, List[int], np.ndarray]:
+    """Scatter plant seeds randomly across the garden.
     
-    # Random positions in garden
+    Args:
+        varieties: List of available plant varieties
+        W: Garden width
+        H: Garden height
+        target_count: Number of plants to scatter (can be more than len(varieties))
+                     If None, uses len(varieties)
+    """
+    num_varieties = len(varieties)
+    N = target_count if target_count is not None else num_varieties
+    
+    # Random positions with margin from edges to prevent boundary clustering
+    margin = 1.0
     X = np.zeros((N, 2))
-    X[:, 0] = np.random.uniform(0, W, N)
-    X[:, 1] = np.random.uniform(0, H, N)
+    X[:, 0] = np.random.uniform(margin, W - margin, N)
+    X[:, 1] = np.random.uniform(margin, H - margin, N)
     
-    # Labels are just indices 0..N-1
-    labels = list(range(N))
+    # Labels: cycle through varieties if we need more plants than varieties
+    labels = [i % num_varieties for i in range(N)]
     
     # Initialize inventories to half-full (5 * radius for each nutrient)
     inv = np.zeros((N, 3))
-    for i, variety in enumerate(varieties):
+    for i in range(N):
+        variety = varieties[labels[i]]
         half_capacity = 5.0 * variety.radius
         inv[i] = [half_capacity, half_capacity, half_capacity]
     
     return X, labels, inv
+
+
 
 
 def separate_overlapping_plants(
@@ -74,6 +87,12 @@ def separate_overlapping_plants(
         
         # Apply forces
         X += forces * step_size
+        
+        # Keep within garden bounds with margin
+        margin = 0.5
+        W, H = 16.0, 10.0
+        X[:, 0] = np.clip(X[:, 0], margin, W - margin)
+        X[:, 1] = np.clip(X[:, 1], margin, H - margin)
         
         # Add jitter periodically to escape local minima
         if (iteration + 1) % jitter_interval == 0:
@@ -151,6 +170,12 @@ def create_beneficial_interactions(
         
         # Apply forces
         X += forces * step_size
+        
+        # Keep within garden bounds with margin
+        margin = 0.5
+        W, H = 16.0, 10.0
+        X[:, 0] = np.clip(X[:, 0], margin, W - margin)
+        X[:, 1] = np.clip(X[:, 1], margin, H - margin)
     
     return X
 

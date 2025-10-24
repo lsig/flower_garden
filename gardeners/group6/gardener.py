@@ -7,7 +7,7 @@ from core.plants.plant_variety import PlantVariety
 from core.point import Position
 
 from gardeners.group6.force_layout import (
-    scatter_seeds,
+    scatter_seeds_randomly,
     separate_overlapping_plants,
     create_beneficial_interactions,
     measure_garden_quality
@@ -18,13 +18,29 @@ class Gardener6(Gardener):
     def __init__(self, garden: Garden, varieties: list[PlantVariety]):
         super().__init__(garden, varieties)
         
-        # Configuration parameters
-        self.num_seeds = 12  # Multi-start attempts
-        self.feasible_iters = 300
-        self.nutrient_iters = 200
+        # Dynamic scaling based on nursery size
+        num_plants = len(varieties)
+        
+        # Limit to 50 plants for very large configs, but ensure species diversity
+        if num_plants > 50:
+            # Shuffle to get representative sample from all species
+            import random
+            random.shuffle(varieties)
+            self.varieties = varieties[:50]
+            num_plants = 50
+        
+        # Scale parameters inversely with problem size
+        scale_factor = max(1, num_plants // 10)  # 1 for ≤10, 2 for ≤20, 5 for ≤50
+        self.num_seeds = max(2, 12 // scale_factor)
+        self.feasible_iters = max(50, 300 // scale_factor)  # Increased minimum
+        self.nutrient_iters = max(100, 400 // scale_factor)  # Increased minimum
+        
+        # Adjust force parameters to prevent over-clustering
         self.band_delta = 0.25
-        self.degree_cap = 4
-        self.top_k_simulate = 1  # For MVP, just use best by graph score
+        self.degree_cap = 5
+        self.top_k_simulate = 1
+        self.step_size_feasible = 0.2  # Stronger separation forces
+        self.step_size_nutrient = 0.0002  # Weaker attraction forces
     
     def cultivate_garden(self) -> None:
         """Place plants optimally using force-directed layout."""
@@ -35,24 +51,21 @@ class Gardener6(Gardener):
         best_layout = None
         best_labels = None
         
+        # Calculate how many plants to try placing
+        # Aim for ~2x the variety count to fill empty spaces
+        target_plants = min(len(self.varieties) * 3, 150)
+        
         # Multi-start: try multiple random seeds
         for seed_idx in range(self.num_seeds):
-            # Step 1: Scatter seeds randomly
-            X, labels, inv = scatter_seeds(
+            # Step 1: Scatter MORE seeds than varieties to fill space
+            X, labels, inv = scatter_seeds_randomly(
                 self.varieties,
                 W=self.garden.width,
-                H=self.garden.height
+                H=self.garden.height,
+                target_count=target_plants
             )
             
-            # Step 2: Separate overlapping plants
-            X = separate_overlapping_plants(
-                X,
-                self.varieties,
-                labels,
-                iters=self.feasible_iters
-            )
-            
-            # Step 3: Create beneficial interactions
+            # Step 2: Create beneficial interactions FIRST
             X = create_beneficial_interactions(
                 X,
                 self.varieties,
@@ -60,7 +73,18 @@ class Gardener6(Gardener):
                 inv,
                 iters=self.nutrient_iters,
                 band_delta=self.band_delta,
-                degree_cap=self.degree_cap
+                degree_cap=self.degree_cap,
+                step_size=self.step_size_nutrient,
+                keep_feasible=False  # Don't enforce separation yet
+            )
+            
+            # Step 3: Separate ONLY plants that violate hard constraints
+            X = separate_overlapping_plants(
+                X,
+                self.varieties,
+                labels,
+                iters=self.feasible_iters // 2,  # Fewer iterations
+                step_size=self.step_size_feasible * 0.5  # Gentler separation
             )
             
             # Step 4: Measure garden quality
@@ -83,10 +107,4 @@ class Gardener6(Gardener):
             position = Position(x=float(X[i, 0]), y=float(X[i, 1]))
             
             # Attempt to place plant
-            plant = self.garden.add_plant(variety, position)
-            
-            # Note: garden.add_plant returns None if placement fails
-            # In MVP, we trust our force layout to produce valid positions
-            if plant is None:
-                # Optional: log or handle failed placements
-                pass
+            self.garden.add_plant(variety, position)
