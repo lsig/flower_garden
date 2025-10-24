@@ -1,41 +1,35 @@
-# Group 6 Force-Directed Layout Algorithm
+# Group 6 Gardener
 
-A force-directed layout algorithm for optimal plant placement in the flower garden simulation.
+This directory contains the implementation for Group 6's gardener agent, which uses a force-directed layout algorithm to strategically place plants in the garden.
 
-## Quick Start
+## Algorithm Pipeline
 
-```bash
-# Run the algorithm
-uv run --with numpy --with pygame python main.py --gardener g6 --json_path gardeners/group6/config/fruits_and_veggies.json --turns 100 --gui
+The `cultivate_garden` method in `gardener.py` orchestrates the following steps:
 
-# Run the visualizer
-uv run --with numpy --with pygame --with tqdm python gardeners/group6/algorithm_visualizer.py
-```
-
-## Algorithm Steps
-
-1. **Scatter Seeds** - Random initial positions
-2. **Separate Overlapping Plants** - Repulsive forces remove overlaps  
-3. **Create Beneficial Interactions** - Attractive forces optimize cross-species interactions
-4. **Multi-start Selection** - Run 12 times, pick best result
+1. **Scatter Seeds** (`scatter_seeds`): Places plants randomly.
+2. **Separate Overlapping Plants** (`separate_overlapping_plants`): Uses repulsive forces to remove overlaps.
+3. **Create Beneficial Interactions** (`create_beneficial_interactions`): Uses attractive forces to pull cross-species plants into optimal interaction range.
+4. **Multi-Start Selection**: Runs the above pipeline multiple times and selects the best layout based on a `measure_garden_quality` score.
 
 ## Files
 
-- `gardener.py` - Main algorithm entry point
+- `gardener.py` - Main gardener class
 - `force_layout.py` - Core force-directed algorithms
-- `algorithm_visualizer.py` - Interactive step-by-step visualizer
+- `seed.py` - Random position utilities
+- `simulator.py` - Custom simulation logic
+- `test_gardener.py` - Test suite
 - `config/fruits_and_veggies.json` - Plant varieties configuration
 
-## Visualizer Controls
+## Usage
 
-- **SPACE** - Next step / Next frame
-- **D** - Debug mode (show plant details)
-- **R** - Reset
-- **Q** - Quit
+```bash
+# Run the algorithm
+uv run --with numpy python main.py --gardener g6 --json_path gardeners/group6/config/fruits_and_veggies.json --turns 100
+```
 
 ## Performance
 
 - **Time limit**: 60 seconds
 - **Multi-start**: 12 seeds
-- **Iterations**: 100 (separate) + 50 (optimize)
+- **Iterations**: 300 (separate) + 200 (optimize)
 - **Typical score**: 80-100+ (vs ~30 random baseline)
