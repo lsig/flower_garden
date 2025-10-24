@@ -1,10 +1,4 @@
-"""
-Force-directed layout algorithms for plant placement optimization.
-
-This module implements two-phase force layout:
-1. Feasibility phase: Remove overlaps (enforce root radius constraints)
-2. Nutrient phase: Pull cross-species plants into interaction range
-"""
+"""Force-directed layout algorithms for plant placement."""
 
 import random
 import numpy as np
@@ -13,24 +7,8 @@ from core.plants.plant_variety import PlantVariety
 from core.plants.species import Species
 
 
-def scatter_seeds(
-    varieties: List[PlantVariety],
-    W: float = 16.0,
-    H: float = 10.0
-) -> Tuple[np.ndarray, List[int], np.ndarray]:
-    """
-    Scatter plant seeds randomly across the garden.
-    
-    Args:
-        varieties: List of plant varieties to place
-        W: Garden width (meters)
-        H: Garden height (meters)
-    
-    Returns:
-        X: N×2 array of (x, y) positions
-        labels: List of variety indices (index into varieties list)
-        inv: N×3 array of micronutrient inventories [R, G, B]
-    """
+def scatter_seeds(varieties: List[PlantVariety], W: float = 16.0, H: float = 10.0) -> Tuple[np.ndarray, List[int], np.ndarray]:
+    """Scatter plant seeds randomly across the garden."""
     N = len(varieties)
     
     # Random positions in garden
@@ -59,23 +37,7 @@ def separate_overlapping_plants(
     jitter_interval: int = 20,
     jitter_amount: float = 0.01
 ) -> np.ndarray:
-    """
-    Separate overlapping plants using repulsive forces.
-    
-    Ensures all plants satisfy: dist(i,j) >= max(r_i, r_j)
-    
-    Args:
-        X: N×2 array of positions
-        varieties: List of all plant varieties
-        labels: List mapping plant index to variety index
-        iters: Number of iterations
-        step_size: Force application step size
-        jitter_interval: Add jitter every N steps
-        jitter_amount: Magnitude of random jitter
-    
-    Returns:
-        X: Updated positions (modified in place, but also returned)
-    """
+    """Separate overlapping plants using repulsive forces."""
     N = len(X)
     
     for iteration in range(iters):
@@ -131,26 +93,7 @@ def create_beneficial_interactions(
     step_size: float = 0.05,
     keep_feasible: bool = True
 ) -> np.ndarray:
-    """
-    Create beneficial interactions by pulling cross-species plants together.
-    
-    Target distance for cross-species pairs: r_i + r_j - band_delta
-    Dampens pulls for plants with many neighbors (degree >= degree_cap).
-    
-    Args:
-        X: N×2 array of positions
-        varieties: List of all plant varieties
-        labels: List mapping plant index to variety index
-        inv: N×3 array of inventories (for future weighting)
-        iters: Number of iterations
-        band_delta: Pull plants to interaction_radius - delta
-        degree_cap: Dampen pulls when degree >= this value
-        step_size: Force application step size
-        keep_feasible: Also apply repulsive forces to maintain feasibility
-    
-    Returns:
-        X: Updated positions
-    """
+    """Create beneficial interactions by pulling cross-species plants together."""
     N = len(X)
     
     for iteration in range(iters):
@@ -218,21 +161,7 @@ def measure_garden_quality(
     labels: List[int],
     lambda_weight: float = 1.5
 ) -> float:
-    """
-    Measure the quality of a garden layout.
-    
-    Score = (# cross-species edges within interaction range) 
-            + lambda * (# nodes with degree >= 2)
-    
-    Args:
-        X: N×2 array of positions
-        varieties: List of all plant varieties
-        labels: List mapping plant index to variety index
-        lambda_weight: Weight for degree component
-    
-    Returns:
-        score: Higher is better
-    """
+    """Measure the quality of a garden layout."""
     N = len(X)
     cross_species_edges = 0
     degrees = np.zeros(N, dtype=int)

@@ -1,12 +1,4 @@
-"""
-Group 6 Gardener: Force-directed layout with nutrient-aware optimization.
-
-Strategy:
-1. Random seed initial positions
-2. Force layout (feasibility): Remove overlaps
-3. Force layout (nutrient): Pull cross-species plants into interaction range
-4. Multi-start: Try multiple seeds, pick best by simple graph score
-"""
+"""Force-directed layout algorithm for optimal plant placement."""
 
 import numpy as np
 from core.garden import Garden
@@ -35,15 +27,7 @@ class Gardener6(Gardener):
         self.top_k_simulate = 1  # For MVP, just use best by graph score
     
     def cultivate_garden(self) -> None:
-        """
-        Main cultivation method: place plants optimally in the garden.
-        
-        MVP Pipeline:
-        1. Generate random seed positions
-        2. Apply feasibility forces (remove overlaps)
-        3. Apply nutrient forces (create beneficial interactions)
-        4. Place plants in garden
-        """
+        """Place plants optimally using force-directed layout."""
         if not self.varieties:
             return
         
@@ -93,13 +77,7 @@ class Gardener6(Gardener):
             self._place_plants(best_layout, best_labels)
     
     def _place_plants(self, X: np.ndarray, labels: list[int]) -> None:
-        """
-        Place plants from layout into the garden.
-        
-        Args:
-            X: N×2 array of positions
-            labels: List mapping plant index to variety index
-        """
+        """Place plants from layout into the garden."""
         for i, label in enumerate(labels):
             variety = self.varieties[label]
             position = Position(x=float(X[i, 0]), y=float(X[i, 1]))

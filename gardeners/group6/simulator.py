@@ -1,11 +1,4 @@
-"""
-Custom simulation logic for evaluating plant layouts.
-
-This module implements the full day/evening/night cycle according to spec:
-- Daytime: Plants produce micronutrients
-- Evening: Plants exchange micronutrients with neighbors
-- Overnight: Plants grow if they have sufficient nutrients
-"""
+"""Custom simulation logic for evaluating plant layouts."""
 
 import numpy as np
 from typing import List, Dict, Tuple

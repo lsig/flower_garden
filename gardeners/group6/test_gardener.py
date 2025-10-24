@@ -1,10 +1,5 @@
 #!/usr/bin/env python3
-"""
-Quick test script for Group 6 Gardener.
-
-Usage:
-    python gardeners/group6/test_gardener.py
-"""
+"""Quick test script for Group 6 Gardener."""
 
 import sys
 import time

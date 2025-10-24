@@ -1,113 +1,41 @@
-# Group 6 Gardener: Force-Directed Layout Strategy
+# Group 6 Force-Directed Layout Algorithm
 
-## Overview
+A force-directed layout algorithm for optimal plant placement in the flower garden simulation.
 
-Our gardener uses a **force-directed graph layout** approach to optimize plant placement. The algorithm treats plants as nodes in a graph and uses physical simulation to find optimal positions that maximize beneficial cross-species interactions while respecting spatial constraints.
+## Quick Start
 
-## Algorithm Pipeline
+```bash
+# Run the algorithm
+uv run --with numpy --with pygame python main.py --gardener g6 --json_path gardeners/group6/config/fruits_and_veggies.json --turns 100 --gui
 
-### MVP (Minimum Viable Product)
-
-1. **Scatter Seeds** (`scatter_seeds`)
-   - Place all plants at random positions in the 16×10m garden
-   - Initialize micronutrient inventories to half-full (5×radius per nutrient)
-
-2. **Separate Overlapping Plants** (`separate_overlapping_plants`)
-   - Remove all overlaps by applying repulsive forces
-   - Ensures `dist(i,j) ≥ max(r_i, r_j)` for all plant pairs
-   - Runs for ~300 iterations with periodic jitter to escape local minima
-
-3. **Create Beneficial Interactions** (`create_beneficial_interactions`)
-   - Pull cross-species plants toward interaction range (`r_i + r_j - δ`)
-   - Dampen pulls for plants with many neighbors (degree ≥ 4)
-   - Maintains feasibility constraints throughout
-   - Runs for ~200 iterations
-
-4. **Multi-Start Selection**
-   - Run pipeline N times (default: 12 seeds)
-   - Score each layout with `measure_garden_quality`
-   - Select best layout for placement
-
-## Key Parameters
-
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `num_seeds` | 12 | Number of random starting positions to try |
-| `feasible_iters` | 300 | Iterations for overlap removal |
-| `nutrient_iters` | 200 | Iterations for nutrient-aware layout |
-| `band_delta` | 0.25m | Pull plants to `r_i+r_j-δ` (inside interaction range) |
-| `degree_cap` | 4 | Dampen pulls when node has ≥4 neighbors |
-
-## Scoring Function
-
-**Garden Quality Score** (pre-simulation):
-```
-score = (# cross-species edges within r_i+r_j) + λ·(# nodes with degree≥2)
+# Run the visualizer
+uv run --with numpy --with pygame --with tqdm python gardeners/group6/algorithm_visualizer.py
 ```
 
-Where λ=1.5 by default. This quickly estimates layout quality without running full simulation.
+## Algorithm Steps
+
+1. **Scatter Seeds** - Random initial positions
+2. **Separate Overlapping Plants** - Repulsive forces remove overlaps  
+3. **Create Beneficial Interactions** - Attractive forces optimize cross-species interactions
+4. **Multi-start Selection** - Run 12 times, pick best result
 
 ## Files
 
-- `gardener.py` - Main Gardener6 class and pipeline orchestration
-- `force_layout.py` - Force-directed layout algorithms and scoring
-- `simulator.py` - Custom simulation for evaluation (optional, uses core engine by default)
-- `seed.py` - Utility functions for random placement
-- `config/` - Predefined nursery configurations
+- `gardener.py` - Main algorithm entry point
+- `force_layout.py` - Core force-directed algorithms
+- `algorithm_visualizer.py` - Interactive step-by-step visualizer
+- `config/fruits_and_veggies.json` - Plant varieties configuration
 
-## Usage
+## Visualizer Controls
 
-```python
-from core.runner import GameRunner
-from gardeners.group6.gardener import Gardener6
-
-# Run with custom nursery
-runner = GameRunner(
-    varieties_file='gardeners/group6/config/firstnursery.json',
-    simulation_turns=300
-)
-result = runner.run(Gardener6)
-
-# Run with GUI
-runner.run_gui(Gardener6)
-```
-
-## Future Extensions
-
-### Implemented in MVP
-- ✅ Random seed placement
-- ✅ Feasibility forces (overlap removal)
-- ✅ Nutrient-aware forces (interaction optimization)
-- ✅ Simple graph scoring
-- ✅ Multi-start with best selection
-
-### Planned Extensions
-- ⏳ Label refinement (swap species/varieties to improve score)
-- ⏳ Nutrient-weighted pulls (scale by actual inventory levels)
-- ⏳ Flow-based scoring (max-flow on interaction graph)
-- ⏳ Graph extension (bounded-degree edge selection + spring embed)
-- ⏳ Parallel multi-start (speed up candidate generation)
-- ⏳ Adaptive parameters (tune based on nursery characteristics)
-
-## Design Philosophy
-
-The force-directed approach is inspired by graph visualization algorithms but adapted for the unique constraints of the flower garden problem:
-
-1. **Separation of concerns**: Feasibility and optimization are separate phases
-2. **Physical intuition**: Forces provide natural way to balance competing objectives
-3. **Scalability**: Works with any number/variety of plants
-4. **Robustness**: Multi-start provides diversity and avoids local minima
-5. **Extensibility**: Easy to add new forces, constraints, or scoring functions
+- **SPACE** - Next step / Next frame
+- **D** - Debug mode (show plant details)
+- **R** - Reset
+- **Q** - Quit
 
 ## Performance
 
-- **Placement time**: ~5-15 seconds for 9 plants with 12 seeds (well under 60s limit)
-- **Scalability**: O(N²) per iteration, but converges quickly
-- **Quality**: Consistently produces valid layouts with good interaction density
-
-## References
-
-- Force-directed graph drawing (Fruchterman-Reingold, Kamada-Kawai)
-- Poisson disk sampling for spatial distribution
-- Max-flow algorithms for nutrient balance analysis
-
+- **Time limit**: 60 seconds
+- **Multi-start**: 12 seeds
+- **Iterations**: 100 (separate) + 50 (optimize)
+- **Typical score**: 80-100+ (vs ~30 random baseline)
