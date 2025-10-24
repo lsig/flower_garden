@@ -6,7 +6,17 @@ from core.gardener import Gardener
 from core.plants.plant_variety import PlantVariety
 from core.point import Position
 
-from gardeners.group6.force_layout import (
+# Optional tqdm import for progress bars
+try:
+    from tqdm import tqdm
+    HAS_TQDM = True
+except ImportError:
+    HAS_TQDM = False
+    # Fallback: tqdm is just a pass-through function
+    def tqdm(iterable, desc=None, leave=None):
+        return iterable
+
+from gardeners.group6.algorithms import (
     scatter_seeds_randomly,
     separate_overlapping_plants,
     create_beneficial_interactions,
@@ -33,7 +43,7 @@ class Gardener6(Gardener):
         scale_factor = max(1, num_plants // 10)  # 1 for ≤10, 2 for ≤20, 5 for ≤50
         self.num_seeds = max(2, 12 // scale_factor)
         self.feasible_iters = max(50, 300 // scale_factor)  # Increased minimum
-        self.nutrient_iters = max(100, 400 // scale_factor)  # Increased minimum
+        self.nutrient_iters = max(70, 350 // scale_factor)  # Increased minimum
         
         # Adjust force parameters to prevent over-clustering
         self.band_delta = 0.25
@@ -53,10 +63,10 @@ class Gardener6(Gardener):
         
         # Calculate how many plants to try placing
         # Aim for ~2x the variety count to fill empty spaces
-        target_plants = min(len(self.varieties) * 3, 150)
+        target_plants = min(len(self.varieties) * 8, 320)
         
         # Multi-start: try multiple random seeds
-        for seed_idx in range(self.num_seeds):
+        for seed_idx in tqdm(range(self.num_seeds), desc="Multi-start optimization", leave=True):
             # Step 1: Scatter MORE seeds than varieties to fill space
             X, labels, inv = scatter_seeds_randomly(
                 self.varieties,

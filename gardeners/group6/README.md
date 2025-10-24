@@ -21,8 +21,11 @@ The `cultivate_garden` method in `gardener.py` orchestrates the following steps:
 ## Files
 
 - `gardener.py` - Main gardener class with dynamic scaling
-- `force_layout.py` - Core force-directed algorithms
-- `seed.py` - Random position utilities
+- `algorithms/` - Modular plant placement algorithms
+  - `scatter.py` - Initial random positioning
+  - `separation.py` - Repulsive force separation
+  - `attraction.py` - Attractive force clustering
+  - `scoring.py` - Layout quality evaluation
 - `test_gardener.py` - Test suite
 - `config/fruits_and_veggies.json` - Plant varieties configuration
 
