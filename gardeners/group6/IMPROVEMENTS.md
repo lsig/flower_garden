@@ -1,6 +1,6 @@
 # Group 6 Algorithm Improvements & Ideas
 
-This document outlines potential improvements to the Group 6 gardener algorithm, organized by category and implementation complexity.
+This document outlines potential improvements to the Group 6 gardener algorithm.
 
 ## Current Algorithm Pipeline
 
@@ -12,136 +12,210 @@ This document outlines potential improvements to the Group 6 gardener algorithm,
 
 ---
 
-## 🎯 Scoring & Evaluation Improvements
+## 🎯 Your Ideas (Expanded)
+
+### Idea 1: Balanced Nutrient Pre-Selection
+
+**What**: Current random scattering may create nutrient-imbalanced subsets, limiting growth potential.
+
+**Why**: If the initial scatter happens to select mostly one species or unbalanced nutrient producers, the algorithm wastes iterations trying to compensate. Starting with a diverse, balanced subset converges faster.
+
+**Where**: `scatter_seeds_randomly()` or pre-processing before scatter
+
+**How**:
+- Compute nutrient "balance score" for each variety (how well it complements others)
+- Cluster varieties by complementary nutrients before random selection
+- Seed the initial positions with these balanced clusters
+
+---
+
+### Idea 2: Edge-Preserving Separation
+
+**What**: `separate_overlapping_plants()` may break beneficial cross-species edges while separating.
+
+**Why**: You observed: separated plants end up disconnected from their interaction partners. This happens because repulsive forces don't know about beneficial edges - they just push overlapping plants apart indiscriminately.
+
+**Where**: `separate_overlapping_plants()` in `separation.py`
+
+**How**:
+- Track which plant pairs have beneficial interactions BEFORE separation
+- When applying repulsive forces, check: "Will this move break an edge?"
+- Reduce force magnitude or skip separation for edge-critical pairs
+- Or add attractive force penalty if separation breaks edges
+
+---
+
+### Idea 3: Parallel Multi-Start Execution
+
+**What**: Sequential multi-start doesn't utilize multiple cores; 60s time limit underutilized.
+
+**Why**: Running seeds sequentially wastes CPU cores. With parallel execution, you get ~4x speedup on quad-core systems while staying under 60s budget, allowing more seeds or deeper optimization.
+
+**Where**: `cultivate_garden()` main loop
+
+**How**:
+- Use `multiprocessing.Pool` to run `num_seeds` in parallel
+- Each process runs full pipeline (scatter → attract → separate → score)
+- Collect results and return best layout
+- Automatic speedup: ~4x on quad-core
+
+---
+
+## 💡 Additional Improvement Ideas
 
 ### 1. Nutrient Flow Score (Pre-Simulation Metric)
 
-**Idea**: Current scoring only counts edges (interactions exist) and node degrees (interaction count). But not all interactions are equally valuable. Two plants can be touching without having complementary nutrients - wasting space. A Rhododendron (produces R, consumes G/B) next to another Rhododendron produces no nutrient exchange. But a Rhododendron next to a Geranium (produces G, consumes R/B) creates a productive cycle. This score rewards layouts where interacting plants actually help each other.
+**What**: Score the layout based on estimated nutrient production/consumption balance before simulation.
 
-**Implementation**:
-- Create new scoring function that checks nutrient coefficients for each pair of interacting plants
-- Score pairs based on complementarity (one produces what the other needs)
-- Weight by the magnitude of nutrient exchange possible
-- Combine with existing edge count score
+**Why**: Current score (edges + degree) ignores whether interactions are actually productive. Touching plants with no complementary nutrients waste space.
 
 **Where**: `algorithms/scoring.py` - add new function or extend `measure_garden_quality()`
 
----
-
-### 2. Species Coverage Score Component
-
-**Idea**: Sometimes the algorithm creates layouts dominated by one species. For example, mostly Rhododendrons with scattered Geraniums - this limits nutrient cycling since you're missing the Begonia production chain. Encouraging all three species to participate in interactions ensures more balanced nutrient flow across the garden ecosystem.
-
-**Implementation**:
-- Track which species have cross-species interactions (not just presence)
-- Add bonus points proportional to species diversity in the interaction network
-- Example: bonus if all 3 species interact, smaller bonus for 2 species
-
-**Where**: `algorithms/scoring.py` in `measure_garden_quality()`
+**How**: For each edge, compute: (producer_capacity - consumer_need) × interaction_strength
 
 ---
 
-## 🔧 Placement & Layout Improvements
+### 4. Two-Phase Placement Strategy
 
-### 3. Two-Phase Placement Strategy
+**What**: Phase 1 - optimize core interaction clusters; Phase 2 - fill gaps greedily.
 
-**Idea**: The current approach treats all plants equally - scatter everything randomly, then optimize. But this wastes iterations. Some plants are more valuable for interactions than others. By first creating tight, optimized interaction clusters from a diverse subset, then filling remaining space with leftover plants, we use space more efficiently. The clusters are already good; we're just filling gaps instead of constantly trying to fit a large group together.
+**Why**: Initial scattering wastes space; tight clusters converge faster. After optimizing the core, remaining space can be filled systematically.
 
-**Implementation**:
-- Select subset of varieties (30%) emphasizing species diversity
-- Run full optimization pipeline on just this subset
-- Identify remaining empty regions in garden
-- Place remaining varieties (70%) in empty space using simple greedy approach
+**Where**: `gardener.py` - modify `cultivate_garden()` or create new helper
 
-**Where**: `gardener.py` - modify `cultivate_garden()` or create new helper function
+**How**:
+- Run normal pipeline on ~30% of varieties → create tight clusters
+- Calculate "free space" in remaining garden
+- Greedily place remaining 70% in free areas
 
 ---
 
-### 4. Adaptive Separation Stopping Condition
+### 5. Adaptive Separation Stopping Condition
 
-**Idea**: Currently separation runs for a fixed number of iterations. But sometimes there are no overlaps to fix early on (algorithm converges fast), and sometimes the algorithm plateaus - pushing harder doesn't help. By tracking actual progress (overlap count decreasing), we stop when done or when improvement stalls. This frees up iterations that can be used elsewhere, or just ends faster.
+**What**: Stop separating when: (a) no overlaps remain OR (b) marginal benefit plateaus.
 
-**Implementation**:
-- Count overlaps at each separation iteration
-- Stop immediately if overlap count reaches zero
-- Stop if overlap count stops improving for N consecutive iterations (plateau detection)
-- No pseudocode needed - straightforward tracking logic
+**Why**: Fixed iterations may over-separate (breaking edges) or under-separate (wasting iterations). Stopping intelligently saves time and prevents over-optimization.
 
 **Where**: `algorithms/separation.py` in `separate_overlapping_plants()` loop
 
----
-
-## 🚀 Force Layout Refinements
-
----
-
-## 📊 Multi-Start & Execution Improvements
-
-### 5. Variety Rotation in Multi-Start
-
-**Idea**: Each multi-start seed currently scatter-randomizes the entire variety set independently. There's a chance two seeds end up trying the same combination, wasting that run. By systematically rotating which varieties each seed attempts (seed 0 tries varieties 0,2,4...; seed 1 tries 1,3,5...), we ensure coverage across the variety space and avoid redundant optimization.
-
-**Implementation**:
-- Instead of random selection each seed, use deterministic rotation
-- Seed N gets varieties[N::num_seeds] (every Nth variety starting at offset N)
-- Or use stratified random sampling to ensure even variety distribution
-
-**Where**: `gardener.py` in `cultivate_garden()` before calling `scatter_seeds_randomly()`
+**How**:
+- Count overlaps at each iteration
+- Stop if overlap_count reaches zero
+- Stop if overlap_count doesn't improve for N consecutive iterations (plateau)
 
 ---
 
-## 💡 Space Utilization Improvements
+### 6. Nutrient-Aware Initial Scattering
 
-### 6. Grid-Based Greedy Filling
+**What**: Don't just scatter randomly; cluster by complementary nutrients at start.
 
-**Idea**: After multi-start finds the best layout, the garden still has unused space. Some plants didn't make it into the selected layout. Rather than starting from scratch, we can scan the empty regions and try to place remaining plants in pockets of free space. It's a quick post-processing step that fills gaps without re-optimizing existing clusters.
+**Why**: Random scattering wastes iterations bringing nutrients together. Pre-positioning by nutrient type reduces optimization work.
 
-**Implementation**:
-- After selecting best layout, identify which varieties weren't placed
+**Where**: `algorithms/scatter.py` in `scatter_seeds_randomly()`
+
+**How**:
+- Group varieties by species (R-producers, G-producers, B-producers)
+- Position species clusters near each other initially
+- Add random jitter for diversity
+
+---
+
+### 7. Repulsion Force Scaling by Radius Difference
+
+**What**: Plants with very different radii separate more gently (they can coexist).
+
+**Why**: Small plants can fit near large plants - no need to separate aggressively. Large + small = compatible; large + large = threat.
+
+**Where**: `algorithms/separation.py` in `separate_overlapping_plants()`
+
+**How**: Scale `force_magnitude` by radius similarity: `force_magnitude *= (1.0 - abs(r_i - r_j) / (r_i + r_j))`
+
+---
+
+### 8. Jitter Strategy Improvement
+
+**What**: Use "smart jitter" toward underutilized regions instead of random jitter.
+
+**Why**: Current jitter is random noise. Directed jitter toward empty spaces helps fill the garden better.
+
+**Where**: `algorithms/separation.py` jitter section
+
+**How**: Add small attractive force toward centroid of sparse regions during jitter
+
+---
+
+### 9. Grid-Based Greedy Filling
+
+**What**: After multi-start, scan garden for empty spots and try placing additional plants.
+
+**Why**: After optimization, may still have usable pockets of space that greedy filling can exploit.
+
+**Where**: `gardener.py` - post-processing in `_place_plants()` or new `fill_gaps()` function
+
+**How**:
 - Divide garden into grid cells (2m x 2m blocks)
-- For each empty cell, attempt to place smallest unplaced variety
-- Accept if no constraint violations; repeat until space full or plants exhausted
+- For each empty cell, try placing lowest-maintenance variety (smallest radius)
+- Accept if no constraint violations; repeat until full
 
-**Where**: `gardener.py` - new `fill_gaps()` function called after `_place_plants()` selects best layout
+---
+
+### 10. Density-Based Repulsion Annealing
+
+**What**: Gradually reduce `step_size_feasible` over iterations (simulated annealing).
+
+**Why**: Early iterations need strong separation; later iterations should fine-tune gently. Annealing prevents over-separation and refining.
+
+**Where**: `algorithms/separation.py` in `separate_overlapping_plants()`
+
+**How**: `current_step_size = step_size * (1.0 - iteration / iters) ** 1.5`
+
+---
+
+### 11. Interaction Path Quality Score
+
+**What**: Measure not just "edges exist" but "how productive are the edges?"
+
+**Why**: Current score treats all edges equally. Some interactions are unbalanced (one plant gets much more benefit than the other).
+
+**Where**: `algorithms/scoring.py` - new function `measure_interaction_quality()`
+
+**How**: For each edge, simulate one exchange step; measure net nutrient flow
 
 ---
 
 ## 🎯 Quick Wins (Easy, High-Impact)
 
-These should be implemented first:
-
 | Idea | Effort | Expected Impact | Why First? |
 |------|--------|-----------------|-----------|
-| **Species Coverage Score** | 🟢 Low | 🟡 Medium | One-line addition to scoring |
-| **Nutrient Flow Score** | 🟡 Medium | 🟢 High | Better metric = better optimization |
-| **Adaptive Separation** | 🟡 Medium | 🟡 Medium | Prevents over-separation waste |
-| **Variety Rotation** | 🟢 Low | 🟡 Medium | Free improvement in multi-start |
-| **Two-Phase Placement** | 🟡 Medium | 🟡 Medium | Better space utilization |
-| **Grid-Based Filling** | 🟡 Medium | 🟡 Medium | Post-processing safety net |
+| **Parallel Multi-Start** (Idea 3) | 🟢 Low | 🟢 2-4x speedup | Immediate benefit, biggest ROI |
+| **Adaptive Separation** (#5) | 🟡 Medium | 🟡 Medium | Prevents wasted iterations |
+| **Nutrient-Aware Scatter** (#6) | 🟡 Medium | 🟢 High | Better initial setup → faster convergence |
+| **Edge-Preserving Separation** (Idea 2) | 🟡 Medium | 🟢 High | Directly fixes interaction loss issue |
+| **Nutrient Flow Score** (#1) | 🟡 Medium | 🟢 High | Better metric = better optimization |
+| **Two-Phase Placement** (#4) | 🟡 Medium | 🟡 Medium | Fills remaining space systematically |
+| **Repulsion Scaling** (#7) | 🟢 Low | 🟡 Medium | Small change, decent benefit |
+| **Grid-Based Filling** (#9) | 🟡 Medium | 🟡 Medium | Post-processing safety net |
+| **Jitter Improvement** (#8) | 🟡 Medium | 🟡 Medium | Better space exploration |
+| **Density Annealing** (#10) | 🟡 Medium | 🟡 Medium | Fine-tuning improvement |
+| **Quality Score** (#11) | 🟡 Medium | 🟢 High | Better evaluation metric |
 
 ---
 
-## 📋 Recommended Implementation Order
+## 📊 Recommended Implementation Order
 
-**Phase 1 (This Sprint)**: Core Improvements
-1. Add Species Coverage Score bonus (easiest)
-2. Implement Nutrient Flow Score (bigger metric improvement)
-3. Add Adaptive Separation Stopping (prevents over-separation)
-4. Variety Rotation (free improvement)
+**Phase 1 (Highest ROI)**:
+1. Parallel Multi-Start (Idea 3) - 4x speedup
+2. Adaptive Separation Stopping (#5) - prevents wasted iterations
+3. Nutrient-Aware Initial Scatter (#6) - better fundamentals
 
-**Phase 2 (Next)**: Layout Optimization
-1. Two-Phase Placement Strategy
+**Phase 2 (Core Improvements)**:
+1. Edge-Preserving Separation (Idea 2) - fixes your observation
+2. Nutrient Flow Score (#1) - better metric
+3. Two-Phase Placement (#4) - space utilization
 
-**Phase 3 (Polish)**: Advanced Features
-1. Grid-Based Gap Filling
-2. Performance monitoring & tuning
-
----
-
-## 📝 Notes & Considerations
-
-- All improvements should maintain < 60 second time limit
-- Test each improvement independently before combining
-- Monitor score progression to ensure improvements help
-- Some ideas may conflict (e.g., tight clustering vs. grid filling) - test interactions
-- Consider parallelization for multi-start if hitting time limits
+**Phase 3 (Polish)**:
+1. Repulsion Scaling (#7) - radius-aware separation
+2. Grid-Based Filling (#9) - gap filling
+3. Jitter Improvement (#8) - better exploration
+4. Density Annealing (#10) - fine-tuning
+5. Quality Score (#11) - holistic evaluation
