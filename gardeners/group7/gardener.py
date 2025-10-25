@@ -1,25 +1,26 @@
-from core.garden import Garden
+import math
+from collections import defaultdict
+
 from core.gardener import Gardener
 from core.plants.plant_variety import PlantVariety
 from core.plants.species import Species
 from core.point import Position
-
-import math
-from collections import defaultdict
 
 
 class Gardener7(Gardener):
     def __init__(self, garden, varieties):
         expanded = []
         for v in varieties:
-            count = getattr(v, "count", 1)
+            count = getattr(v, 'count', 1)
             for _ in range(count):
-                expanded.append(PlantVariety(
-                    name=v.name,
-                    radius=v.radius,
-                    species=v.species,
-                    nutrient_coefficients=dict(v.nutrient_coefficients)
-                ))
+                expanded.append(
+                    PlantVariety(
+                        name=v.name,
+                        radius=v.radius,
+                        species=v.species,
+                        nutrient_coefficients=dict(v.nutrient_coefficients),
+                    )
+                )
         super().__init__(garden, expanded)
 
     def cultivate_garden(self) -> None:
@@ -80,7 +81,7 @@ class Gardener7(Gardener):
 
         # --- Build second RGB triangle only if we can ---
         leftovers = reds + greens + blues
-        core_dist = (p0.radius + p1.radius + p2.radius)
+        core_dist = p0.radius + p1.radius + p2.radius
 
         species_map = defaultdict(list)
         for v in leftovers:
@@ -99,7 +100,11 @@ class Gardener7(Gardener):
                 py = cy + triangle_dist * math.sin(angle)
                 self._safe_place(v, px, py)
 
-            leftovers = species_map[Species.RHODODENDRON] + species_map[Species.GERANIUM] + species_map[Species.BEGONIA]
+            leftovers = (
+                species_map[Species.RHODODENDRON]
+                + species_map[Species.GERANIUM]
+                + species_map[Species.BEGONIA]
+            )
 
         elif len(leftovers) == 2:
             angles = [math.pi / 3, -math.pi / 3]
@@ -117,7 +122,7 @@ class Gardener7(Gardener):
             leftovers = []
 
         # ------------------------
-        # ✅ Outer ring fix below
+        # Outer ring fix below
         # ------------------------
         if leftovers:
             # Find max usable ring radius based on garden boundaries
@@ -133,7 +138,9 @@ class Gardener7(Gardener):
             for i, v in enumerate(leftovers):
                 placed = False
                 for jitter in range(12):
-                    angle = start_angle + i * (2 * math.pi / len(leftovers)) + jitter * (math.pi / 24)
+                    angle = (
+                        start_angle + i * (2 * math.pi / len(leftovers)) + jitter * (math.pi / 24)
+                    )
                     px = cx + ring_dist * math.cos(angle)
                     py = cy + ring_dist * math.sin(angle)
                     if self._safe_place(v, px, py):
