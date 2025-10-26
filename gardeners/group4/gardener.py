@@ -67,10 +67,11 @@ class Gardener4(Gardener):
         outside = self._outside_area_est(x, y, r)
         return min((overlap + outside) / area, 1.2)
 
-    #returns instersecting plants
+    # returns instersecting plants
     def _intersecting(self, x: int, y: int, r: int, placed: list[Placed]) -> list[Placed]:
         return [q for q in placed if math.hypot(x - q.x, y - q.y) < (r + q.r)]
-    #updates intersection counts
+
+    # updates intersection counts
     def _update_interactions(self, placed_nodes: list[Placed], new_node: Placed) -> None:
         for node in placed_nodes:
             if node.species.name == new_node.species.name:
@@ -104,19 +105,17 @@ class Gardener4(Gardener):
 
     def _missing_filled(self, IC: list[Placed], species_key: str) -> int:
         # how many intersecting plants currently have zero intersections with species_key
-        
+
         sum = 0
 
         for q in IC:
             if q.species.name != species_key:
-
                 if q.inter_count.get(species_key, 0) == 0:
-                    sum +=1
+                    sum += 1
                 else:
-                    sum+=0.1
-        
-        return sum
+                    sum += 0.1
 
+        return sum
 
     def _place_from(
         self, anchor: Placed, inv: dict[str, list[PlantVariety]], placed: list[Placed]
@@ -146,7 +145,7 @@ class Gardener4(Gardener):
 
         if not options:
             return None
-        
+
         print(options)
 
         # Priority: fill most gaps, then best score, then smallest radius
