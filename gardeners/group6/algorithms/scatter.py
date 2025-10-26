@@ -44,7 +44,13 @@ def scatter_seeds_randomly(
     return X, labels, inv
 
 
+# def make_random_clusters(varieties: list[PlantVariety]):
 
+# # create random clusters of plants (one large plant surrounded by several smaller plants) and randomly place those clusters
+# # call scatter_seeds_randomly from this function to randomly scatter smaller plants around the larger plant
+
+#     large_plants = [i for i, v in enumerate(varieties) if v.radius == 3 or v.radius == 2]
+#     small_plants = [i for i, v in enumerate(varieties) if v.radius == 1]
 
 
 
