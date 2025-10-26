@@ -22,13 +22,17 @@ def scatter_seeds_randomly(
 
     # Random positions with margin from edges to prevent boundary clustering
     margin = 1.0
-    X = np.zeros((N, 2))
     # TODO: we use random here, so we might need to ensure we are using the right random seed.
-    X[:, 0] = np.random.uniform(margin, W - margin, N)
-    X[:, 1] = np.random.uniform(margin, H - margin, N)
+    X = np.random.uniform([margin, margin], [W - margin, H - margin], size=(N, 2))
 
     # Labels: cycle through varieties if we need more plants than varieties
-    labels = [i % num_varieties for i in range(N)]
+    #labels = [i % num_varieties for i in range(N)]
+
+    labels = np.arange(num_varieties)
+    if N > num_varieties:
+        extra = np.random.choice(num_varieties, size=N - num_varieties)
+        labels = np.concatenate([labels, extra])
+    np.random.shuffle(labels)
 
     # Initialize inventories to half-full (5 * radius for each nutrient)
     inv = np.zeros((N, 3))
@@ -38,3 +42,10 @@ def scatter_seeds_randomly(
         inv[i] = [half_capacity, half_capacity, half_capacity]
 
     return X, labels, inv
+
+
+
+
+
+
+    
