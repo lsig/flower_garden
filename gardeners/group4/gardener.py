@@ -225,7 +225,7 @@ class Gardener4(Gardener):
             # prioritize nodes missing the most species, then those with fewest interactions
             placeable.sort(
                 key=lambda n: (
-                    -missing_species_count(n),
+                    missing_species_count(n),
                     -remaining_for_species(n.species.name),
                     sum(n.inter_count.values()),
                 )
