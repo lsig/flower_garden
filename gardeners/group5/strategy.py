@@ -225,7 +225,9 @@ class TripletStrategy:
     # Public API
     # ---------------------------
 
-    def _build_type_groups(self, rng: random.Random) -> dict[Species, list[TripletStrategy._VarType]]:
+    def _build_type_groups(
+        self, rng: random.Random
+    ) -> dict[Species, list[TripletStrategy._VarType]]:
         groups: dict[tuple[Any, ...], TripletStrategy._VarType] = {}
         for idx, variety in enumerate(self.varieties):
             key = self._make_variety_key(variety)
