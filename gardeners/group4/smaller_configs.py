@@ -23,7 +23,9 @@ class Gardener4(Gardener):
 
         remaining_varieties = [p for p in self.varieties if p not in prioritized_varieties]
         # Larger plants need space, so fit them next while the garden is mostly empty.
-        prioritized_varieties.extend(sorted(remaining_varieties, key=lambda p: p.radius, reverse=True))
+        prioritized_varieties.extend(
+            sorted(remaining_varieties, key=lambda p: p.radius, reverse=True)
+        )
 
         # Generate integer grid positions, closest to the garden center first.
         width = int(self.garden.width)
@@ -32,14 +34,10 @@ class Gardener4(Gardener):
         center_y = height // 2
 
         candidate_positions = [
-            Position(x=x, y=y)
-            for x in range(width + 1)
-            for y in range(height + 1)
+            Position(x=x, y=y) for x in range(width + 1) for y in range(height + 1)
         ]
         print(candidate_positions)
-        candidate_positions.sort(
-            key=lambda pos: (pos.x - center_x) ** 2 + (pos.y - center_y) ** 2
-        )
+        candidate_positions.sort(key=lambda pos: (pos.x - center_x) ** 2 + (pos.y - center_y) ** 2)
 
         for variety in prioritized_varieties:
             for position in candidate_positions:
