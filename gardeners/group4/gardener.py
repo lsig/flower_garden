@@ -7,6 +7,7 @@ from core.garden import Garden
 from core.gardener import Gardener
 from core.plants.plant_variety import PlantVariety
 from core.point import Position
+from gardeners.group4 import smaller_configs
 
 
 @dataclass
@@ -193,6 +194,11 @@ class Gardener4(Gardener):
 
     def cultivate_garden(self) -> None:
         if not self.varieties:
+            return
+        
+        if len(self.varieties) < 15:
+            smaller_gardener = smaller_configs.Gardener4(self.garden, self.varieties)
+            smaller_gardener.cultivate_garden()
             return
 
         # intialize largest at (w/2,h/2). In the future when plant varieties are imbalanced,
