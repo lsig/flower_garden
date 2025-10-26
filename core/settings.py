@@ -5,7 +5,7 @@ from core.gardener import Gardener
 from gardeners.group1.gardener import Gardener1
 from gardeners.group2.gardener import Gardener2
 from gardeners.group3.gardener import Gardener3
-from gardeners.group4.gardener import Gardener4
+from gardeners.group4.smaller_configs import Gardener4
 from gardeners.group5.gardener import Gardener5
 from gardeners.group6.gardener import Gardener6
 from gardeners.group7.gardener import Gardener7
