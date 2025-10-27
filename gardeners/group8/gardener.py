@@ -121,7 +121,9 @@ class Gardener8(Gardener):
         offsets = [(0, 0), (dx, dy / 2), (2 * dx, 0)]
         plants = [r, g, b]
 
-        for plant, (ox, oy) in zip(plants, offsets, strict=False):  # loop over plants and their offsets
+        for plant, (ox, oy) in zip(
+            plants, offsets, strict=False
+        ):  # loop over plants and their offsets
             if plant is None:  # in case triad has missing species
                 continue
             pos = Position(x + ox, y + oy)  # calculate position using offets
