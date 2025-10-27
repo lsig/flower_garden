@@ -1,10 +1,11 @@
+import math
+
 from core.garden import Garden
 from core.gardener import Gardener
+from core.micronutrients import Micronutrient
 from core.plants.plant_variety import PlantVariety
 from core.plants.species import Species
 from core.point import Position
-from core.micronutrients import Micronutrient
-import math
 
 
 class Gardener8(Gardener):
@@ -120,7 +121,7 @@ class Gardener8(Gardener):
         offsets = [(0, 0), (dx, dy / 2), (2 * dx, 0)]
         plants = [r, g, b]
 
-        for plant, (ox, oy) in zip(plants, offsets):  # loop over plants and their offsets
+        for plant, (ox, oy) in zip(plants, offsets, strict=False):  # loop over plants and their offsets
             if plant is None:  # in case triad has missing species
                 continue
             pos = Position(x + ox, y + oy)  # calculate position using offets
@@ -136,7 +137,7 @@ class Gardener8(Gardener):
         x = 0.0
         y = 0.0
         row_shift = False
-        garden_w, garden_h = self.garden.width, self.garden.height
+        garden_w, _ = self.garden.width, self.garden.height
 
         for plant in plants:
             spacing = 2 * plant.radius
