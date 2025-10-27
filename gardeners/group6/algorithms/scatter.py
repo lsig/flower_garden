@@ -26,7 +26,7 @@ def scatter_seeds_randomly(
     X = np.random.uniform([margin, margin], [W - margin, H - margin], size=(N, 2))
 
     # Labels: cycle through varieties if we need more plants than varieties
-    #labels = [i % num_varieties for i in range(N)]
+    # labels = [i % num_varieties for i in range(N)]
 
     labels = np.arange(num_varieties)
     if num_varieties < N:
@@ -51,7 +51,3 @@ def scatter_seeds_randomly(
 
 #     large_plants = [i for i, v in enumerate(varieties) if v.radius == 3 or v.radius == 2]
 #     small_plants = [i for i, v in enumerate(varieties) if v.radius == 1]
-
-
-
-    
