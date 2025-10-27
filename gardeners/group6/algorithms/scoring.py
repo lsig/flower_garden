@@ -1,17 +1,21 @@
 """Garden layout quality evaluation."""
 
-import numpy as np
+import math
+# NOTE: Originally used numpy for array operations. Original implementation used:
+# import numpy as np
 
 from core.plants.plant_variety import PlantVariety
 
 
 def measure_garden_quality(
-    X: np.ndarray, varieties: list[PlantVariety], labels: list[int], lambda_weight: float = 1.5
+    X: list[tuple[float, float]], varieties: list[PlantVariety], labels: list[int], lambda_weight: float = 1.5
 ) -> float:
     """Measure the quality of a garden layout."""
+    # NUMPY: Originally used np.ndarray for X parameter
     N = len(X)
     cross_species_edges = 0
-    degrees = np.zeros(N, dtype=int)
+    # NUMPY: Originally used np.zeros(N, dtype=int)
+    degrees = [0] * N
 
     for i in range(N):
         for j in range(i + 1, N):
@@ -20,8 +24,10 @@ def measure_garden_quality(
             r_i = varieties[labels[i]].radius
             r_j = varieties[labels[j]].radius
 
-            delta = X[i] - X[j]
-            dist = np.linalg.norm(delta)
+            # NUMPY: Originally used delta = X[i] - X[j] and np.linalg.norm(delta)
+            delta_x = X[i][0] - X[j][0]
+            delta_y = X[i][1] - X[j][1]
+            dist = math.sqrt(delta_x * delta_x + delta_y * delta_y)
 
             # Cross-species within interaction range
             if species_i != species_j and dist < r_i + r_j:
@@ -30,7 +36,8 @@ def measure_garden_quality(
                 degrees[j] += 1
 
     # Count nodes with degree >= 2
-    nodes_with_degree_2_plus = np.sum(degrees >= 2)
+    # NUMPY: Originally used np.sum(degrees >= 2)
+    nodes_with_degree_2_plus = sum(1 for d in degrees if d >= 2)
 
     score = cross_species_edges + lambda_weight * nodes_with_degree_2_plus
     return score

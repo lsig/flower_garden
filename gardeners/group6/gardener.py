@@ -1,6 +1,10 @@
 """Force-directed layout algorithm for optimal plant placement."""
 
-import numpy as np
+import math
+import random
+# NOTE: Originally used numpy for array operations, but replaced with standard Python
+# to avoid external dependencies. Original implementation used:
+# import numpy as np
 
 from core.garden import Garden
 from core.gardener import Gardener
@@ -38,8 +42,6 @@ class Gardener6(Gardener):
         # Limit to 50 plants for very large configs, but ensure species diversity
         if num_plants > 50:
             # Shuffle to get representative sample from all species
-            import random
-
             random.shuffle(varieties)
             self.varieties = varieties[:50]
             num_plants = 50
@@ -108,18 +110,21 @@ class Gardener6(Gardener):
             # Keep best
             if score > best_score:
                 best_score = score
-                best_layout = X.copy()
+                # NUMPY: Originally used X.copy() for numpy array copying
+                best_layout = [pos for pos in X]  # Copy list of positions
                 best_labels = labels.copy()
 
         # Place the best layout in the garden
         if best_layout is not None:
             self._place_plants(best_layout, best_labels)
 
-    def _place_plants(self, X: np.ndarray, labels: list[int]) -> None:
+    def _place_plants(self, X: list[tuple[float, float]], labels: list[int]) -> None:
         """Place plants from layout into the garden."""
+        # NUMPY: Originally used np.ndarray with shape (N, 2) for coordinates
+        # Access was X[i, 0] and X[i, 1] instead of X[i][0] and X[i][1]
         for i, label in enumerate(labels):
             variety = self.varieties[label]
-            position = Position(x=float(X[i, 0]), y=float(X[i, 1]))
+            position = Position(x=X[i][0], y=X[i][1])
 
             # Attempt to place plant
             self.garden.add_plant(variety, position)
