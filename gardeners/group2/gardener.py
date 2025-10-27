@@ -1,8 +1,4 @@
 # Assuming this import works based on your file structure
-from core.garden import Garden
-from core.gardener import Gardener
-from core.plants.plant_variety import PlantVariety
-
 from contextlib import suppress
 
 from core.garden import Garden
@@ -181,9 +177,9 @@ class Gardener2(Gardener):
     def cultivate_garden(self) -> None:
         plantable_varieties = self._get_sorted_varieties()
         candidate_positions = self._generate_placement_grid()
-        
+
         # Check if this is the very first plant placement
-        is_first_plant = not self.garden.plants # 👈 MODIFICATION START
+        is_first_plant = not self.garden.plants  # 👈 MODIFICATION START
 
         while plantable_varieties:
             # 1. Determine the species needed to fix the nutrient deficiency
@@ -201,19 +197,19 @@ class Gardener2(Gardener):
 
             best_score, best_variety = best_variety_tuple
             best_position = None
-            
+
             # --- First Plant Logic: Place in the Middle ---
             if is_first_plant:
                 center_x = self.garden.width / 2
                 center_y = self.garden.height / 2
                 potential_center_position = Position(center_x, center_y)
-                
+
                 if self.garden.can_place_plant(best_variety, potential_center_position):
                     best_position = potential_center_position
-                    is_first_plant = False # Ensure subsequent plants use normal logic
+                    is_first_plant = False  # Ensure subsequent plants use normal logic
                 else:
                     # Fallback to normal placement if the center isn't valid for the plant
-                    is_first_plant = False 
+                    is_first_plant = False
 
             # 3. Find a good position (Normal logic, only runs if not first plant)
             if best_position is None:
@@ -230,7 +226,7 @@ class Gardener2(Gardener):
                     if interactions > max_interactions:
                         max_interactions = interactions
                         best_placement = (position, interactions)
-                        
+
                 if best_placement:
                     best_position, _ = best_placement
                 else:
