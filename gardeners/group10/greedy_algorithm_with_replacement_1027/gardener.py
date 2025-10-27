@@ -2,6 +2,7 @@
 
 import os
 import yaml
+from collections import Counter, defaultdict
 from typing import List, Optional
 
 from core.garden import Garden
@@ -35,7 +36,13 @@ class GreedyGardener(Gardener):
             self.config['simulation']['T'] = min(simulation_turns, self.config['simulation']['T'])
         
         self.current_score = 0.0
+        self.original_varieties = varieties.copy()
         self.remaining_varieties = varieties.copy()
+        self.available_varieties_by_sig = self._build_variety_inventory(varieties)
+        self.first_group_plants = []
+        self.first_group_varieties = []
+        self.first_group_signatures = []
+        self.first_group_positions = []
     
     def _load_config(self) -> dict:
         """Load configuration from YAML file."""
@@ -93,15 +100,18 @@ class GreedyGardener(Gardener):
             
             # Place the plant
             plant = self.garden.add_plant(best_variety, best_position)
-            
+
             if plant is None:
                 if self.config['debug']['verbose']:
                     print(f"Failed to place {best_variety.name} at ({best_position.x:.2f}, {best_position.y:.2f})")
-                self.remaining_varieties.remove(best_variety)
+                self._consume_variety(best_variety)
                 continue
-            
+
             # Update state
-            self.remaining_varieties.remove(best_variety)
+            self.first_group_plants.append(plant)
+            self.first_group_varieties.append(best_variety)
+            self.first_group_signatures.append(self._variety_signature(best_variety))
+            self._consume_variety(best_variety)
             self.current_score = simulate_and_score(
                 self.garden,
                 self.config['simulation']['T'],
@@ -112,6 +122,10 @@ class GreedyGardener(Gardener):
             if self.config['debug']['verbose']:
                 print(f"  → {best_variety.species.name[0]} at ({int(best_position.x)},{int(best_position.y)}): value={best_value:.2f}, score={self.current_score:.2f}")
         
+        self._transplant_first_group_to_origin()
+        self._cache_first_group_positions()
+        self._replicate_first_group()
+
         if self.config['debug']['verbose']:
             print(f"\n=== Placement Complete ===")
             print(f"Total plants placed: {len(self.garden.plants)}")
@@ -495,14 +509,14 @@ class GreedyGardener(Gardener):
     def _find_best_placement(self, candidates: List[Position]) -> tuple:
         """
         Find the best (variety, position) pair among all candidates and varieties.
-        
+
         Returns:
             Tuple of (best_value, best_variety, best_position)
         """
         best_value = float('-inf')
         best_variety = None
         best_position = None
-        
+
         # Get prioritized varieties
         prioritized_varieties = self._prioritize_varieties()
         
@@ -610,5 +624,185 @@ class GreedyGardener(Gardener):
         if self.config['debug']['verbose']:
             rejection_note = f", rejected {penalized_count}" if penalized_count > 0 else ""
             print(f"{rejection_note}")
-        
+
         return best_value, best_variety, best_position
+
+    def _build_variety_inventory(self, varieties: List[PlantVariety]) -> dict:
+        inventory = defaultdict(list)
+        for variety in varieties:
+            inventory[self._variety_signature(variety)].append(variety)
+        return inventory
+
+    def _variety_signature(self, variety: PlantVariety) -> tuple:
+        nutrient_tuple = tuple(sorted((nutrient.name, value) for nutrient, value in variety.nutrient_coefficients.items()))
+        return (variety.name, variety.radius, variety.species, nutrient_tuple)
+
+    def _consume_variety(self, variety: PlantVariety) -> None:
+        if variety in self.remaining_varieties:
+            self.remaining_varieties.remove(variety)
+        signature = self._variety_signature(variety)
+        pool = self.available_varieties_by_sig.get(signature)
+        if pool and variety in pool:
+            pool.remove(variety)
+
+    def _remove_from_remaining(self, variety: PlantVariety) -> None:
+        if variety in self.remaining_varieties:
+            self.remaining_varieties.remove(variety)
+
+    def _return_varieties(self, varieties: List[PlantVariety]) -> None:
+        for variety in varieties:
+            signature = self._variety_signature(variety)
+            self.available_varieties_by_sig[signature].append(variety)
+            if variety not in self.remaining_varieties:
+                self.remaining_varieties.append(variety)
+
+    def _transplant_first_group_to_origin(self) -> None:
+        if not self.first_group_plants:
+            return
+
+        min_x = min(plant.position.x for plant in self.first_group_plants)
+        min_y = min(plant.position.y for plant in self.first_group_plants)
+
+        if min_x == 0 and min_y == 0:
+            return
+
+        for plant in self.first_group_plants:
+            plant.position.x -= min_x
+            plant.position.y -= min_y
+
+    def _cache_first_group_positions(self) -> None:
+        if not self.first_group_plants:
+            self.first_group_positions = []
+            return
+
+        self.first_group_positions = [Position(x=plant.position.x, y=plant.position.y) for plant in self.first_group_plants]
+
+    def _has_group_supply(self) -> bool:
+        if not self.first_group_signatures:
+            return False
+
+        required = Counter(self.first_group_signatures)
+        for signature, amount in required.items():
+            available = len(self.available_varieties_by_sig.get(signature, []))
+            if available < amount:
+                return False
+        return True
+
+    def _allocate_varieties_for_group(self) -> Optional[List[PlantVariety]]:
+        allocated = []
+        temp_tracking = defaultdict(list)
+
+        for signature in self.first_group_signatures:
+            pool = self.available_varieties_by_sig.get(signature)
+            if not pool:
+                for sig, items in temp_tracking.items():
+                    self.available_varieties_by_sig[sig].extend(items)
+                return None
+            variety = pool.pop()
+            allocated.append(variety)
+            temp_tracking[signature].append(variety)
+
+        for variety in allocated:
+            self._remove_from_remaining(variety)
+
+        return allocated
+
+    def _group_within_bounds(self, positions: List[Position], offset_x: int, offset_y: int) -> bool:
+        for pos in positions:
+            new_x = pos.x + offset_x
+            new_y = pos.y + offset_y
+            if new_x < 0 or new_x > self.garden.width:
+                return False
+            if new_y < 0 or new_y > self.garden.height:
+                return False
+        return True
+
+    def _can_place_group_at(self, positions: List[Position], offset_x: int, offset_y: int) -> bool:
+        new_positions = []
+
+        for variety, rel_pos in zip(self.first_group_varieties, positions):
+            target = Position(x=rel_pos.x + offset_x, y=rel_pos.y + offset_y)
+
+            for existing in self.garden.plants:
+                distance = calculate_distance(target, existing.position)
+                min_distance = max(variety.radius, existing.variety.radius)
+                if distance < min_distance:
+                    return False
+
+            for placed_pos, placed_variety in new_positions:
+                distance = calculate_distance(target, placed_pos)
+                min_distance = max(variety.radius, placed_variety.radius)
+                if distance < min_distance:
+                    return False
+
+            new_positions.append((target, variety))
+
+        return True
+
+    def _place_group_at(self, varieties: List[PlantVariety], positions: List[Position], offset_x: int, offset_y: int) -> bool:
+        new_plants = []
+
+        for variety, rel_pos in zip(varieties, positions):
+            absolute_pos = Position(x=rel_pos.x + offset_x, y=rel_pos.y + offset_y)
+            plant = self.garden.add_plant(variety, absolute_pos)
+            if plant is None:
+                for created in new_plants:
+                    if created in self.garden.plants:
+                        self.garden.plants.remove(created)
+                        self.garden._used_varieties.discard(id(created.variety))
+                return False
+            new_plants.append(plant)
+
+        return True
+
+    def _replicate_first_group(self) -> None:
+        if not self.first_group_positions or not self.first_group_varieties:
+            return
+
+        placed_any = False
+        clones_placed = 0
+
+        while self._has_group_supply():
+            found_spot = False
+
+            for offset_y in range(int(self.garden.height) + 1):
+                for offset_x in range(int(self.garden.width) + 1):
+                    if offset_x == 0 and offset_y == 0:
+                        continue
+
+                    if not self._group_within_bounds(self.first_group_positions, offset_x, offset_y):
+                        continue
+
+                    if not self._can_place_group_at(self.first_group_positions, offset_x, offset_y):
+                        continue
+
+                    varieties = self._allocate_varieties_for_group()
+                    if not varieties:
+                        return
+
+                    if not self._place_group_at(varieties, self.first_group_positions, offset_x, offset_y):
+                        self._return_varieties(varieties)
+                        continue
+
+                    placed_any = True
+                    clones_placed += 1
+                    if self.config['debug']['verbose']:
+                        print(f"  → clone #{clones_placed} offset=({offset_x},{offset_y})")
+                    found_spot = True
+                    break
+
+                if found_spot:
+                    break
+
+            if not found_spot:
+                break
+
+        if placed_any:
+            self.current_score = simulate_and_score(
+                self.garden,
+                self.config['simulation']['T'],
+                self.config['simulation']['w_short'],
+                self.config['simulation']['w_long']
+            )
+            if self.config['debug']['verbose']:
+                print(f"Replicated first group {clones_placed} times")

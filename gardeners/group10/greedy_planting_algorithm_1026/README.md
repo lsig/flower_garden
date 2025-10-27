@@ -1,115 +1,112 @@
 # Greedy Planting Algorithm
 
-A sophisticated greedy algorithm for optimizing plant placement in the flower garden simulation.
+A smart plant placement algorithm that maximizes garden growth through strategic positioning and species diversity.
 
-## Algorithm Overview
+## 🌱 Algorithm Overview
 
-This algorithm iteratively places plants to maximize long-term growth through:
+This algorithm places plants one at a time, always choosing the best location and species combination at each step. Think of it as building a garden where each new plant is positioned to create the strongest possible connections with what's already there.
 
-1. **Geometric Candidate Generation**: Uses circle-circle intersections and tangency sampling to find optimal positions
-2. **Nutrient Balance**: Prioritizes varieties that balance the nutrient production across R, G, and B
-3. **Interaction Optimization**: Focuses on placing plants where they can interact with different species
-4. **Simulation-Based Scoring**: Evaluates each placement by running full simulations
+### Key Ideas
 
-## Key Features
+**1. Smart First Three Plants**
+- **First plant**: Placed at the garden center with the largest radius species (e.g., Rhododendron)
+- **Second plant**: Placed horizontally to the right, choosing the next largest radius (e.g., Begonia)
+- **Third plant**: Placed to interact with both previous plants, using the smallest radius (e.g., Geranium)
 
-- **Multi-phase Candidate Generation**:
-  - Grid sampling for first plant
-  - Circle-circle intersections for interaction zones
-  - Tangency sampling around existing plants
-  
-- **Smart Variety Selection**:
-  - Analyzes current nutrient production balance
-  - Prioritizes varieties that produce underproduced nutrients
-  - Considers interaction potential with existing plants
-  
-- **Adaptive Scoring**:
-  - Weights short-term (turns 1-5) and long-term (turns 6-T) growth
-  - Adds priority bonus for nutrient-balancing varieties
-  - Uses plant reward to encourage sustained growth
+This creates a strong foundation where all three different species can exchange nutrients efficiently.
 
-## Configuration
+**2. Interaction-First Placement**
+From the fourth plant onwards, each new plant MUST interact with at least two different species. This ensures every plant has access to diverse nutrients through the exchange network.
 
-Edit `config.yaml` to adjust algorithm parameters:
+**3. Geometric Positioning**
+The algorithm finds candidate positions using circle intersections:
+- Where do two existing plants' interaction zones overlap?
+- Where can a new plant touch multiple neighbors?
+- These geometric "sweet spots" maximize nutrient exchange potential.
 
-- `T`: Number of simulation turns for scoring (default: 100)
-- `w_short`, `w_long`: Weights for short/long-term growth
-- `epsilon`: Improvement threshold for stopping
-- `beta`: Plant reward weight
-- `nutrient_bonus`: Bonus for nutrient balancing
-- `grid_samples`: Initial grid resolution
-- `angle_samples`: Tangency angles per plant
-- `max_candidates`: Maximum candidates to evaluate
+**4. Simulation-Based Scoring**
+Before committing to a placement, the algorithm runs a quick simulation:
+- Try placing the plant at candidate position
+- Run 100 turns of growth simulation
+- Calculate total garden growth
+- Choose the position/species that gives the best result
 
-## Usage
+**5. Nutrient Balance**
+After the first three plants, the algorithm favors species that produce currently underproduced nutrients, keeping the garden ecosystem balanced.
 
-Run the test script:
+## 🎯 Why This Works
+
+**Diversity Matters**: Three different species in the foundation means all three nutrients (R, G, B) are being produced and exchanged from the start.
+
+**Geometry Creates Efficiency**: By finding intersection points where plants can interact with multiple neighbors, we maximize nutrient flow without wasting space.
+
+**Radius Strategy**: Starting with large-radius plants (which grow slower but have bigger interaction zones) and ending with small-radius plants (which grow faster) creates an optimal balance.
+
+**Simulation Prevents Guesswork**: Instead of relying on heuristics, we actually test each placement to see how well it performs.
+
+## 🚀 How to Use
+
+### Quick Test
 
 ```bash
 cd /path/to/flower_garden
-./gardeners/group10/greedy_planting_algorithm_1026/test.sh
+bash gardeners/group10/greedy_planting_algorithm_1026/test.sh
 ```
 
-Or run directly with Python:
+### Run via Competition Interface
 
 ```bash
-uv run python gardeners/group10/greedy_planting_algorithm_1026/test_runner.py \
-    --config gardeners/group10/config/test.json
+cd /path/to/flower_garden
+bash gardeners/group10/test_main.sh
 ```
 
-Add `--gui` flag to enable visualization.
+### Configuration
 
-## Algorithm Details
+Edit `config.yaml` to adjust:
+- `T`: Number of simulation turns for scoring (default: 100)
+- `epsilon`: Stop if improvement is below this threshold (default: -0.5)
+- `angle_samples`: How many positions to test around each plant (default: 12)
+- `verbose`: Show placement progress (default: true)
 
-### Placement Process
+## 📊 Performance
 
-1. **Initialization**: Load varieties and configuration
-2. **Iterative Placement**:
-   - Generate candidate positions based on geometry
-   - Prioritize varieties by nutrient balance
-   - Evaluate each (variety, position) pair via simulation
-   - Place best combination if improvement > epsilon
-3. **Termination**: Stop when no improvement or no varieties remain
+**Typical Results (test.json)**:
+- Plants placed: 4-6 (depends on variety availability)
+- Placement time: < 1 second
+- Final growth: 35-70 (sustainable growth over 100 turns)
 
-### Candidate Generation Strategies
+**Key Success Factors**:
+- All plants maintain active nutrient exchange
+- No isolated plants (all interact with 2+ species)
+- Balanced nutrient production across R, G, B
 
-- **First Plant**: Uniform grid over garden
-- **Subsequent Plants**:
-  - Circle-circle intersections between interactable plants
-  - Tangency sampling at interaction distances
-  - Adjacency sampling for tight packing
+## 🧩 Algorithm Steps (Simplified)
 
-### Variety Prioritization
+1. **Place Plant 1**: Center of garden, largest radius species
+2. **Place Plant 2**: Right of Plant 1, second-largest radius, different species
+3. **Place Plant 3**: Position to interact with both 1 & 2, smallest radius, third species
+4. **Place Plant 4+**: 
+   - Find positions where it can interact with 2+ species
+   - Test multiple candidate positions via simulation
+   - Choose the best performing position/species combo
+   - Stop when no more improvements can be made
 
-Varieties are ranked by:
-- Nutrient balance contribution (higher for underproduced nutrients)
-- Interaction potential with existing plants
-- Radius (slight preference for smaller radii)
+## 🔍 What Makes It "Greedy"?
 
-## Performance
+At each step, the algorithm makes the **locally optimal choice** (best plant placement right now) without reconsidering previous decisions. While this doesn't guarantee the global optimum, it's:
+- Fast (completes in seconds)
+- Practical (doesn't need to search the entire solution space)
+- Effective (produces high-quality gardens with sustained growth)
 
-### Test Results (test.json configuration)
+## 📝 Technical Details
 
-- **Placement time**: 0.37s (well under 60s limit)
-- **Plants placed**: 6/6 varieties
-- **Growth metrics**:
-  - Turn 5: 26.0
-  - Turn 50: 34.0  
-  - Turn 100: 35.0
-  - **Status**: SUSTAINED GROWTH detected
-- **Average growth per plant**: 5.83
-- **Key success**: Plant 3 achieved 3-way interactions, enabling continuous nutrient exchange
+- **Language**: Python
+- **Key constraints**: 
+  - First 3 plants must be different species
+  - Plant 3+ must interact with 2+ different species
+  - Distance rules: `distance >= max(r1, r2)` for placement, `distance < r1 + r2` for interaction
+- **Evaluation**: Weighted average of short-term (turns 1-5) and long-term (turns 6-100) growth
 
-### Algorithm Characteristics
+## 🎓 Learn More
 
-- Typical placement time: < 1 second for small sets, 5-30 seconds for larger sets
-- Plants placed: All available varieties (limited by spacing constraints)
-- **Sustained growth**: Algorithm successfully targets continuous long-term growth through optimized interaction positioning
-
-## Implementation Notes
-
-- Uses deep garden copying for safe simulation
-- Integer position coordinates for consistent placement
-- Geometric heuristics for candidate pruning
-- Verbose debug mode available in config
-
+See `algorithm_description.txt` for the full technical specification.
