@@ -1,5 +1,5 @@
-import random
 import copy
+import random
 
 from core.garden import Garden
 from core.gardener import Gardener
@@ -19,21 +19,20 @@ class BetterRandom(Gardener):
         self.garden.plants.remove(plant)
         self.garden._used_varieties.discard(id(plant.variety))
         return True
-    
+
     def plant_random_from_corner(self, VL):
         for variety in VL:
             # print(variety)
             Found = False
-            starting_box = .1
+            starting_box = 0.1
 
-
-            while not Found and starting_box<1.2:
-                for i in range(100):
+            while not Found and starting_box < 1.2:
+                for _ in range(100):
                     # print("here", Found, starting_box)
-                    x = random.uniform(0, 100*self.garden.width)
-                    y = random.uniform(0, 100*self.garden.height)
-                    x*=starting_box/100
-                    y*=starting_box/100
+                    x = random.uniform(0, 100 * self.garden.width)
+                    y = random.uniform(0, 100 * self.garden.height)
+                    x *= starting_box / 100
+                    y *= starting_box / 100
 
                     position = Position(x, y)
 
@@ -42,7 +41,7 @@ class BetterRandom(Gardener):
                         Found = True
                         break
                 if not Found:
-                    starting_box+=.1
+                    starting_box += 0.1
 
     def has_RBG_neighbors(self, plant):
         red = False
@@ -67,10 +66,7 @@ class BetterRandom(Gardener):
             elif neighbor.variety.species == Species.BEGONIA:
                 blue = True
 
-        if red and blue and green:
-            return True
-        return False
-
+        return red and blue and green
 
     def cultivate_garden(self) -> None:
         VL = copy.copy(self.varieties)
@@ -78,7 +74,7 @@ class BetterRandom(Gardener):
 
         self.plant_random_from_corner(VL)
 
-        done = False 
+        done = False
         while not done:
             done = True
             newPlant = []
@@ -89,7 +85,3 @@ class BetterRandom(Gardener):
                     self.delete_plant(plant)
                     done = False
             self.plants = newPlant
-
-
-
-        
