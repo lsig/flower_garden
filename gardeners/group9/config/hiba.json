@@ -17,7 +17,7 @@
       "species": "GERANIUM",
       "nutrient_coefficients": {
         "R": -0.1,
-        "G": 4.0,
+        "G": 2.0,
         "B": -2
       }
     },
