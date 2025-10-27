@@ -562,7 +562,9 @@ class GreedyGardener(Gardener):
                         continue
 
                 # HARD REQUIREMENT: 3rd plant onwards MUST interact with 2+ different species
-                if len(self.garden.plants) >= 2 and not self._would_interact_with_two_species(variety, position):
+                if len(self.garden.plants) >= 2 and not self._would_interact_with_two_species(
+                    variety, position
+                ):
                     penalized_count += 1
                     continue
 
