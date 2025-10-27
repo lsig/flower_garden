@@ -1,0 +1,38 @@
+{
+  "seed": 41,
+  "varieties": [
+    {
+      "name": "Beet RHODODENDRON",
+      "radius": 1,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "G": 2.2,
+        "R": -0.2,
+        "B": 0.0
+      },
+      "count": 3
+    },
+    {
+      "name": "Yam GERANIUM",
+      "radius": 3,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "B": 1.6,
+        "G": -0.6,
+        "R": 0.2
+      },
+      "count": 3
+    },
+    {
+      "name": "Pepper BEGONIA",
+      "radius": 2,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": 2.9,
+        "B": -0.7,
+        "G": -0.3
+      },
+      "count": 3
+    }
+  ]
+}
