@@ -1,0 +1,65 @@
+{
+  "seed": 420691337,
+  "varieties": [
+    {
+      "name": "Bad RHODODENDRON",
+      "radius": 3,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 1.0,
+        "G": -0.4,
+        "B": -0.4
+      }
+    },
+    {
+      "name": "Objectively Better RHODODENDRON",
+      "radius": 1,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 2.0,
+        "G": -0.4,
+        "B": -0.4
+      }
+    },
+    {
+      "name": "Bad GERANIUM",
+      "radius": 3,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.4,
+        "G": 0.8,
+        "B": -0.2
+      }
+    },
+    {
+      "name": "Objectively Better GERANIUM",
+      "radius": 1,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.4,
+        "G": 1.0,
+        "B": -0.4
+      }
+    },
+    {
+      "name": "Bad BEGONIA",
+      "radius": 3,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.4,
+        "G": -0.4,
+        "B": 1.0
+      }
+    },
+    {
+      "name": "Objectively Better BEGONIA",
+      "radius": 1,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.4,
+        "G": -0.4,
+        "B": 2.0
+      }
+    }
+  ]
+}
