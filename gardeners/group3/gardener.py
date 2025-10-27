@@ -3,7 +3,6 @@ import random
 from collections import defaultdict
 from itertools import combinations
 from itertools import product as variety_product
-from typing import Dict, List, Optional, Set, Tuple
 
 from core.garden import Garden
 from core.gardener import Gardener
@@ -12,7 +11,7 @@ from core.plants.plant_variety import PlantVariety
 from core.plants.species import Species
 from core.point import Position
 
-ClusterData = Tuple[List[PlantVariety], List[Tuple[PlantVariety, Position]], float]
+ClusterData = tuple[list[PlantVariety], list[tuple[PlantVariety, Position]], float]
 
 
 class Gardener3(Gardener):
@@ -33,7 +32,7 @@ class Gardener3(Gardener):
     # Minimum varieties count to restrict garden size for hexagonal placement
     MIN_TOTAL_VARIETIES_COUNT = 24
 
-    def __init__(self, garden: Garden, varieties: List[PlantVariety]):
+    def __init__(self, garden: Garden, varieties: list[PlantVariety]):
         super().__init__(garden, varieties)
         self.garden = garden
         self.width = int(garden.width)
@@ -194,7 +193,7 @@ class Gardener3(Gardener):
 
     ### Clustering Placement Methods ###
 
-    def organize_varieties(self) -> Dict[Species, List[PlantVariety]]:
+    def organize_varieties(self) -> dict[Species, list[PlantVariety]]:
         species_varieties = {}
         for variety in self.varieties:
             if variety.species not in species_varieties:
@@ -204,7 +203,7 @@ class Gardener3(Gardener):
         return species_varieties
 
     def calculate_cluster_score(
-        self, plant_varieties: List[PlantVariety], coordinates: List[Position]
+        self, plant_varieties: list[PlantVariety], coordinates: list[Position]
     ) -> float:
         # Calculate the net production for each nutrient for all plants in cluster
         delta_r_net = sum(plant.nutrient_coefficients[Micronutrient.R] for plant in plant_varieties)
@@ -216,16 +215,20 @@ class Gardener3(Gardener):
 
         # Calculate the Area
         x_min = min(
-            coords.x - variety.radius for variety, coords in zip(plant_varieties, coordinates)
+            coords.x - variety.radius
+            for variety, coords in zip(plant_varieties, coordinates, strict=False)
         )
         x_max = max(
-            coords.x + variety.radius for variety, coords in zip(plant_varieties, coordinates)
+            coords.x + variety.radius
+            for variety, coords in zip(plant_varieties, coordinates, strict=False)
         )
         y_min = min(
-            coords.y - variety.radius for variety, coords in zip(plant_varieties, coordinates)
+            coords.y - variety.radius
+            for variety, coords in zip(plant_varieties, coordinates, strict=False)
         )
         y_max = max(
-            coords.y + variety.radius for variety, coords in zip(plant_varieties, coordinates)
+            coords.y + variety.radius
+            for variety, coords in zip(plant_varieties, coordinates, strict=False)
         )
 
         area = (x_max - x_min) * (y_max - y_min)
@@ -237,8 +240,8 @@ class Gardener3(Gardener):
         return growth_potential / area
 
     def find_best_triad_permutations(
-        self, species_varieties: Dict[Species, List[PlantVariety]]
-    ) -> List[ClusterData]:
+        self, species_varieties: dict[Species, list[PlantVariety]]
+    ) -> list[ClusterData]:
         species_list = list(species_varieties.keys())
         if len(species_list) < 3:
             print('Not enough species to form a triad')
@@ -291,8 +294,8 @@ class Gardener3(Gardener):
         return top_triads
 
     def find_best_diamond_permutations(
-        self, species_varieties: Dict[Species, List[PlantVariety]], ranked_triads: List[ClusterData]
-    ) -> List[ClusterData]:
+        self, species_varieties: dict[Species, list[PlantVariety]], ranked_triads: list[ClusterData]
+    ) -> list[ClusterData]:
         all_diamonds = []
 
         if not ranked_triads:
@@ -306,7 +309,7 @@ class Gardener3(Gardener):
                 species_in_triads.add(variety.species)
 
         # For each triad, try adding one additional variety from each species in the triad
-        for triad_varieties, triad_coordinates, triad_score in ranked_triads:
+        for triad_varieties, _, _ in ranked_triads:
             # Get the species present in this triad
             triad_species = [variety.species for variety in triad_varieties]
 
@@ -361,7 +364,7 @@ class Gardener3(Gardener):
     def calculate_optimal_distance(self, radius1: float, radius2: float) -> float:
         return max(radius1, radius2) + self.PLACEMENT_BUFFER
 
-    def filter_unique_clusters(self, clusters: List[ClusterData]) -> List[ClusterData]:
+    def filter_unique_clusters(self, clusters: list[ClusterData]) -> list[ClusterData]:
         used_variety_ids = set()
         unique_clusters = []
 
@@ -374,8 +377,11 @@ class Gardener3(Gardener):
         return unique_clusters
 
     def find_diamond_coordinates(
-        self, diamond: List[PlantVariety], offset: Position = Position(0, 0)
-    ) -> List[Tuple[PlantVariety, Position]]:
+        self, diamond: list[PlantVariety], offset: Position | None = None
+    ) -> list[tuple[PlantVariety, Position]]:
+        if offset is None:
+            offset = Position(0, 0)
+
         if len(diamond) != 4:
             raise ValueError('Diamond must contain exactly 4 plant varieties')
 
@@ -424,8 +430,11 @@ class Gardener3(Gardener):
         return [(variety1, p1), (variety2, p2), (variety3, p3), (variety4, p4)]
 
     def find_triad_coordinates(
-        self, triad: List[PlantVariety], offset: Position = Position(0, 0)
-    ) -> List[Tuple[PlantVariety, Position]]:
+        self, triad: list[PlantVariety], offset: Position | None = None
+    ) -> list[tuple[PlantVariety, Position]]:
+        if offset is None:
+            offset = Position(0, 0)
+
         if len(triad) != 3:
             raise ValueError('Triad must contain exactly 3 plant varieties')
 
@@ -456,7 +465,7 @@ class Gardener3(Gardener):
         return [(variety1, p1), (variety2, p2), (variety3, p3)]
 
     def tile_cluster_across_garden_with_prefiltering(
-        self, ranked_clusters: List[ClusterData], prevent_interactions: Optional[bool] = None
+        self, ranked_clusters: list[ClusterData], prevent_interactions: bool | None = None
     ) -> None:
         if not ranked_clusters:
             return
@@ -495,8 +504,8 @@ class Gardener3(Gardener):
         print(f'\nTotal plants placed in garden: {len(self.garden.plants)}')
 
     def group_clusters_by_radius_signature(
-        self, ranked_clusters: List[ClusterData]
-    ) -> Dict[Tuple[float, ...], List[ClusterData]]:
+        self, ranked_clusters: list[ClusterData]
+    ) -> dict[tuple[float, ...], list[ClusterData]]:
         radius_groups = {}
         for varieties, coordinates, score in ranked_clusters:
             # Create radius signature
@@ -513,10 +522,10 @@ class Gardener3(Gardener):
 
     def process_cluster_placement(
         self,
-        radius_groups: Dict[Tuple[float, ...], List[ClusterData]],
-        anchor_points: List[Tuple[float, float]],
-        placed_plants: List[Tuple[float, float, float, PlantVariety]],
-        used_varieties: Set[int],
+        radius_groups: dict[tuple[float, ...], list[ClusterData]],
+        anchor_points: list[tuple[float, float]],
+        placed_plants: list[tuple[float, float, float, PlantVariety]],
+        used_varieties: set[int],
         total_varieties: int,
         prevent_interactions: bool,
     ) -> None:
@@ -573,8 +582,8 @@ class Gardener3(Gardener):
                 break
 
     def find_best_available_cluster(
-        self, radius_groups: Dict[Tuple[float, ...], List[ClusterData]], used_varieties: Set[int]
-    ) -> Tuple[Optional[ClusterData], Optional[Tuple[float, ...]]]:
+        self, radius_groups: dict[tuple[float, ...], list[ClusterData]], used_varieties: set[int]
+    ) -> tuple[ClusterData | None, tuple[float, ...] | None]:
         best_cluster = None
         best_radius_signature = None
 
@@ -591,12 +600,12 @@ class Gardener3(Gardener):
 
     def try_place_cluster(
         self,
-        varieties: List[PlantVariety],
-        coordinates: List[Tuple[PlantVariety, Position]],
+        varieties: list[PlantVariety],
+        coordinates: list[tuple[PlantVariety, Position]],
         score: float,
-        anchor_points: List[Tuple[float, float]],
-        placed_plants: List[Tuple[float, float, float, PlantVariety]],
-        used_varieties: Set[int],
+        anchor_points: list[tuple[float, float]],
+        placed_plants: list[tuple[float, float, float, PlantVariety]],
+        used_varieties: set[int],
         total_varieties: int,
         prevent_interactions: bool,
     ) -> bool:
@@ -650,7 +659,7 @@ class Gardener3(Gardener):
 
         return None
 
-    def generate_anchor_points(self) -> List[Tuple[float, float]]:
+    def generate_anchor_points(self) -> list[tuple[float, float]]:
         anchor_points = []
         step = self.ANCHOR_POINT_STEP
 
@@ -670,15 +679,15 @@ class Gardener3(Gardener):
 
     def remove_anchor_points(
         self,
-        anchor_points: List[Tuple[float, float]],
-        placed_plants: List[Tuple[float, float, float, PlantVariety]],
-    ) -> List[Tuple[float, float]]:
+        anchor_points: list[tuple[float, float]],
+        placed_plants: list[tuple[float, float, float, PlantVariety]],
+    ) -> list[tuple[float, float]]:
         remaining_anchors = []
 
         for anchor_x_test, anchor_y_test in anchor_points:
             # Check if this anchor point is within any circle of placed plants
             too_close = False
-            for plant_x, plant_y, plant_radius, variety in placed_plants:
+            for plant_x, plant_y, plant_radius, _ in placed_plants:
                 # Calculate distance from anchor point to plant center
                 distance = ((anchor_x_test - plant_x) ** 2 + (anchor_y_test - plant_y) ** 2) ** 0.5
 
@@ -695,10 +704,10 @@ class Gardener3(Gardener):
 
     def can_place_cluster_at_anchor(
         self,
-        cluster_coordinates: List[Tuple[PlantVariety, Position]],
+        cluster_coordinates: list[tuple[PlantVariety, Position]],
         anchor_x: float,
         anchor_y: float,
-        placed_plants: List[Tuple[float, float, float, PlantVariety]],
+        placed_plants: list[tuple[float, float, float, PlantVariety]],
         prevent_interactions: bool = True,
     ) -> bool:
         # Cluster center bounds
@@ -753,8 +762,8 @@ class Gardener3(Gardener):
 
     def calculate_total_garden_area(
         self,
-        placed_plants: List[Tuple[float, float, float, PlantVariety]],
-        new_cluster_coordinates: List[Tuple[PlantVariety, Position]],
+        placed_plants: list[tuple[float, float, float, PlantVariety]],
+        new_cluster_coordinates: list[tuple[PlantVariety, Position]],
         anchor_x: float,
         anchor_y: float,
     ) -> float:
@@ -773,7 +782,7 @@ class Gardener3(Gardener):
         return self.calculate_union_area(all_circles)
 
     def calculate_union_area(
-        self, circles: List[Tuple[float, float, float]], samples: Optional[int] = None
+        self, circles: list[tuple[float, float, float]], samples: int | None = None
     ) -> float:
         if not circles:
             return 0.0
@@ -804,10 +813,10 @@ class Gardener3(Gardener):
 
     def place_cluster_at_anchor(
         self,
-        cluster_coordinates: List[Tuple[PlantVariety, Position]],
+        cluster_coordinates: list[tuple[PlantVariety, Position]],
         anchor_x: float,
         anchor_y: float,
-        placed_plants: List[Tuple[float, float, float, PlantVariety]],
+        placed_plants: list[tuple[float, float, float, PlantVariety]],
     ) -> None:
         for variety, pos in cluster_coordinates:
             x_new = anchor_x + pos.x
@@ -817,12 +826,12 @@ class Gardener3(Gardener):
             placed_plants.append((x_new, y_new, variety.radius, variety))
 
     def place_plants_in_garden(
-        self, placed_plants: List[Tuple[float, float, float, PlantVariety]]
+        self, placed_plants: list[tuple[float, float, float, PlantVariety]]
     ) -> None:
         successful_placements = 0
         failed_placements = 0
 
-        for x, y, radius, variety in placed_plants:
+        for x, y, _, variety in placed_plants:
             position = Position(x, y)
             result = self.garden.add_plant(variety, position)
             if result:
@@ -834,8 +843,8 @@ class Gardener3(Gardener):
         print(f'\nFinal placement: {successful_placements} successful, {failed_placements} failed')
 
     def rotate_cluster(
-        self, cluster_coordinates: List[Tuple[PlantVariety, Position]], angle_degrees: float
-    ) -> List[Tuple[PlantVariety, Position]]:
+        self, cluster_coordinates: list[tuple[PlantVariety, Position]], angle_degrees: float
+    ) -> list[tuple[PlantVariety, Position]]:
         angle_rad = math.radians(angle_degrees)
         cos_a = math.cos(angle_rad)
         sin_a = math.sin(angle_rad)
