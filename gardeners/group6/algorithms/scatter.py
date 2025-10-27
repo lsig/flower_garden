@@ -1,9 +1,9 @@
 """Initial plant positioning."""
 
 import random
+
 # NOTE: Originally used numpy for array operations. Original implementation used:
 # import numpy as np
-
 from core.plants.plant_variety import PlantVariety
 
 

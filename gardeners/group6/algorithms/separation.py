@@ -2,9 +2,9 @@
 
 import math
 import random
+
 # NOTE: Originally used numpy for array operations. Original implementation used:
 # import numpy as np
-
 from core.plants.plant_variety import PlantVariety
 
 # Optional tqdm import for progress bars
@@ -58,10 +58,14 @@ def separate_overlapping_plants(
                     force_magnitude = violation * 0.5
 
                     # NUMPY: Originally used forces[i] += direction * force_magnitude
-                    forces[i] = (forces[i][0] + direction_x * force_magnitude, 
-                               forces[i][1] + direction_y * force_magnitude)
-                    forces[j] = (forces[j][0] - direction_x * force_magnitude, 
-                               forces[j][1] - direction_y * force_magnitude)
+                    forces[i] = (
+                        forces[i][0] + direction_x * force_magnitude,
+                        forces[i][1] + direction_y * force_magnitude,
+                    )
+                    forces[j] = (
+                        forces[j][0] - direction_x * force_magnitude,
+                        forces[j][1] - direction_y * force_magnitude,
+                    )
                 elif dist <= 1e-6:
                     # Handle exact overlaps with random push
                     # TODO: we use random here, so we might need to ensure we are using the right random seed.
@@ -72,16 +76,19 @@ def separate_overlapping_plants(
                     random_dir_x /= norm
                     random_dir_y /= norm
                     # NUMPY: Originally used forces[i] += random_dir * min_dist * 0.5
-                    forces[i] = (forces[i][0] + random_dir_x * min_dist * 0.5, 
-                               forces[i][1] + random_dir_y * min_dist * 0.5)
-                    forces[j] = (forces[j][0] - random_dir_x * min_dist * 0.5, 
-                               forces[j][1] - random_dir_y * min_dist * 0.5)
+                    forces[i] = (
+                        forces[i][0] + random_dir_x * min_dist * 0.5,
+                        forces[i][1] + random_dir_y * min_dist * 0.5,
+                    )
+                    forces[j] = (
+                        forces[j][0] - random_dir_x * min_dist * 0.5,
+                        forces[j][1] - random_dir_y * min_dist * 0.5,
+                    )
 
         # Apply forces
         # NUMPY: Originally used X += forces * step_size
         for i in range(N):
-            X[i] = (X[i][0] + forces[i][0] * step_size, 
-                   X[i][1] + forces[i][1] * step_size)
+            X[i] = (X[i][0] + forces[i][0] * step_size, X[i][1] + forces[i][1] * step_size)
 
         # Keep within garden bounds with margin
         margin = 0.5
@@ -89,8 +96,7 @@ def separate_overlapping_plants(
         # NUMPY: Originally used np.clip(X[:, 0], margin, W - margin)
         for i in range(N):
             x, y = X[i]
-            X[i] = (max(margin, min(W - margin, x)), 
-                   max(margin, min(H - margin, y)))
+            X[i] = (max(margin, min(W - margin, x)), max(margin, min(H - margin, y)))
 
         # Add jitter periodically to escape local minima
         if (iteration + 1) % jitter_interval == 0:

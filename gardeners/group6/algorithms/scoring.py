@@ -1,14 +1,17 @@
 """Garden layout quality evaluation."""
 
 import math
+
 # NOTE: Originally used numpy for array operations. Original implementation used:
 # import numpy as np
-
 from core.plants.plant_variety import PlantVariety
 
 
 def measure_garden_quality(
-    X: list[tuple[float, float]], varieties: list[PlantVariety], labels: list[int], lambda_weight: float = 1.5
+    X: list[tuple[float, float]],
+    varieties: list[PlantVariety],
+    labels: list[int],
+    lambda_weight: float = 1.5,
 ) -> float:
     """Measure the quality of a garden layout."""
     # NUMPY: Originally used np.ndarray for X parameter

@@ -1,11 +1,10 @@
 """Force-directed layout algorithm for optimal plant placement."""
 
-import math
 import random
+
 # NOTE: Originally used numpy for array operations, but replaced with standard Python
 # to avoid external dependencies. Original implementation used:
 # import numpy as np
-
 from core.garden import Garden
 from core.gardener import Gardener
 from core.plants.plant_variety import PlantVariety
