@@ -173,7 +173,7 @@ class Gardener1(Gardener):
         placements = []
 
         # Sort plants by radius (larger first) for better packing
-        sorted_group = sorted(group, key=lambda v: v.radius, reverse=True)
+        sorted_group = sorted(group, key=lambda v: v.radius)
 
         for variety in sorted_group:
             best_position = None
