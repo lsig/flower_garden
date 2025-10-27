@@ -29,7 +29,7 @@ def scatter_seeds_randomly(
     #labels = [i % num_varieties for i in range(N)]
 
     labels = np.arange(num_varieties)
-    if N > num_varieties:
+    if num_varieties < N:
         extra = np.random.choice(num_varieties, size=N - num_varieties)
         labels = np.concatenate([labels, extra])
     np.random.shuffle(labels)
