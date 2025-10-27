@@ -1,17 +1,20 @@
 """Standalone test runner for Greedy Planting Algorithm."""
 
 import argparse
-import sys
 import os
+import sys
+import time
 
-# Add project root to path
+# Add project root to path (MUST be before local imports)
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
-sys.path.insert(0, project_root)
+sys.path.insert(0, project_root)  # noqa: E402
 
-from core.garden import Garden
-from core.engine import Engine
-from core.nursery import Nursery
-from gardeners.group10.greedy_planting_algorithm_1026.gardener import GreedyGardener
+from core.engine import Engine  # noqa: E402
+from core.garden import Garden  # noqa: E402
+from core.nursery import Nursery  # noqa: E402
+from gardeners.group10.greedy_planting_algorithm_1026.gardener import (  # noqa: E402
+    GreedyGardener,  # noqa: E402
+)
 
 
 def main():
@@ -42,7 +45,6 @@ def main():
 
     # Time the placement
     print(f'Starting plant placement (using T={turns} turns for scoring)...')
-    import time
 
     start_time = time.time()
     gardener.cultivate_garden()
@@ -72,7 +74,7 @@ def main():
             else engine.growth_history[-1]
         )
         final_growth_val = engine.growth_history[-1]
-        print(f'\nGrowth Pattern:')
+        print('\nGrowth Pattern:')
         print(f'  Turn 5: {early_growth:.1f}')
         print(f'  Turn 50: {mid_growth:.1f}')
         print(f'  Turn {turns}: {final_growth_val:.1f}')
@@ -95,7 +97,7 @@ def main():
     avg_growth = final_growth / len(garden.plants) if len(garden.plants) > 0 else 0.0
 
     print(f'\n{"=" * 60}')
-    print(f'TEST SUMMARY')
+    print('TEST SUMMARY')
     print(f'{"=" * 60}')
     print(f'Total Growth:        {final_growth:.2f}')
     print(f'Plants Placed:       {len(garden.plants)}/{len(varieties)}')
@@ -109,7 +111,7 @@ def main():
 
     # Run GUI if requested
     if args.gui:
-        from core.ui.visualizer import GardenVisualizer
+        from core.ui.visualizer import GardenVisualizer  # noqa: E402
 
         print('\nLaunching GUI...')
         visualizer = GardenVisualizer(garden, engine, 'GreedyGardener', turns=turns)

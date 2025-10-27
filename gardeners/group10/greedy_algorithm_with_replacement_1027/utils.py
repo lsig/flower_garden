@@ -1,13 +1,11 @@
 """Utility functions for greedy planting algorithm."""
 
 import math
-import copy
-from typing import List, Tuple, Optional
 
-from core.garden import Garden
 from core.engine import Engine
-from core.plants.plant_variety import PlantVariety
+from core.garden import Garden
 from core.plants.plant import Plant
+from core.plants.plant_variety import PlantVariety
 from core.point import Position
 
 
@@ -92,7 +90,7 @@ def copy_garden(garden: Garden) -> Garden:
     return new_garden
 
 
-def generate_grid_candidates(garden: Garden, grid_samples: int) -> List[Position]:
+def generate_grid_candidates(garden: Garden, grid_samples: int) -> list[Position]:
     """
     Generate grid of candidate positions for first plant.
 
@@ -125,7 +123,7 @@ def generate_grid_candidates(garden: Garden, grid_samples: int) -> List[Position
 
 def circle_circle_intersection(
     center1: Position, radius1: float, center2: Position, radius2: float
-) -> List[Position]:
+) -> list[Position]:
     """
     Find intersection points of two circles.
 
@@ -175,7 +173,7 @@ def circle_circle_intersection(
 
 def generate_geometric_candidates(
     garden: Garden, variety: PlantVariety, angle_samples: int, max_anchor_pairs: int
-) -> List[Position]:
+) -> list[Position]:
     """
     Generate candidate positions using circle-circle intersections and tangency sampling.
     Focus on tight clustering for maximum nutrient exchange.
@@ -196,7 +194,6 @@ def generate_geometric_candidates(
 
     # Get plants that can interact with this variety (different species)
     interactable = [p for p in garden.plants if p.variety.species != variety.species]
-    same_species = [p for p in garden.plants if p.variety.species == variety.species]
 
     # Strategy 1: Circle-circle intersections between interactable plants
     if len(interactable) >= 2:
@@ -261,8 +258,8 @@ def generate_geometric_candidates(
 
 
 def filter_candidates(
-    candidates: List[Position], garden: Garden, tolerance: float
-) -> List[Position]:
+    candidates: list[Position], garden: Garden, tolerance: float
+) -> list[Position]:
     """
     Filter candidates to keep only those within bounds and deduplicate.
 
@@ -357,7 +354,7 @@ def evaluate_placement(
     w_short: float,
     w_long: float,
     current_score: float,
-) -> Tuple[float, float, float]:
+) -> tuple[float, float, float]:
     """
     Evaluate placing a variety at a position.
 
@@ -385,10 +382,7 @@ def evaluate_placement(
     new_score = simulate_and_score(test_garden, turns, w_short, w_long)
 
     # Calculate delta
-    if len(garden.plants) > 0:
-        delta = new_score - current_score
-    else:
-        delta = new_score
+    delta = new_score - current_score if len(garden.plants) > 0 else new_score
 
     # Calculate plant reward (new plant's contribution)
     # Note: test_plant in test_garden has been simulated, so it has a size

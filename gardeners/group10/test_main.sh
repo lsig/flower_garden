@@ -9,6 +9,9 @@
 # 
 # Configuration: Edit variables below
 
+# uv run python main.py --json_path /path/to/my.json --turns 200 --gardener gr
+# uv run python main.py --json_path gardeners/group10/config/test.json --turns 100 --gardener g10 --gui
+
 cd "$(dirname "$0")/../.."
 
 # ========== CONFIGURATION ==========

@@ -1,24 +1,23 @@
 """Greedy Planting Algorithm Implementation."""
 
 import os
+from collections import defaultdict
+
 import yaml
-from typing import List, Optional
 
 from core.garden import Garden
 from core.gardener import Gardener
+from core.micronutrients import Micronutrient
 from core.plants.plant_variety import PlantVariety
 from core.point import Position
-from core.micronutrients import Micronutrient
-
 from gardeners.group10.greedy_planting_algorithm_1026.utils import (
-    generate_grid_candidates,
-    generate_geometric_candidates,
-    filter_candidates,
-    geometric_heuristic,
-    evaluate_placement,
-    simulate_and_score,
     calculate_distance,
     circle_circle_intersection,
+    evaluate_placement,
+    filter_candidates,
+    generate_geometric_candidates,
+    geometric_heuristic,
+    simulate_and_score,
 )
 
 
@@ -26,7 +25,7 @@ class GreedyGardener(Gardener):
     """Greedy planting algorithm with geometric candidate generation and nutrient balancing."""
 
     def __init__(
-        self, garden: Garden, varieties: List[PlantVariety], simulation_turns: Optional[int] = None
+        self, garden: Garden, varieties: list[PlantVariety], simulation_turns: int | None = None
     ):
         super().__init__(garden, varieties)
         self.config = self._load_config()
@@ -43,7 +42,7 @@ class GreedyGardener(Gardener):
         """Load configuration from YAML file."""
         config_path = os.path.join(os.path.dirname(__file__), 'config.yaml')
 
-        with open(config_path, 'r') as f:
+        with open(config_path) as f:
             config = yaml.safe_load(f)
 
         return config
@@ -118,7 +117,7 @@ class GreedyGardener(Gardener):
                 )
 
         if self.config['debug']['verbose']:
-            print(f'\n=== Placement Complete ===')
+            print('\n=== Placement Complete ===')
             print(f'Total plants placed: {len(self.garden.plants)}')
             print(f'Final score: {self.current_score:.4f}')
             # Note: Analysis not shown here - plants haven't grown yet (size=0)
@@ -127,6 +126,7 @@ class GreedyGardener(Gardener):
     def print_final_analysis(self) -> None:
         """Print detailed analysis of the final garden layout."""
         from collections import defaultdict
+
         from core.plants.species import Species
 
         if len(self.garden.plants) == 0:
@@ -185,7 +185,7 @@ class GreedyGardener(Gardener):
                 f'partners=[{interact_str}]'
             )
 
-    def _generate_candidates(self) -> List[Position]:
+    def _generate_candidates(self) -> list[Position]:
         """Generate candidate positions based on current garden state."""
         if len(self.garden.plants) == 0:
             # First plant: use fixed starting point (center of garden)
@@ -265,7 +265,7 @@ class GreedyGardener(Gardener):
 
         return candidates
 
-    def _prune_candidates(self, candidates: List[Position]) -> List[Position]:
+    def _prune_candidates(self, candidates: list[Position]) -> list[Position]:
         """Prune candidates using geometric heuristic."""
         max_candidates = self.config['geometry']['max_candidates']
         representative_variety = self.remaining_varieties[0]
@@ -286,7 +286,7 @@ class GreedyGardener(Gardener):
         scored_candidates.sort(key=lambda x: x[0], reverse=True)
         return [pos for _, pos in scored_candidates[:max_candidates]]
 
-    def _generate_multi_species_candidates(self, variety: PlantVariety) -> List[Position]:
+    def _generate_multi_species_candidates(self, variety: PlantVariety) -> list[Position]:
         """
         Generate candidates at intersection points where plant would interact with 2+ different species.
 
@@ -304,14 +304,12 @@ class GreedyGardener(Gardener):
         candidates = []
 
         # Group plants by species
-        from collections import defaultdict
-
         species_plants = defaultdict(list)
         for plant in self.garden.plants:
             species_plants[plant.variety.species].append(plant)
 
         # Get species different from the new variety
-        different_species = [s for s in species_plants.keys() if s != variety.species]
+        different_species = [s for s in species_plants if s != variety.species]
 
         if len(different_species) < 2:
             # Need at least 2 different species to create multi-species interaction
@@ -412,7 +410,7 @@ class GreedyGardener(Gardener):
 
         return len(interacting_species) >= 2
 
-    def _prioritize_varieties(self) -> List[PlantVariety]:
+    def _prioritize_varieties(self) -> list[PlantVariety]:
         """
         Prioritize varieties based on nutrient balance and interaction potential.
 
@@ -494,7 +492,7 @@ class GreedyGardener(Gardener):
 
         return sorted_varieties
 
-    def _find_best_placement(self, candidates: List[Position]) -> tuple:
+    def _find_best_placement(self, candidates: list[Position]) -> tuple:
         """
         Find the best (variety, position) pair among all candidates and varieties.
 
@@ -549,10 +547,9 @@ class GreedyGardener(Gardener):
                         continue
 
                 # HARD REQUIREMENT: 3rd plant onwards MUST interact with 2+ different species
-                if len(self.garden.plants) >= 2:
-                    if not self._would_interact_with_two_species(variety, position):
-                        penalized_count += 1
-                        continue
+                if len(self.garden.plants) >= 2 and not self._would_interact_with_two_species(variety, position):
+                    penalized_count += 1
+                    continue
 
                 # Evaluate placement with simulation
                 value, delta, reward = evaluate_placement(

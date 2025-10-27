@@ -1,8 +1,7 @@
-from typing import Optional
+
 from core.garden import Garden
 from core.gardener import Gardener
 from core.plants.plant_variety import PlantVariety
-
 from gardeners.group10.greedy_algorithm_with_replacement_1027.gardener import GreedyGardener
 
 
@@ -21,7 +20,7 @@ class Gardener10(Gardener):
     """
 
     def __init__(
-        self, garden: Garden, varieties: list[PlantVariety], simulation_turns: Optional[int] = None
+        self, garden: Garden, varieties: list[PlantVariety], simulation_turns: int | None = None
     ):
         """
         Initialize Gardener10.

@@ -382,10 +382,7 @@ def evaluate_placement(
     new_score = simulate_and_score(test_garden, turns, w_short, w_long)
 
     # Calculate delta
-    if len(garden.plants) > 0:
-        delta = new_score - current_score
-    else:
-        delta = new_score
+    delta = new_score - current_score if len(garden.plants) > 0 else new_score
 
     # Calculate plant reward (new plant's contribution)
     # Note: test_plant in test_garden has been simulated, so it has a size
