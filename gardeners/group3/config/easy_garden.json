@@ -10,7 +10,7 @@
         "G": -0.1,
         "B": -0.1
       },
-      "count": 3
+      "count": 100
     },
     {
       "name": "Generous GERANIUM",
@@ -21,7 +21,7 @@
         "G": 2.0,
         "B": -0.1
       },
-      "count": 3
+      "count": 100
     },
     {
       "name": "Generous BEGONIA",
@@ -32,7 +32,7 @@
         "G": -0.1,
         "B": 2.0
       },
-      "count": 3
+      "count": 100
     }
   ]
 }
