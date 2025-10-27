@@ -6,7 +6,7 @@
       "radius": 3,
       "species": "RHODODENDRON",
       "nutrient_coefficients": {
-        "R": 5.0,
+        "R": 5,
         "G": -2.3,
         "B": -0.8
       },
