@@ -1,0 +1,39 @@
+{
+    "seed": 42,
+    "varieties": [
+      {
+        "name": "Radiant RHODODENDRON",
+        "radius": 1,
+        "species": "RHODODENDRON",
+        "nutrient_coefficients": {
+          "R": 1.6,
+          "G": -0.6,
+          "B": -0.3
+        },
+        "count": 3
+      },
+      {
+        "name": "Polite GERANIUM",
+        "radius": 2,
+        "species": "GERANIUM",
+        "nutrient_coefficients": {
+          "G": 1.2,
+          "R": -0.5,
+          "B": -0.3
+        },
+        "count": 3
+      },
+      {
+        "name": "Brilliant BEGONIA",
+        "radius": 2,
+        "species": "BEGONIA",
+        "nutrient_coefficients": {
+          "B": 2.4,
+          "R": -1.1,
+          "G": -0.7
+        },
+        "count": 3
+      }
+    ]
+  }
+  
