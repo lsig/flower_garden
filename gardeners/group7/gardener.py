@@ -2,28 +2,13 @@ import math
 from collections import defaultdict
 
 from core.gardener import Gardener
-from core.plants.plant_variety import PlantVariety
 from core.plants.species import Species
 from core.point import Position
 
 
 class Gardener7(Gardener):
     def __init__(self, garden, varieties):
-        # Expand varieties if they include a "count" attribute so each plant is its own instance
-        expanded = []
-        for v in varieties:
-            count = getattr(v, 'count', 1)
-            for _ in range(count):
-                expanded.append(
-                    PlantVariety(
-                        name=v.name,
-                        radius=v.radius,
-                        species=v.species,
-                        nutrient_coefficients=dict(v.nutrient_coefficients),
-                    )
-                )
-        # Initialize base class with actual list of plant items
-        super().__init__(garden, expanded)
+        super().__init__(garden, varieties)
 
     def _cooperation_score(self, v):
         # Retrieve R,G,B production/consumption values
