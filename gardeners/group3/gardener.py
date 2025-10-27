@@ -24,7 +24,6 @@ class Gardener3(Gardener):
     MAX_CLUSTERS = 999999
     MAX_TRIAD_PERMUTATIONS = 999999
     MAX_DIAMOND_PERMUTATIONS = 999999
-    MONTE_CARLO_SAMPLES = 100
 
     # Behavior flags
     PREVENT_INTERACTIONS = False
@@ -34,10 +33,8 @@ class Gardener3(Gardener):
 
     def __init__(self, garden: Garden, varieties: list[PlantVariety]):
         super().__init__(garden, varieties)
-        self.garden = garden
         self.width = int(garden.width)
         self.height = int(garden.height)
-        self.varieties = varieties
         self.species = [s.name for s in Species]
 
         self.species_varieties = self._init_species_varieties()
@@ -413,20 +410,6 @@ class Gardener3(Gardener):
         y4 = -math.sqrt(d14**2 - x4**2)
         p4 = Position(offset.x + x4, offset.y + y4)
 
-        # Ensure all coordinates are positive
-        all_points = [p1, p2, p3, p4]
-        min_x = min(p.x for p in all_points)
-        min_y = min(p.y for p in all_points)
-
-        if min_x < 0 or min_y < 0:
-            shift_x = -min_x if min_x < 0 else 0
-            shift_y = -min_y if min_y < 0 else 0
-
-            p1 = Position(p1.x + shift_x, p1.y + shift_y)
-            p2 = Position(p2.x + shift_x, p2.y + shift_y)
-            p3 = Position(p3.x + shift_x, p3.y + shift_y)
-            p4 = Position(p4.x + shift_x, p4.y + shift_y)
-
         return [(variety1, p1), (variety2, p2), (variety3, p3), (variety4, p4)]
 
     def find_triad_coordinates(
@@ -608,7 +591,7 @@ class Gardener3(Gardener):
         used_varieties: set[int],
         total_varieties: int,
         prevent_interactions: bool,
-    ) -> bool:
+    ) -> float | None:
         # Collect all possible placements for this cluster
         possible_placements = []
 
@@ -623,9 +606,15 @@ class Gardener3(Gardener):
                 if self.can_place_cluster_at_anchor(
                     rotated_coordinates, anchor_x, anchor_y, placed_plants, prevent_interactions
                 ):
-                    # Calculate total area if this placement is added
-                    total_area = self.calculate_total_garden_area(
-                        placed_plants, rotated_coordinates, anchor_x, anchor_y
+                    # Calculate area by this clsuter
+                    new_circles = []
+                    for variety, pos in rotated_coordinates:
+                        abs_x = anchor_x + pos.x
+                        abs_y = anchor_y + pos.y
+                        new_circles.append((abs_x, abs_y, variety.radius))
+                    
+                    added_area = self.calculate_added_area(
+                        [(x, y, r) for x, y, r, _ in placed_plants], new_circles
                     )
 
                     possible_placements.append(
@@ -634,18 +623,18 @@ class Gardener3(Gardener):
                             anchor_x,
                             anchor_y,
                             len(rotated_coordinates),
-                            total_area,
+                            added_area,
                         )
                     )
 
-        # If we found valid placements, choose the best one based on total area
+        # If we found valid placements, choose the best one (added least amount of area)
         if possible_placements:
-            # Sort by area
+            # Sort by additonal area added
             possible_placements.sort(key=lambda x: x[4], reverse=False)
             best_placement = possible_placements[0]
 
             # Place the best placement found
-            rotation, x, y, plants, area = best_placement
+            rotation, x, y, plants, added_area_new = best_placement
             self.place_cluster_at_anchor(rotation, x, y, placed_plants)
 
             # Mark all varieties in this cluster as used
@@ -653,9 +642,9 @@ class Gardener3(Gardener):
                 used_varieties.add(id(variety))
 
             print(
-                f'Placed cluster (score: {score:.4f}) at ({x:.1f}, {y:.1f}) - {plants} plants, area: {area:.2f}'
+                f'Placed cluster (score: {score:.4f}) at ({x:.1f}, {y:.1f}) - {plants} plants, area increment: {added_area_new:.2f}'
             )
-            return (x, y)
+            return added_area_new
 
         return None
 
@@ -760,56 +749,56 @@ class Gardener3(Gardener):
 
         return True
 
-    def calculate_total_garden_area(
+    def calculate_added_area(
         self,
-        placed_plants: list[tuple[float, float, float, PlantVariety]],
-        new_cluster_coordinates: list[tuple[PlantVariety, Position]],
-        anchor_x: float,
-        anchor_y: float,
+        existing_circles: list[tuple[float, float, float]],
+        new_circles: list[tuple[float, float, float]],
     ) -> float:
-        all_circles = []
-        for plant_data in placed_plants:
-            x, y, radius, variety = plant_data
-            all_circles.append((x, y, radius))
-
-        # Add new cluster circles
-        for variety, pos in new_cluster_coordinates:
-            abs_x = anchor_x + pos.x
-            abs_y = anchor_y + pos.y
-            all_circles.append((abs_x, abs_y, variety.radius))
-
-        # Calculate union area of all circles
-        return self.calculate_union_area(all_circles)
-
-    def calculate_union_area(
-        self, circles: list[tuple[float, float, float]], samples: int | None = None
-    ) -> float:
-        if not circles:
+        if not new_circles:
             return 0.0
-
-        if samples is None:
-            samples = self.MONTE_CARLO_SAMPLES
-
-        # Sample random points within the garden bounds
-        garden_area = self.garden.width * self.garden.height
-
-        points_in_union = 0
-
-        for _ in range(samples):
-            # Generate random point in garden
-            x = random.uniform(0, self.garden.width)
-            y = random.uniform(0, self.garden.height)
-
-            # Check if point is inside any circle
-            for cx, cy, r in circles:
-                if (x - cx) ** 2 + (y - cy) ** 2 <= r**2:
-                    points_in_union += 1
-                    break
-
-        # Calculate union area as fraction of garden area
-        union_area = (points_in_union / samples) * garden_area
-
-        return union_area
+        
+        # Calculate area of new circles
+        new_area = sum(math.pi * r**2 for _, _, r in new_circles)
+        
+        # Subtract overlaps between new circles and existing circles
+        for x1, y1, r1 in new_circles:
+            for x2, y2, r2 in existing_circles:
+                overlap = self.calculate_circle_overlap(x1, y1, r1, x2, y2, r2)
+                new_area -= overlap
+        
+        # Add back overlaps between new circles (they were subtracted twice)
+        for i in range(len(new_circles)):
+            for j in range(i + 1, len(new_circles)):
+                x1, y1, r1 = new_circles[i]
+                x2, y2, r2 = new_circles[j]
+                overlap = self.calculate_circle_overlap(x1, y1, r1, x2, y2, r2)
+                new_area += overlap
+        
+        return max(0.0, new_area)
+    
+    def calculate_circle_overlap(
+        self, x1: float, y1: float, r1: float, x2: float, y2: float, r2: float
+    ) -> float:
+        # Calculate distance between centers
+        distance = math.sqrt((x2 - x1)**2 + (y2 - y1)**2)
+        
+        # Check if circles don't overlap at all
+        if distance >= r1 + r2:
+            return 0.0
+        
+        # Calculate overlap using the circle-circle intersection formula
+        a = distance
+        R = r1
+        r = r2
+        
+        # Calculate the intersection area
+        term1 = r**2 * math.acos((a**2 + r**2 - R**2) / (2 * a * r))
+        term2 = R**2 * math.acos((a**2 + R**2 - r**2) / (2 * a * R))
+        term3 = 0.5 * math.sqrt((-a + r + R) * (a + r - R) * (a - r + R) * (a + r + R))
+        
+        overlap = term1 + term2 - term3
+        
+        return overlap
 
     def place_cluster_at_anchor(
         self,
