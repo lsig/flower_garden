@@ -1,2 +1,1 @@
 """Greedy Planting Algorithm Implementation."""
-
