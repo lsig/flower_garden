@@ -1,4 +1,6 @@
-# Assuming this import works based on your file structure
+# FIX: Import Set for type hinting
+
+# Assuming these core classes are available in the project structure
 from contextlib import suppress
 
 from core.garden import Garden
@@ -9,7 +11,7 @@ from core.plants.species import Species
 from core.point import Position
 
 
-class Gardener2(Gardener):
+class BalancerGreedy(Gardener):
     STEP = 0.2  # Smaller = better but slower
 
     def __init__(self, garden: Garden, varieties: list[PlantVariety]):
@@ -83,6 +85,9 @@ class Gardener2(Gardener):
     def _get_species_for_most_deficient_nutrient(self) -> set[str]:
         """
         Identifies the species that produces the most deficient micronutrient.
+
+        The 'underrepresented species' is the one that would fix the current
+        limiting factor (the nutrient with the lowest net amount).
         """
         net_nutrients = self._get_current_net_nutrients()
 
@@ -122,7 +127,11 @@ class Gardener2(Gardener):
         self, scored_varieties: list[tuple[float, PlantVariety]], underrepresented_species: set[str]
     ) -> tuple[float, PlantVariety] | None:
         """
-        Selects the single highest-scoring variety that belongs to the "fixing" species.
+        Selects the single highest-scoring variety that belongs to the "fixing" species
+        (the one that produces the most deficient nutrient).
+
+        Note: The logic here assumes 'underrepresented_species' will contain exactly one species
+        based on the _get_species_for_most_deficient_nutrient logic.
         """
         if not scored_varieties or not underrepresented_species:
             return None
@@ -178,9 +187,6 @@ class Gardener2(Gardener):
         plantable_varieties = self._get_sorted_varieties()
         candidate_positions = self._generate_placement_grid()
 
-        # Check if this is the very first plant placement
-        is_first_plant = not self.garden.plants  # 👈 MODIFICATION START
-
         while plantable_varieties:
             # 1. Determine the species needed to fix the nutrient deficiency
             underrepresented_species = self._get_underrepresented_species()
@@ -196,46 +202,26 @@ class Gardener2(Gardener):
                 break
 
             best_score, best_variety = best_variety_tuple
-            best_position = None
 
-            # --- First Plant Logic: Place in the Middle ---
-            if is_first_plant:
-                center_x = self.garden.width / 2
-                center_y = self.garden.height / 2
-                potential_center_position = Position(center_x, center_y)
+            # 3. Find a good position (needs work tbh)
+            best_placement: tuple[Position, int] | None = None
+            max_interactions = -1
 
-                if self.garden.can_place_plant(best_variety, potential_center_position):
-                    best_position = potential_center_position
-                    is_first_plant = False  # Ensure subsequent plants use normal logic
-                else:
-                    # Fallback to normal placement if the center isn't valid for the plant
-                    is_first_plant = False
+            for position in candidate_positions:
+                if not self.garden.can_place_plant(best_variety, position):
+                    continue
 
-            # 3. Find a good position (Normal logic, only runs if not first plant)
-            if best_position is None:
-                best_placement: tuple[Position, int] | None = None
-                max_interactions = -1
+                interactions = self._count_potential_interactions(best_variety, position)
 
-                for position in candidate_positions:
-                    if not self.garden.can_place_plant(best_variety, position):
-                        continue
-
-                    interactions = self._count_potential_interactions(best_variety, position)
-
-                    # Selection Criteria: Maximize interactions
-                    if interactions > max_interactions:
-                        max_interactions = interactions
-                        best_placement = (position, interactions)
-
-                if best_placement:
-                    best_position, _ = best_placement
-                else:
-                    # Could not find a single place to put the highest-priority plant.
-                    break
-            # 👈 MODIFICATION END
+                # Selection Criteria: Maximize interactions (Not ideal but I'm too lazy to implement)
+                if interactions > max_interactions:
+                    max_interactions = interactions
+                    best_placement = (position, interactions)
 
             # 4. Execute the placement
-            if best_position:
+            if best_placement:
+                best_position, _ = best_placement
+
                 plant = self.garden.add_plant(best_variety, best_position)
 
                 if plant is not None:
@@ -245,11 +231,7 @@ class Gardener2(Gardener):
                             plantable_varieties.pop(i)
                             break
                     with suppress(ValueError):
-                        # Remove the position from the candidate grid if it was in there
                         candidate_positions.remove(best_position)
-                else:
-                    # Placement failed (e.g., radius issue)
-                    break
             else:
-                # No valid position found
+                # Could not find a single place to put the highest-priority plant.
                 break
