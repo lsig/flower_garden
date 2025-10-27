@@ -19,6 +19,27 @@ class Gardener8(Gardener):
         for score, r, g, b in triage[:5]:
             print(f"Score: {score:.2f}, R: {r.name} , G: {g.name}, B: {b.name}")
         #TODO: Need a placing function
+        best_score, R, G, B = triage[0]
+
+        # Triangle placement offsets (can be tuned/improved later)
+        dx = dy = 2.0  # meters spacing (valid for radius 1–2)
+        spacing = int(2 * max(R.radius, G.radius, B.radius))  # ensure no same-species overlap
+
+        garden_width = self.garden.width
+        garden_height = self.garden.height
+
+        for x in range(0, int(garden_width), spacing):
+            for y in range(0, int(garden_height), spacing):
+                self.place_plant(R, x, y)
+                if x + dx < garden_width:
+                    self.place_plant(G, x + dx, y)
+                if y + dy < garden_height:
+                    self.place_plant(B, x, y + dy)
+
+    def place_plant(self, variety: PlantVariety, x: float, y: float):
+        """Place plant at position (if within bounds)."""
+        self.garden.add_plant(variety, Position(x, y))
+
 
     def generate_triage(self):
         """Generate all possible RGB triage and score them."""
