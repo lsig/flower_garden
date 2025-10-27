@@ -1,38 +1,39 @@
+
 {
   "seed": 42,
   "varieties": [
     {
-      "name": "Ricola the RHODODENDRON",
-      "radius": 3,
+      "name": "Slow RHODODENDRON",
+      "radius": 1,
       "species": "RHODODENDRON",
       "nutrient_coefficients": {
-        "R": 6,
-        "G": -3.3,
-        "B": -1
+        "R": 0.2,
+        "G": -0.05,
+        "B": -0.05
       },
-      "count": 3
+      "count": 100
     },
     {
-      "name": "Jeremiah the GERANIUM",
+      "name": "Fast GERANIUM",
       "radius": 1,
       "species": "GERANIUM",
       "nutrient_coefficients": {
-        "R": -1,
+        "R": -0.05,
         "G": 2,
-        "B": -0.4
+        "B": -0.05
       },
-      "count": 2
+      "count": 100
     },
     {
-      "name": "Bessie the BEGONIA",
+      "name": "Fast BEGONIA",
       "radius": 1,
       "species": "BEGONIA",
       "nutrient_coefficients": {
-        "R": -0.2,
-        "G": -1,
+        "R": -0.05,
+        "G": -0.05,
         "B": 2
       },
-       "count": 1
+      "count": 100
     }
   ]
 }

@@ -1,0 +1,39 @@
+{
+    "seed": 42,
+    "varieties": [
+      {
+        "name": "Sunny RHODODENDRON",
+        "radius": 1,
+        "species": "RHODODENDRON",
+        "nutrient_coefficients": {
+          "R": 1.6,
+          "G": -0.6,
+          "B": -0.4
+        },
+        "count": 3
+      },
+      {
+        "name": "Breezy GERANIUM",
+        "radius": 1,
+        "species": "GERANIUM",
+        "nutrient_coefficients": {
+          "R": -0.6,
+          "G": 1.6,
+          "B": -0.4
+        },
+        "count": 3
+      },
+      {
+        "name": "Gentle BEGONIA",
+        "radius": 1,
+        "species": "BEGONIA",
+        "nutrient_coefficients": {
+          "R": -0.6,
+          "G": -0.5,
+          "B": 1.5
+        },
+        "count": 3
+      }
+    ]
+  }
+  

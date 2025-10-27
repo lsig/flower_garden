@@ -1,0 +1,38 @@
+{
+  "seed": 42,
+  "varieties": [
+    {
+      "name": "Super RHODODENDRON",
+      "radius": 1,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 1.5,
+        "G": -0.1,
+        "B": -0.1
+      },
+      "count": 100
+    },
+    {
+      "name": "Super GERANIUM",
+      "radius": 1,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.1,
+        "G": 1.5,
+        "B": -0.1
+      },
+      "count": 100
+    },
+    {
+      "name": "Super BEGONIA",
+      "radius": 1,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.1,
+        "G": -0.1,
+        "B": 1.5
+      },
+      "count": 100
+    }
+  ]
+}
