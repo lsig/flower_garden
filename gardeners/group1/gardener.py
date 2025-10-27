@@ -116,8 +116,9 @@ class Gardener1(Gardener):
             best_score = float('-inf')
             best_group = None
 
-            def find_group(idx: int, count: int, current: list[int],
-                        remaining=remaining, group_size=group_size) -> None:
+            def find_group(
+                idx: int, count: int, current: list[int], remaining=remaining, group_size=group_size
+            ) -> None:
                 nonlocal best_score, best_group
 
                 if count == group_size:
