@@ -34,8 +34,12 @@ class GardenVisualizer:
 
         self.padding = 80
         info_pane_width = 220
-        self.scale_x = (width - self.padding * 2 - info_pane_width) / garden.width
-        self.scale_y = (height - self.padding * 2) / garden.height
+        scale = min(
+            (width - self.padding * 2 - info_pane_width) / garden.width,
+            (height - self.padding * 2) / garden.height,
+        )
+        self.scale_x = scale
+        self.scale_y = scale
         self.offset_x = self.padding
         self.offset_y = self.padding
 
