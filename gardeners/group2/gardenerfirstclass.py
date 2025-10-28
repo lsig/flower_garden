@@ -155,16 +155,12 @@ class Gardener2(Gardener):
 
         return positions
 
-    def _count_potential_interactions_simple(self, variety: PlantVariety, position: Position) -> int:
-        """
-        Calculates the total number of inter-species interactions (Simple Max Count).
-        This is the method for the early/dense phase.
-        """
+    def _count_potential_interactions(self, variety: PlantVariety, position: Position) -> int:
+        """Counts # interaction"""
         count = 0
         new_radius = variety.radius
 
         for existing_plant in self.garden.plants:
-            # Only count interactions with DIFFERENT species
             if existing_plant.variety.species == variety.species:
                 continue
 
@@ -176,44 +172,6 @@ class Gardener2(Gardener):
 
         return count
 
-    def _count_potential_interactions_strict_balanced(self, variety: PlantVariety, position: Position) -> int:
-        """
-        Calculates the total number of inter-species interactions, returning 0 unless 
-        interactions occur with *both* complementary species.
-        This is the method for the later phase.
-        """
-        total_interaction_count = 0
-        interacting_species = set()
-        new_radius = variety.radius
-
-        for existing_plant in self.garden.plants:
-            # 1. Check if the existing plant is a different species (inter-species interaction)
-            if existing_plant.variety.species == variety.species:
-                continue
-
-            distance = self.garden._calculate_distance(position, existing_plant.position)
-            interaction_distance = new_radius + existing_plant.variety.radius
-
-            # 2. Check for root system overlap
-            if distance < interaction_distance:
-                total_interaction_count += 1
-                interacting_species.add(existing_plant.variety.species)
-
-        # 3. Final Check: Determine if *both* complementary species are present.
-        
-        # All three species
-        all_species = {Species.RHODODENDRON, Species.GERANIUM, Species.BEGONIA}
-        
-        # The two species that should be interacting with the current variety
-        complementary_species = all_species - {variety.species}
-        
-        # Check if all required complementary species are in the set of interacting species
-        if interacting_species.issuperset(complementary_species):
-            return total_interaction_count
-        else:
-            # If the plant interacts with only one or none of the complementary species, return 0.
-            return 0
-
     # --- Main Cultivation Method ---
 
     def cultivate_garden(self) -> None:
@@ -221,20 +179,9 @@ class Gardener2(Gardener):
         candidate_positions = self._generate_placement_grid()
 
         # Check if this is the very first plant placement
-        is_first_plant = not self.garden.plants
+        is_first_plant = not self.garden.plants  # 👈 MODIFICATION START
 
         while plantable_varieties:
-            current_plant_count = len(self.garden.plants)
-            
-            # len(self.varieties) < 150 --> balanced
-            # 200 --> simple
-            if False:
-                print("simple")
-                interaction_func = self._count_potential_interactions_simple
-            else:
-                print("balanaced")
-                interaction_func = self._count_potential_interactions_strict_balanced
-
             # 1. Determine the species needed to fix the nutrient deficiency
             underrepresented_species = self._get_underrepresented_species()
             if not underrepresented_species:
@@ -250,7 +197,6 @@ class Gardener2(Gardener):
 
             best_score, best_variety = best_variety_tuple
             best_position = None
-            max_interactions = -1
 
             # --- First Plant Logic: Place in the Middle ---
             if is_first_plant:
@@ -260,20 +206,21 @@ class Gardener2(Gardener):
 
                 if self.garden.can_place_plant(best_variety, potential_center_position):
                     best_position = potential_center_position
-                    is_first_plant = False 
+                    is_first_plant = False  # Ensure subsequent plants use normal logic
                 else:
+                    # Fallback to normal placement if the center isn't valid for the plant
                     is_first_plant = False
 
-            # 3. Find a good position (Normal logic, runs if not first plant)
+            # 3. Find a good position (Normal logic, only runs if not first plant)
             if best_position is None:
                 best_placement: tuple[Position, int] | None = None
+                max_interactions = -1
 
                 for position in candidate_positions:
                     if not self.garden.can_place_plant(best_variety, position):
                         continue
-                    
-                    # Use the dynamically selected function
-                    interactions = interaction_func(best_variety, position)
+
+                    interactions = self._count_potential_interactions(best_variety, position)
 
                     # Selection Criteria: Maximize interactions
                     if interactions > max_interactions:
@@ -285,6 +232,7 @@ class Gardener2(Gardener):
                 else:
                     # Could not find a single place to put the highest-priority plant.
                     break
+            # 👈 MODIFICATION END
 
             # 4. Execute the placement
             if best_position:
@@ -302,3 +250,6 @@ class Gardener2(Gardener):
                 else:
                     # Placement failed (e.g., radius issue)
                     break
+            else:
+                # No valid position found
+                break
