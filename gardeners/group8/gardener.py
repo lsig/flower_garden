@@ -1,5 +1,4 @@
 import math
-
 from core.garden import Garden
 from core.gardener import Gardener
 from core.micronutrients import Micronutrient
@@ -9,172 +8,180 @@ from core.point import Position
 
 
 class Gardener8(Gardener):
-    """Repeats best scoring RGB triad, places leftovers if species counts are imbalanced."""
-
     def __init__(self, garden: Garden, varieties: list[PlantVariety]):
         super().__init__(garden, varieties)
 
     def cultivate_garden(self) -> None:
-        # divide varieties by species
-        rhods = [v for v in self.varieties if v.species == Species.RHODODENDRON]
-        gers = [v for v in self.varieties if v.species == Species.GERANIUM]
-        begs = [v for v in self.varieties if v.species == Species.BEGONIA]
+        """Separate varieties by species, sort by quality, and place them in the garden."""
+        #separate varieties by species
+        rhodos = [v for v in self.varieties if v.species == Species.RHODODENDRON]
+        geraniums = [v for v in self.varieties if v.species == Species.GERANIUM]
+        begonias = [v for v in self.varieties if v.species == Species.BEGONIA]
 
-        if not (rhods and gers and begs):
-            # if no full triads possible, just place everything in a grid
-            self.place_leftovers(self.varieties)
-            return
+        # sort each species by radius (smallest first), then by score (highest first)
+        for species_list in [rhodos, geraniums, begonias]:
+            species_list.sort(key=lambda v: (v.radius, -self.score_variety(v)))
 
-        # generate all triads and sort by score
-        triage = self.generate_triage()
-        print('Top 5 triage scores and combinations:')
-        for score, r, g, b in triage[:5]:
-            print(f'Score: {score:.2f}, R: {r.name}, G: {g.name}, B: {b.name}')
+        # place plants in interlocking triangular groups
+        self.place_plants(rhodos, geraniums, begonias)
 
-        # select the best triad
-        _, R, G, B = triage[0]
+    def score_variety(self, variety: PlantVariety) -> float:
+        """
+        Score variety by nutrient efficiency and spatial efficiency.
 
-        # set up spacing for triangular placement
-        garden_w, garden_h = self.garden.width, self.garden.height
+        Formula: (own_production - other_consumption) / radius²
+        where own_production is the plant's production of its species' nutrient,
+        and other_consumption is the absolute value of consumption of other nutrients.
+        """
+        coeffs = variety.nutrient_coefficients
 
-        # making equilateral triangles, in a lattice of sorts
-        spacing = 2 * max(
-            R.radius, G.radius, B.radius
-        )  # horizontal space btwn plants along base of triangle
-        # def overly conservative, tweak later. but no risk of root overlap btwn nearby same-species plants
+        #get the production of the plant's own nutrient type and consumption of others
+        if variety.species == Species.RHODODENDRON:
+            own_production = coeffs.get(Micronutrient.R, 0)
+            other_consumption = abs(coeffs.get(Micronutrient.G, 0) + coeffs.get(Micronutrient.B, 0))
+        elif variety.species == Species.GERANIUM:
+            own_production = coeffs.get(Micronutrient.G, 0)
+            other_consumption = abs(coeffs.get(Micronutrient.R, 0) + coeffs.get(Micronutrient.B, 0))
+        else:  #BEGONIA
+            own_production = coeffs.get(Micronutrient.B, 0)
+            other_consumption = abs(coeffs.get(Micronutrient.R, 0) + coeffs.get(Micronutrient.G, 0))
 
-        dx = spacing / 2  # horizontal offset for plants in next row
-        dy = spacing * math.sin(
-            math.pi / 3
-        )  # height of the triangle - this becomes vertical offset to next row
+        #score balances own production vs other consumption, penalized by radius
+        return (own_production - other_consumption) / (variety.radius ** 2)
 
-        # just starting coords for placement
-        x = 0.0
-        y = 0.0
-        row_shift = False  # tells whether this row should have the horizontal offset or not
-        # (since we're doing a lattice)
+    def place_plants(self, rhodos, geraniums, begonias):
+        """
+        Place all plants starting from an initial triad.
 
-        # track remaining plants of each species
-        remaining = {
-            Species.RHODODENDRON: rhods[:],
-            Species.GERANIUM: gers[:],
-            Species.BEGONIA: begs[:],
+        First places one rhododendron, geranium, and begonia in a triangular formation.
+        Then iteratively places remaining plants by finding the best variety-position
+        combination that maximizes score while maintaining 2+ different-species neighbors.
+        """
+        # this initial placement can be played around with
+        # place initial triad in bottom-left quadrant
+        start_x = self.garden.width / 4
+        start_y = self.garden.height / 4
+
+        r1, g1, b1 = rhodos[0], geraniums[0], begonias[0]
+
+        min_dist = min(r1.radius + g1.radius, r1.radius + b1.radius, g1.radius + b1.radius)
+        side = min_dist * 0.85
+        height = side * math.sqrt(3) / 2
+
+        p_r = Position(start_x, start_y - height / 3)
+        p_g = Position(start_x - side / 2, start_y + 2 * height / 3)
+        p_b = Position(start_x + side / 2, start_y + 2 * height / 3)
+
+        #place the initial triad
+        self.garden.add_plant(r1, p_r)
+        self.garden.add_plant(g1, p_g)
+        self.garden.add_plant(b1, p_b)
+
+        indices = {'R': 1, 'G': 1, 'B': 1}
+        species_data = {
+            'R': (rhodos, [Species.GERANIUM, Species.BEGONIA]),
+            'G': (geraniums, [Species.RHODODENDRON, Species.BEGONIA]),
+            'B': (begonias, [Species.RHODODENDRON, Species.GERANIUM])
         }
 
-        # Place triads across the garden
-        while y < garden_h:  # loop vertically through rows
-            x = (
-                0.0 if not row_shift else dx
-            )  # does the horizontal shift for the row depending on the flag
-            while x < garden_w:  # loop horizontally through the row
-                triad_plants = []
-                for sp in [
-                    Species.RHODODENDRON,
-                    Species.GERANIUM,
-                    Species.BEGONIA,
-                ]:  # form the triad!
-                    if remaining[sp]:
-                        triad_plants.append(remaining[sp].pop(0))
-                    else:
-                        triad_plants.append(
-                            None
-                        )  # but if a species is missing, just add None to the triad
+        # iteratively place remaining plants until no more can be placed
+        stuck_counter = 0
+        while stuck_counter < 50:
+            #check if all species exhausted
+            if all(indices[s] >= len(species_data[s][0]) for s in indices):
+                break
 
-                if any(triad_plants):  # if the triad has a plant, place it
-                    self.place_triad(
-                        *triad_plants, x, y
-                    )  # at the right horizontal / vertical offset
+            best_placement = None
+            best_score = -1
 
-                x += spacing * 1.5  # to make sure triangles don't overlap
-            y += dy  # increment by the vertical offset we calculated
-            row_shift = not row_shift  # toggle whether to shift the next row or not
+            # Evaluate ALL remaining varieties from all species
+            for species_type, (varieties, required_species) in species_data.items():
+                # Get the current variety index for this species type
+                idx = indices[species_type]
 
-    def generate_triage(self):
-        """Generate all possible RGB triage and score them."""
-        species_map = {Species.RHODODENDRON: [], Species.GERANIUM: [], Species.BEGONIA: []}
+                # Check all remaining varieties for this species
+                for i in range(idx, len(varieties)):
+                    variety = varieties[i]
 
-        for variety in self.varieties:
-            if variety.species in species_map:
-                species_map[variety.species].append(variety)
+                    # Find a position that maximizes neighbor diversity
+                    pos = self.find_position_with_diverse_neighbors(variety, required_species)
 
-        triage = [
-            (self.score_triage(r, g, b), r, g, b)
-            for r in species_map[Species.RHODODENDRON]
-            for g in species_map[Species.GERANIUM]
-            for b in species_map[Species.BEGONIA]
-        ]
+                    # Verify the position is valid and the plant can be placed there
+                    if pos and self.garden.can_place_plant(variety, pos):
+                        # Calculate how valuable this placement would be
+                        placement_score = self.score_variety(variety)
 
-        return sorted(triage, key=lambda x: x[0], reverse=True)
+                        # Keep track of the best placement found so far
+                        if placement_score > best_score:
+                            best_score = placement_score
+                            best_placement = (species_type, variety, pos, i)
 
-    def place_triad(self, r, g, b, x, y):
-        """Place triad as an equilateral triangle, skipping any None plants."""
-        # makes sure plants aren't closer than their neighbors than their radius
-        # default tho just in case all the plants are none
-        spacing = 2 * max((p.radius for p in [r, g, b] if p), default=1)
+            #place the best variety-position combination
+            if best_placement:
+                species_type, variety, pos, variety_idx = best_placement
+                self.garden.add_plant(variety, pos)
+                # Remove the placed variety from the list to avoid re-evaluating it
+                species_data[species_type][0].pop(variety_idx)
+                stuck_counter = 0
+            else:
+                stuck_counter += 1
 
-        dx = spacing / 2  # horizontal offset for plants in next row
-        dy = spacing * math.sin(
-            math.pi / 3
-        )  # height of the triangle - this becomes vertical offset to next row
+#this can def be imporved no need for fix distance probably and angles
+    def find_position_with_diverse_neighbors(self, variety, required_species):
+        """
+        Find a valid position for a variety that ensures 2+ different-species neighbors.
 
-        # plant r goes at 0,0, g is above, and b is horizontally aligned with r. equilateral triangle
-        offsets = [(0, 0), (dx, dy / 2), (2 * dx, 0)]
-        plants = [r, g, b]
+        Searches around existing plants at different distances (75%, 85% of combined radii)
+        and angles (every 30 degrees). Scores positions by diversity and tightness.
+        Returns the best position found, or None if no valid position exists.
+        """
+        if not self.garden.plants:
+            return None
 
-        for plant, (ox, oy) in zip(
-            plants, offsets, strict=False
-        ):  # loop over plants and their offsets
-            if plant is None:  # in case triad has missing species
+        best_pos = None
+        best_score = -1
+
+        #try positions around each existing plant
+        for anchor in self.garden.plants:
+            if anchor.variety.species == variety.species:
                 continue
-            pos = Position(x + ox, y + oy)  # calculate position using offets
-            if self.garden.can_place_plant(plant, pos):  # validate placement
-                self.garden.add_plant(plant, pos)  # add plant
 
-    def place_leftovers(self, plants):
-        """Place leftover plants in a simple grid."""
-        if not plants:
-            return
+            # test positions at different distances and angles
+            for distance_mult in [0.75, 0.85]:
+                dist = (variety.radius + anchor.variety.radius) * distance_mult
 
-        # starting position
-        x = 0.0
-        y = 0.0
-        row_shift = False
-        garden_w, _ = self.garden.width, self.garden.height
+                for angle in range(0, 360, 30):
+                    x = anchor.position.x + dist * math.cos(math.radians(angle))
+                    y = anchor.position.y + dist * math.sin(math.radians(angle))
 
-        for plant in plants:
-            spacing = 2 * plant.radius
-            pos = Position(x, y)
-            if self.garden.can_place_plant(plant, pos):
-                self.garden.add_plant(plant, pos)
+                    if not (0 <= x <= self.garden.width and 0 <= y <= self.garden.height):
+                        continue
 
-            # same spacing logic, just one by one (no triad)
-            x += spacing * 1.5
-            if x + spacing > garden_w:
-                x = 0.0 if not row_shift else spacing / 2
-                y += spacing * math.sin(math.pi / 3)
-                row_shift = not row_shift
+                    # check validity and count diverse neighbors
+                    neighbor_species = set()
+                    valid = True
 
-    def score_triage(self, r, g, b):
-        """Score a cluster by growth rate x nutrient sustainability."""
-        # production of nutrients
-        prod = {
-            Micronutrient.R: r.nutrient_coefficients[Micronutrient.R],
-            Micronutrient.G: g.nutrient_coefficients[Micronutrient.G],
-            Micronutrient.B: b.nutrient_coefficients[Micronutrient.B],
-        }
-        cons = {
-            Micronutrient.R: abs(g.nutrient_coefficients[Micronutrient.R])
-            + abs(b.nutrient_coefficients[Micronutrient.R]),
-            Micronutrient.G: abs(r.nutrient_coefficients[Micronutrient.G])
-            + abs(b.nutrient_coefficients[Micronutrient.G]),
-            Micronutrient.B: abs(r.nutrient_coefficients[Micronutrient.B])
-            + abs(g.nutrient_coefficients[Micronutrient.B]),
-        }
+                    for plant in self.garden.plants:
+                        d = math.sqrt((x - plant.position.x)**2 + (y - plant.position.y)**2)
 
-        # nutrient score is the minimum surplus across all nutrients
-        nutrient_score = min(prod[n] - cons[n] for n in prod)
+                        if d < max(variety.radius, plant.variety.radius):
+                            valid = False
+                            break
 
-        # growth rate is the sum of the radii
-        growth_rate = r.radius + g.radius + b.radius
+                        if d < variety.radius + plant.variety.radius:
+                            if plant.variety.species == variety.species:
+                                valid = False
+                                break
+                            neighbor_species.add(plant.variety.species)
 
-        return nutrient_score * 0.8 + growth_rate * 0.2
+                    #require 2+ different species neighbors
+                    if valid and len(neighbor_species) >= 2:
+                        score = len(neighbor_species) * 10 + (1.0 - distance_mult) * 5
+                        if score > best_score:
+                            best_score = score
+                            best_pos = Position(x, y)
+
+        return best_pos
+
+
+
