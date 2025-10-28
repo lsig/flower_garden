@@ -9,8 +9,12 @@
 # 
 # Configuration: Edit variables below
 
-# uv run python main.py --json_path /path/to/my.json --turns 200 --gardener gr
-# uv run python main.py --json_path gardeners/group10/config/test.json --turns 100 --gardener g10 --gui
+# uv run python main.py --json_path gardeners/group10/config/test.json --turns 1000 --gardener g10 --gui
+# uv run python main.py --json_path gardeners/group10/config/easy.json --turns 1000 --gardener g10 --gui
+
+# uv run python main.py --random  --turns 1000 --gardener g10 --gui  --count 100
+
+# uv run ruff format --check --diff
 
 cd "$(dirname "$0")/../.."
 

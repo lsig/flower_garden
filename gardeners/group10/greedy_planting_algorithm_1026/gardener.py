@@ -84,9 +84,15 @@ class GreedyGardener(Gardener):
             # Find best (variety, position) pair
             best_value, best_variety, best_position = self._find_best_placement(candidates)
 
-            # Check stopping criterion
+            # Check if no valid placement found
+            if best_variety is None or best_position is None:
+                if self.config['debug']['verbose']:
+                    print('No valid placement found. Stopping.')
+                break
+
+            # Check stopping criterion (but must place at least 3 plants)
             epsilon = self.config['placement']['epsilon']
-            if best_value <= epsilon:
+            if len(self.garden.plants) >= 3 and best_value <= epsilon:
                 if self.config['debug']['verbose']:
                     print(f'Best value {best_value:.4f} <= epsilon {epsilon}. Stopping.')
                 break
@@ -417,44 +423,38 @@ class GreedyGardener(Gardener):
         Returns:
             List of varieties sorted by priority (highest priority first)
         """
-        if len(self.garden.plants) == 0:
-            # First plant: prioritize largest radius
-            # Sort by radius (larger first), then by species for tie-breaking
-            sorted_varieties = sorted(
-                self.remaining_varieties, key=lambda v: (v.radius, v.species.value), reverse=True
-            )
-            return sorted_varieties
+        # For first 3 plants: select representative from each species, then sort by species descending
+        if len(self.garden.plants) < 3:
+            from collections import defaultdict
 
-        # Special case: 2nd plant - prioritize larger radius
-        if len(self.garden.plants) == 1:
-            # Must be different species from first plant
+            # Determine which species are available
             existing_species = {p.variety.species for p in self.garden.plants}
             available_varieties = [
                 v for v in self.remaining_varieties if v.species not in existing_species
             ]
 
-            # Sort by radius (larger first), then by species for tie-breaking
-            sorted_varieties = sorted(
-                available_varieties, key=lambda v: (v.radius, v.species.value), reverse=True
-            )
+            # Group by species
+            species_groups = defaultdict(list)
+            for v in available_varieties:
+                species_groups[v.species].append(v)
 
-            return sorted_varieties
+            # Select representative from each species: smallest radius, highest production
+            representatives = []
+            for _species, varieties in species_groups.items():
 
-        # Special case: 3rd plant - prioritize smaller radius
-        if len(self.garden.plants) == 2:
-            # Must be different species from existing plants
-            existing_species = {p.variety.species for p in self.garden.plants}
-            available_varieties = [
-                v for v in self.remaining_varieties if v.species not in existing_species
-            ]
+                def rep_key(v):
+                    overall_prod = sum(c for c in v.nutrient_coefficients.values() if c > 0)
+                    return (v.radius, -overall_prod)
 
-            # Sort by radius (smaller first), then by species for tie-breaking
-            sorted_varieties = sorted(
-                available_varieties,
-                key=lambda v: (v.radius, v.species.value),
-                reverse=False,  # Ascending: smaller radius first
-            )
+                rep = min(varieties, key=rep_key)
+                representatives.append(rep)
 
+            # Sort representatives by radius descending (largest radius first), then by production
+            def sort_key(v):
+                overall_prod = sum(c for c in v.nutrient_coefficients.values() if c > 0)
+                return (-v.radius, -overall_prod, -v.species.value)
+
+            sorted_varieties = sorted(representatives, key=sort_key)
             return sorted_varieties
 
         # Get current nutrient balance
@@ -506,33 +506,29 @@ class GreedyGardener(Gardener):
         # Get prioritized varieties
         prioritized_varieties = self._prioritize_varieties()
 
-        # Group varieties by species - only evaluate one representative per species
-        # This avoids redundant evaluations (e.g., 10 identical Rhododendrons)
-        species_representatives = {}
-        species_to_varieties = {}  # Map to get back to actual variety instances
-
-        for variety in prioritized_varieties:
-            if variety.species not in species_representatives:
-                species_representatives[variety.species] = variety
-                species_to_varieties[variety.species] = []
-            species_to_varieties[variety.species].append(variety)
-
-        representative_varieties = list(species_representatives.values())
+        # For first 3 plants: force use the first prioritized variety only
+        # For 4th onwards: evaluate all remaining varieties (to maximize placement options)
+        if len(self.garden.plants) < 3:
+            varieties_to_evaluate = [prioritized_varieties[0]] if prioritized_varieties else []
+        else:
+            # Evaluate all remaining varieties to find valid placements
+            # Different positions may require different radius plants for 2-species interaction
+            varieties_to_evaluate = prioritized_varieties
 
         if self.config['debug']['verbose']:
-            total_evaluations = len(candidates) * len(representative_varieties)
+            total_evaluations = len(candidates) * len(varieties_to_evaluate)
             print(
-                f'  Eval: {len(candidates)} pos × {len(representative_varieties)} species = {total_evaluations} combos',
+                f'  Eval: {len(candidates)} pos × {len(varieties_to_evaluate)} varieties = {total_evaluations} combos',
                 end='',
             )
 
-        # Evaluate each candidate position with each species representative
+        # Evaluate each candidate position with each variety
         eval_count = 0
-        total_evaluations = len(candidates) * len(representative_varieties)
+        total_evaluations = len(candidates) * len(varieties_to_evaluate)
         penalized_count = 0
 
         for position in candidates:
-            for idx, variety in enumerate(representative_varieties):
+            for idx, variety in enumerate(varieties_to_evaluate):
                 eval_count += 1
 
                 # Check if can place
@@ -565,35 +561,19 @@ class GreedyGardener(Gardener):
                     self.current_score,
                 )
 
-                # Add priority bonus to encourage nutrient balance
-                priority_bonus = self.config['placement'].get('nutrient_bonus', 2.0)
-                priority_rank = len(prioritized_varieties) - idx
-                priority_weight = priority_rank / len(prioritized_varieties)
-
+                # Add priority bonus to encourage nutrient balance (4th plant onwards)
                 bonus = 0.0
+                if len(self.garden.plants) >= 3:
+                    priority_bonus = self.config['placement'].get('nutrient_bonus', 2.0)
+                    priority_rank = len(prioritized_varieties) - idx
+                    priority_weight = priority_rank / len(prioritized_varieties)
 
-                # Special cases for first 3 plants: radius-based selection
-                if len(self.garden.plants) == 0:
-                    # 1st plant: bonus for larger radius
-                    radius_bonus = variety.radius * 10.0
-                    bonus += radius_bonus
-                elif len(self.garden.plants) == 1:
-                    # 2nd plant: bonus for larger radius (among remaining different species)
-                    radius_bonus = variety.radius * 10.0
-                    bonus += radius_bonus
-                elif len(self.garden.plants) == 2:
-                    # 3rd plant: bonus for smaller radius (among remaining different species)
-                    # Negative bonus = penalty for large radius
-                    radius_bonus = (4 - variety.radius) * 10.0  # Smaller radius gets higher bonus
-                    bonus += radius_bonus
-                elif len(self.garden.plants) > 2:
-                    # Regular nutrient balance bonus for 4th plant onwards
                     totals = self._get_nutrient_balance()
                     max_total = max(totals.values())
                     min_total = min(totals.values())
                     imbalance = max_total - min_total
 
-                    bonus += priority_bonus * priority_weight * (imbalance / (max_total + 1.0))
+                    bonus = priority_bonus * priority_weight * (imbalance / (max_total + 1.0))
 
                 value_with_bonus = value + bonus
 
@@ -601,14 +581,6 @@ class GreedyGardener(Gardener):
                     best_value = value_with_bonus
                     best_variety = variety
                     best_position = position
-
-        # Map representative back to actual variety instance from remaining_varieties
-        # (Pick the first available variety of that species)
-        if best_variety is not None:
-            for var in self.remaining_varieties:
-                if var.species == best_variety.species:
-                    best_variety = var
-                    break
 
         # Print compact summary
         if self.config['debug']['verbose']:

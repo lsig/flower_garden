@@ -63,6 +63,14 @@ def simulate_and_score(
     return total_growth / len(test_garden.plants)
 
 
+def simulate_total_growth(garden: Garden, turns: int) -> float:
+    """Run a simulation and return the total growth after ``turns``."""
+    garden_copy = copy_garden(garden)
+    engine = Engine(garden_copy)
+    engine.run_simulation(turns)
+    return sum(plant.size for plant in garden_copy.plants)
+
+
 def copy_garden(garden: Garden) -> Garden:
     """
     Create a deep copy of the garden with all plants.
@@ -354,19 +362,26 @@ def evaluate_placement(
     w_short: float,
     w_long: float,
     current_score: float,
+    baseline_growth: float | None = None,
+    area_power: float = 2.0,
 ) -> tuple[float, float, float]:
     """
     Evaluate placing a variety at a position.
+
+    Uses growth-based scoring normalized by effective area.
+    Effective area = circle area - weighted deductions (intersection + boundary).
 
     Args:
         garden: Current garden
         variety: Variety to place
         position: Position to place at
         turns: Simulation turns
-        beta: Plant reward weight
+        beta: Unused (kept for compatibility)
         w_short: Short-term weight
         w_long: Long-term weight
-        current_score: Current garden score
+        current_score: Unused (kept for compatibility)
+        baseline_growth: Optional baseline growth to avoid recalculation
+        area_power: Power for circle area calculation (default 2.0)
 
     Returns:
         Tuple of (total_value, delta_score, plant_reward)
@@ -378,22 +393,198 @@ def evaluate_placement(
     if test_plant is None:
         return float('-inf'), 0.0, 0.0
 
-    # Calculate new score
-    new_score = simulate_and_score(test_garden, turns, w_short, w_long)
+    # Calculate effective area with configurable power and radius-based weighting
+    effective_area = calculate_effective_area(garden, variety, position, area_power)
 
-    # Calculate delta
-    delta = new_score - current_score if len(garden.plants) > 0 else new_score
+    # Run simulation to get growth
+    if baseline_growth is None:
+        old_growth = simulate_total_growth(garden, turns) if len(garden.plants) > 0 else 0.0
+    else:
+        old_growth = baseline_growth
 
-    # Calculate plant reward (new plant's contribution)
-    # Note: test_plant in test_garden has been simulated, so it has a size
-    new_plant_growth = 0.0
-    for plant in test_garden.plants:
-        if id(plant.variety) == id(variety):
-            new_plant_growth = plant.size
-            break
+    # Simulate new garden
+    new_engine = Engine(test_garden)
+    new_engine.run_simulation(turns)
+    new_growth = sum(plant.size for plant in test_garden.plants)
 
-    plant_reward = beta * (new_plant_growth / len(test_garden.plants))
+    # Calculate score: growth delta per unit effective area
+    growth_delta = new_growth - old_growth
+    score = growth_delta / effective_area if effective_area > 0 else growth_delta
 
-    total_value = delta + plant_reward
+    return score, growth_delta, 0.0
 
-    return total_value, delta, plant_reward
+
+def calculate_intersection_area(garden: Garden, variety: PlantVariety, position: Position) -> float:
+    """
+    Calculate total intersection area between a variety at position
+    and all existing plants in the garden.
+
+    Uses geometric lens formula for precise circle-circle intersection calculation.
+
+    Args:
+        garden: Current garden with existing plants
+        variety: Variety to be placed
+        position: Position where variety would be placed
+
+    Returns:
+        Total intersection area in square units
+    """
+    import math
+
+    total_intersection = 0.0
+    radius = variety.radius
+
+    for plant in garden.plants:
+        # Calculate distance between centers
+        dx = position.x - plant.position.x
+        dy = position.y - plant.position.y
+        dist = math.sqrt(dx * dx + dy * dy)
+
+        r1 = radius
+        r2 = plant.variety.radius
+
+        # Check if circles intersect
+        if dist >= r1 + r2:
+            # No intersection
+            continue
+        elif dist <= abs(r1 - r2):
+            # One circle inside the other - intersection is the smaller circle
+            smaller_r = min(r1, r2)
+            total_intersection += math.pi * smaller_r * smaller_r
+        else:
+            # Partial intersection - use lens formula
+            # Area = r1^2 * arccos((d^2 + r1^2 - r2^2)/(2*d*r1))
+            #      + r2^2 * arccos((d^2 + r2^2 - r1^2)/(2*d*r2))
+            #      - 0.5 * sqrt((r1+r2-d)*(r1-r2+d)*(-r1+r2+d)*(r1+r2+d))
+            d = dist
+            term1 = r1 * r1 * math.acos((d * d + r1 * r1 - r2 * r2) / (2 * d * r1))
+            term2 = r2 * r2 * math.acos((d * d + r2 * r2 - r1 * r1) / (2 * d * r2))
+            term3 = 0.5 * math.sqrt((r1 + r2 - d) * (r1 - r2 + d) * (-r1 + r2 + d) * (r1 + r2 + d))
+            intersection_area = term1 + term2 - term3
+            total_intersection += intersection_area
+
+    return max(total_intersection, 0.01)  # Avoid division by zero
+
+
+def calculate_effective_area(
+    garden: Garden, variety: PlantVariety, position: Position, area_power: float = 2.0
+) -> float:
+    """
+    Calculate effective area occupied by the new plant.
+
+    Effective area = circle area - weighted deductions.
+    Uses flexible power for circle area and radius-based weighting for deductions.
+
+    Args:
+        garden: Current garden with existing plants
+        variety: Variety to be placed
+        position: Position where variety would be placed
+        area_power: Power for circle area calculation (default 2.0 for πr²)
+
+    Returns:
+        Effective area in square units
+    """
+    import math
+
+    radius = variety.radius
+
+    # Flexible circle area: π × r^area_power
+    circle_area = math.pi * (radius**area_power)
+
+    # Calculate total intersection area with existing plants
+    total_intersection = calculate_intersection_area(garden, variety, position)
+
+    # Calculate area outside garden boundary
+    area_outside_boundary = calculate_area_outside_boundary(garden, position, radius)
+
+    # Radius-based weight for deductions: r=1 → 0.5, r=2 → 1.0, r=3 → 1.5
+    deduction_weight = 0.5 * radius
+
+    # Weighted deductions
+    weighted_deduction = (total_intersection + area_outside_boundary) * deduction_weight
+
+    # Effective area = circle area - weighted deductions
+    # But don't let it go below a small positive value to avoid division issues
+    effective_area = circle_area - weighted_deduction
+    effective_area = max(effective_area, circle_area * 0.1)  # At least 10% of circle area
+
+    return effective_area
+
+
+def calculate_area_outside_boundary(garden: Garden, position: Position, radius: float) -> float:
+    """
+    Calculate the area of a circle that extends outside the garden boundary.
+
+    Uses analytical formulas for circle-rectangle intersection.
+
+    Args:
+        garden: Garden with boundary [0, width] × [0, height]
+        position: Center of the circle
+        radius: Radius of the circle
+
+    Returns:
+        Area outside the boundary in square units
+    """
+    import math
+
+    # Garden boundaries
+    x_min, x_max = 0.0, float(garden.width)
+    y_min, y_max = 0.0, float(garden.height)
+
+    cx, cy = position.x, position.y
+    r = radius
+
+    # Check if circle is completely inside
+    if cx - r >= x_min and cx + r <= x_max and cy - r >= y_min and cy + r <= y_max:
+        return 0.0
+
+    # Calculate area outside boundary using circular segment formula
+    area_outside = 0.0
+
+    # Check each boundary
+    # Left boundary (x = 0)
+    if cx - r < x_min:
+        d = x_min - cx  # Distance from center to boundary
+        if d < r:
+            # Circular segment area = r² × arccos(d/r) - d × sqrt(r² - d²)
+            area_outside += r * r * math.acos(d / r) - d * math.sqrt(r * r - d * d)
+
+    # Right boundary (x = width)
+    if cx + r > x_max:
+        d = cx - x_max  # Distance from center to boundary
+        if d < r:
+            area_outside += r * r * math.acos(d / r) - d * math.sqrt(r * r - d * d)
+
+    # Bottom boundary (y = 0)
+    if cy - r < y_min:
+        d = y_min - cy
+        if d < r:
+            area_outside += r * r * math.acos(d / r) - d * math.sqrt(r * r - d * d)
+
+    # Top boundary (y = height)
+    if cy + r > y_max:
+        d = cy - y_max
+        if d < r:
+            area_outside += r * r * math.acos(d / r) - d * math.sqrt(r * r - d * d)
+
+    # Handle corner cases (circle extends beyond two boundaries)
+    # This is a simplified approximation - exact calculation is complex
+    # For corners, we need to subtract the overlapping segment areas
+    corners_crossed = 0
+
+    if cx - r < x_min and cy - r < y_min:  # Bottom-left corner
+        corners_crossed += 1
+    if cx + r > x_max and cy - r < y_min:  # Bottom-right corner
+        corners_crossed += 1
+    if cx - r < x_min and cy + r > y_max:  # Top-left corner
+        corners_crossed += 1
+    if cx + r > x_max and cy + r > y_max:  # Top-right corner
+        corners_crossed += 1
+
+    # For corner cases, reduce double-counting (rough approximation)
+    if corners_crossed > 0:
+        # Reduce by estimated corner overlap
+        corner_correction = corners_crossed * 0.15 * r * r  # Empirical factor
+        area_outside = max(0, area_outside - corner_correction)
+
+    return area_outside
