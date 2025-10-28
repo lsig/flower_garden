@@ -243,10 +243,3 @@ class GardenVisualizer:
             self.clock.tick(60)
 
         pygame.quit()
-
-
-def visualize_simulation(garden: Garden, turns: int = 1000):
-    """Initializes and runs the garden visualization."""
-    engine = Engine(garden)
-    visualizer = GardenVisualizer(garden, engine, turns)
-    visualizer.run()
