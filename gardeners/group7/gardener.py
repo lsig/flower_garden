@@ -47,13 +47,19 @@ class Gardener7(Gardener):
         self._placed = []
 
     # ---------- Scoring ----------
-    def _cooperation_score(self, v):
+    def _cooperation_score(self, v, color):
         R = v.nutrient_coefficients.get('R', 0)
         G = v.nutrient_coefficients.get('G', 0)
         B = v.nutrient_coefficients.get('B', 0)
         best_surplus = max(max(R, 0), max(G, 0), max(B, 0))
         best_deficit = max(abs(min(R, 0)), abs(min(G, 0)), abs(min(B, 0)))
         return best_surplus * best_deficit
+    
+    # Possible metrics:
+    # what it's producing minus what it takes
+    # divided by r^2?
+    # Try multiple triangles
+    # 
 
     # ---------- Low-level helpers ----------
     def _add_and_track(self, v, x, y):
