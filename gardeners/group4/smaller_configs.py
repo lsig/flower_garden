@@ -18,12 +18,19 @@ class Gardener4(Gardener):
         for species in Species:
             species_varieties = [p for p in self.varieties if p.species == species]
             if species_varieties:
-                #smallest_radius = min(species_varieties, key=lambda v: v.radius)
-                #prioritized_varieties.append(smallest_radius)
-                priority_plant = max(species_varieties, key = lambda v:
-                                     (sum(v.nutrient_coefficients.values())/(v.radius**2),
-                                      max(v.nutrient_coefficients.values())/abs(sum(v.nutrient_coefficients.values()) 
-                                                                                - max(v.nutrient_coefficients.values()))))
+                # smallest_radius = min(species_varieties, key=lambda v: v.radius)
+                # prioritized_varieties.append(smallest_radius)
+                priority_plant = max(
+                    species_varieties,
+                    key=lambda v: (
+                        sum(v.nutrient_coefficients.values()) / (v.radius**2),
+                        max(v.nutrient_coefficients.values())
+                        / abs(
+                            sum(v.nutrient_coefficients.values())
+                            - max(v.nutrient_coefficients.values())
+                        ),
+                    ),
+                )
                 prioritized_varieties.append(priority_plant)
 
         remaining_varieties = [p for p in self.varieties if p not in prioritized_varieties]
