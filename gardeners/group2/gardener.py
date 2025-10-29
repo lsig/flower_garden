@@ -214,6 +214,8 @@ class Gardener2(Gardener):
         # Check if all required complementary species are in the set of interacting species
         if interacting_species.issuperset(complementary_species):
             return total_interaction_count
+        elif interacting_species:
+            return 1
         else:
             # If the plant interacts with only one or none of the complementary species, return 0.
             return 0
@@ -233,10 +235,10 @@ class Gardener2(Gardener):
             # len(self.varieties) < 150 --> balanced
             # 200 --> simple
             if False:
-                print('simple')
+                # print('simple')
                 interaction_func = self._count_potential_interactions_simple
             else:
-                print('balanaced')
+                print('planting')
                 interaction_func = self._count_potential_interactions_strict_balanced
 
             # 1. Determine the species needed to fix the nutrient deficiency
