@@ -181,13 +181,25 @@ class Gardener9(Gardener):
 
         # fill gaps
         other_blue_varieties = [v for v in self.varieties if v.species == Species.BEGONIA]
-        s_other_blue_varieties = sorted(other_blue_varieties, key=self.get_production_value, reverse=True)
-        other_green_varieties = [v for v in self.varieties if  v.species == Species.GERANIUM]
-        s_other_green_varieties = sorted(other_green_varieties, key=self.get_production_value, reverse=True)
-        other_red_varieties = [v for v in self.varieties if  v.species == Species.RHODODENDRON]
-        s_other_red_varieties = sorted(other_red_varieties, key=self.get_production_value, reverse=True)
+        s_other_blue_varieties = sorted(
+            other_blue_varieties, key=self.get_production_value, reverse=True
+        )
+        other_green_varieties = [v for v in self.varieties if v.species == Species.GERANIUM]
+        s_other_green_varieties = sorted(
+            other_green_varieties, key=self.get_production_value, reverse=True
+        )
+        other_red_varieties = [v for v in self.varieties if v.species == Species.RHODODENDRON]
+        s_other_red_varieties = sorted(
+            other_red_varieties, key=self.get_production_value, reverse=True
+        )
 
-        sorted_varieties = [x for x in chain.from_iterable(zip_longest(s_other_blue_varieties, s_other_green_varieties, s_other_red_varieties)) if x is not None]
+        sorted_varieties = [
+            x
+            for x in chain.from_iterable(
+                zip_longest(s_other_blue_varieties, s_other_green_varieties, s_other_red_varieties)
+            )
+            if x is not None
+        ]
 
         # sorted_varieties = sorted(self.varieties, key=lambda v: v.radius)
 
