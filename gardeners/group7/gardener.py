@@ -47,13 +47,16 @@ class Gardener7(Gardener):
         self._placed = []
 
     # ---------- Scoring ----------
-    def _cooperation_score(self, v, color):
-        R = v.nutrient_coefficients.get('R', 0)
-        G = v.nutrient_coefficients.get('G', 0)
-        B = v.nutrient_coefficients.get('B', 0)
-        best_surplus = max(max(R, 0), max(G, 0), max(B, 0))
-        best_deficit = max(abs(min(R, 0)), abs(min(G, 0)), abs(min(B, 0)))
-        return best_surplus * best_deficit
+    def _cooperation_score(self, v):
+        coeffs = v.nutrient_coefficients
+        if len(coeffs) > 0 and not isinstance(next(iter(coeffs.keys())), str):
+            coeffs = {k.name: val for k, val in coeffs.items()}
+        R = coeffs.get('R', 0.0)
+        G = coeffs.get('G', 0.0)
+        B = coeffs.get('B', 0.0)
+        best_surplus = abs(max(R,G,B))
+        best_deficit = abs(min(R,G,B))
+        return best_surplus/(best_deficit*pow(v.radius,2))
     
     # Possible metrics:
     # what it's producing minus what it takes
