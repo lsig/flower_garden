@@ -2,9 +2,8 @@
 iterative refinement, and aggressive placement to maximize plant count.
 """
 
-import random
 import math
-from typing import List, Tuple
+import random
 
 # NOTE: Originally used numpy for array operations, but replaced with standard Python
 # to avoid external dependencies.
@@ -35,7 +34,7 @@ from gardeners.group6.algorithms import (
 
 
 class Gardener6(Gardener):
-    def __init__(self, garden: Garden, varieties: List[PlantVariety]):
+    def __init__(self, garden: Garden, varieties: list[PlantVariety]):
         super().__init__(garden, varieties)
 
         # -------- Capacity & scaling --------
@@ -165,9 +164,9 @@ class Gardener6(Gardener):
 
     def _impose_center_diamond_and_edge_band(
         self,
-        X: List[Tuple[float, float]],
-        labels: List[int],
-    ) -> List[Tuple[float, float]]:
+        X: list[tuple[float, float]],
+        labels: list[int],
+    ) -> list[tuple[float, float]]:
         """
         Rewrites X to:
           - Place the smallest-radius plants inside a central diamond (rhombus),
@@ -228,7 +227,7 @@ class Gardener6(Gardener):
 
     def _diamond_quadrant_targets(
         self, count: int, cx: float, cy: float, radius: float, jitter: float
-    ) -> List[Tuple[float, float]]:
+    ) -> list[tuple[float, float]]:
         """
         Create 'count' points inside a diamond defined by |x-cx|/a + |y-cy|/a <= 1
         with a = radius. We distribute across 4 triangular quadrants to
@@ -236,7 +235,7 @@ class Gardener6(Gardener):
         """
         if count <= 0:
             return []
-        pts: List[Tuple[float, float]] = []
+        pts: list[tuple[float, float]] = []
         per_quad = [count // 4] * 4
         for r in range(count % 4):
             per_quad[r] += 1  # distribute remainder
@@ -267,7 +266,7 @@ class Gardener6(Gardener):
 
     def _edge_band_targets(
         self, count: int, W: float, H: float, band: float, jitter: float
-    ) -> List[Tuple[float, float]]:
+    ) -> list[tuple[float, float]]:
         """
         Evenly fan points along the outer band near the rectangle edges.
         We alternate edges (top/right/bottom/left) round-robin to spread out.
@@ -275,7 +274,7 @@ class Gardener6(Gardener):
         if count <= 0:
             return []
         edges = ['top', 'right', 'bottom', 'left']
-        pts: List[Tuple[float, float]] = []
+        pts: list[tuple[float, float]] = []
         for i in range(count):
             edge = edges[i % 4]
             if edge == 'top':
@@ -305,11 +304,11 @@ class Gardener6(Gardener):
         inner: float,
         outer: float,
         jitter: float,
-    ) -> List[Tuple[float, float]]:
+    ) -> list[tuple[float, float]]:
         """Points in the ring between the central diamond and the outer edge band."""
         if count <= 0:
             return []
-        pts: List[Tuple[float, float]] = []
+        pts: list[tuple[float, float]] = []
         for _ in range(count):
             theta = random.random() * 2 * math.pi
             r = random.uniform(inner, max(inner, outer))
@@ -328,8 +327,8 @@ class Gardener6(Gardener):
 
     @staticmethod
     def _clamp_to_diamond(
-        p: Tuple[float, float], cx: float, cy: float, a: float
-    ) -> Tuple[float, float]:
+        p: tuple[float, float], cx: float, cy: float, a: float
+    ) -> tuple[float, float]:
         """
         Clamp a point softly into the diamond defined by |x-cx|/a + |y-cy|/a <= 1
         by projecting to the closest point on the diamond boundary if needed.
@@ -350,14 +349,14 @@ class Gardener6(Gardener):
 
     def _iterative_radius_layout_refinement(
         self,
-        X: List[Tuple[float, float]],
-        labels: List[int],
+        X: list[tuple[float, float]],
+        labels: list[int],
         iters: int = 100,
         step: float = 0.08,
         inner_margin: float = 0.18,
         outer_margin: float = 0.06,
         tol: float = 1e-3,
-    ) -> List[Tuple[float, float]]:
+    ) -> list[tuple[float, float]]:
         """Gently rebalances positions by plant size (small → center, large → edge)."""
         if not X:
             return X
@@ -396,7 +395,7 @@ class Gardener6(Gardener):
     # ------------------ Placement (maximize count) ------------------
 
     def _place_plants_maximizing_count(
-        self, X: List[Tuple[float, float]], labels: List[int]
+        self, X: list[tuple[float, float]], labels: list[int]
     ) -> None:
         """
         Place plants with:
@@ -413,7 +412,7 @@ class Gardener6(Gardener):
         radii = [self.varieties[lbl].radius for lbl in labels]
         order = sorted(range(n), key=lambda i: radii[i], reverse=True)  # big first
 
-        failed_indices: List[int] = []
+        failed_indices: list[int] = []
 
         # First pass: try original targets with backoff
         for idx in order:
@@ -459,17 +458,17 @@ class Gardener6(Gardener):
         )
 
         # Second pass: try fallback targets with more retries
-        for i, tgt in zip(small_idxs, small_targets):
+        for i, tgt in zip(small_idxs, small_targets, strict=False):
             lbl = labels[i]
             variety = self.varieties[lbl]
             self._try_place_with_backoff(variety, tgt, attempts=self.recovery_attempts)
 
-        for i, tgt in zip(large_idxs, large_targets):
+        for i, tgt in zip(large_idxs, large_targets, strict=False):
             lbl = labels[i]
             variety = self.varieties[lbl]
             self._try_place_with_backoff(variety, tgt, attempts=self.recovery_attempts)
 
-        for i, tgt in zip(middle_idxs, middle_targets):
+        for i, tgt in zip(middle_idxs, middle_targets, strict=False):
             lbl = labels[i]
             variety = self.varieties[lbl]
             self._try_place_with_backoff(variety, tgt, attempts=self.recovery_attempts)
@@ -477,7 +476,7 @@ class Gardener6(Gardener):
     def _try_place_with_backoff(
         self,
         variety: PlantVariety,
-        target_xy: Tuple[float, float],
+        target_xy: tuple[float, float],
         attempts: int = None,
     ) -> bool:
         """
@@ -525,7 +524,7 @@ class Gardener6(Gardener):
 
     # ------------------ Final placement API (legacy/backward-compat) ------------------
 
-    def _place_plants(self, X: List[Tuple[float, float]], labels: List[int]) -> None:
+    def _place_plants(self, X: list[tuple[float, float]], labels: list[int]) -> None:
         """
         Legacy simple placement kept for compatibility with earlier callers/tests.
         Prefer _place_plants_maximizing_count which uses retries & recovery.
