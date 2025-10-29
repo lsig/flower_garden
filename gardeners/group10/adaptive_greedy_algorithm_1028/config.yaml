@@ -35,4 +35,22 @@ performance:
 
 placement:
   epsilon: -10             # Improvement threshold for stopping (allow small decreases)
+
+dynamic_tuning:
+  # Time budget and monitoring
+  max_check_time: 45.0     # Target time for parameter adjustment (check projections against this)
+  timeout_time: 55.0       # Hard timeout - stop placement and return current result
+  check_interval: 5        # Check performance every N iterations
+  
+  # Minimum ratios for each parameter (cannot scale below original_value × min_ratio)
+  min_ratio_T: 0.125                    # T can go down to 1/8 of original (100 → 12.5)
+  min_ratio_adaptive_T_min: 0.125       # adaptive_T_min can go down to 1/8 (40 → 5)
+  min_ratio_finegrained_T: 0.1          # finegrained_T can go down to 1/10 (500 → 50, more aggressive)
+  min_ratio_heuristic_top_k: 0.125      # heuristic_top_k can go down to 1/8 (32 → 4)
+  
+  # Absolute minimum values (safety floor regardless of ratio)
+  absolute_min_T: 10
+  absolute_min_adaptive_T_min: 5
+  absolute_min_finegrained_T: 50
+  absolute_min_heuristic_top_k: 4
   
