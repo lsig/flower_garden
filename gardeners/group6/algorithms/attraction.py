@@ -84,6 +84,27 @@ def create_beneficial_interactions(
                             forces[j][0] - direction_x * force_magnitude,
                             forces[j][1] - direction_y * force_magnitude,
                         )
+                else:
+                    interaction_radius = r_i + r_j
+                    if dist > 1e-6:
+                        # NUMPY: Originally used direction = delta / dist
+                        direction_x = delta_x / dist
+                        direction_y = delta_y / dist
+
+                        desired_spacing = interaction_radius * 1.5
+                        overlap = max(0.0, desired_spacing - dist)
+
+                        force_magnitude = overlap * 0.6
+
+                        # NUMPY: Originally used forces[i] += direction * force_magnitude
+                        forces[i] = (
+                            forces[i][0] - direction_x * force_magnitude,
+                            forces[i][1] - direction_y * force_magnitude,
+                        )
+                        forces[j] = (
+                            forces[j][0] + direction_x * force_magnitude,
+                            forces[j][1] + direction_y * force_magnitude,
+                        )
 
                 # Feasibility: repulsive force for overlaps
                 if keep_feasible:
