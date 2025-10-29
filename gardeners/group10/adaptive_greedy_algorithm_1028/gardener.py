@@ -9,6 +9,7 @@ import warnings  # noqa: E402
 warnings.filterwarnings('ignore')  # Suppress warnings
 
 import copy  # noqa: E402
+import time  # noqa: E402
 from collections import Counter, defaultdict  # noqa: E402
 from multiprocessing import Pool  # noqa: E402
 
@@ -61,6 +62,22 @@ CONFIG = {
     },
     'placement': {
         'epsilon': -10,  # Improvement threshold for stopping (allow small decreases)
+    },
+    'dynamic_tuning': {
+        # Time budget and check interval
+        'max_check_time': 55.0,  # Target time for parameter adjustment (check against this)
+        'timeout_time': 55.0,  # Hard timeout - stop placement and return current result
+        'check_interval': 5,  # Check performance every N iterations
+        # Minimum ratios for each parameter (cannot scale below original_value × min_ratio)
+        'min_ratio_T': 0.1,  # T can go down to 1/10 of original (e.g., 100 → 10)
+        'min_ratio_adaptive_T_min': 0.25,  # adaptive_T_min can go down to 1/4 (e.g., 40 → 10)
+        'min_ratio_finegrained_T': 0.025,  # finegrained_T can go down to 1/40 (e.g., 500 → 12.5)
+        'min_ratio_heuristic_top_k': 0.1,  # heuristic_top_k can go down to 1/10 (e.g., 32 → 3.2)
+        # Absolute minimum values (safety floor regardless of ratio)
+        'absolute_min_T': 10,
+        'absolute_min_adaptive_T_min': 10,
+        'absolute_min_finegrained_T': 10,
+        'absolute_min_heuristic_top_k': 4,
     },
 }
 
@@ -117,6 +134,319 @@ class GreedyGardener(Gardener):
 
         # Performance optimization: caching
         self.interaction_cache = {}  # Cache interaction calculations
+
+        # Timing instrumentation
+        self.timing = {
+            'candidate_generation': 0.0,
+            'pattern_grouping': 0.0,
+            'heuristic_filtering': 0.0,
+            'simulation': 0.0,
+            'finegrained': 0.0,
+            'other': 0.0,
+        }
+
+        # Dynamic performance tuning
+        self.iteration_times = []  # Track time per iteration
+        self.iteration_start_time = None
+        self.total_start_time = None
+        self.max_check_time = self.config['dynamic_tuning'].get(
+            'max_check_time', 45.0
+        )  # Target for adjustments
+        self.timeout_time = self.config['dynamic_tuning'].get('timeout_time', 55.0)  # Hard timeout
+        self.check_interval = self.config['dynamic_tuning'].get('check_interval', 5)  # From config
+        self.original_config = {
+            'T': self.config['simulation']['T'],
+            'adaptive_T_min': self.config['simulation']['adaptive_T_min'],
+            'finegrained_T': self.config['performance'].get('finegrained_T', 500),
+            'heuristic_top_k': self.config['performance'].get('heuristic_top_k', 32),
+        }
+        self.scaling_applied = False
+        self.timeout_triggered = False  # Flag to stop placement on imminent timeout
+
+        # Global iteration tracking for display purposes
+        self.global_iteration = 0  # Overall plant count
+        self.current_group_num = 1  # Current group number
+
+    def _calculate_garden_coverage(self) -> float:
+        """
+        Calculate percentage of garden area actually covered by plants (accounting for overlaps).
+        Uses grid sampling for efficient approximation.
+
+        Returns:
+            Coverage ratio (0.0 to 1.0)
+        """
+        if len(self.garden.plants) == 0:
+            return 0.0
+
+        # Use grid sampling to estimate covered area (fast and accurate)
+        # Sample at 0.5 unit intervals for good accuracy
+        samples_x = int(self.garden.width * 2) + 1
+        samples_y = int(self.garden.height * 2) + 1
+
+        covered_points = 0
+        total_points = samples_x * samples_y
+
+        for i in range(samples_x):
+            x = i * 0.5
+            for j in range(samples_y):
+                y = j * 0.5
+
+                # Check if this point is covered by any plant
+                for plant in self.garden.plants:
+                    dx = x - plant.position.x
+                    dy = y - plant.position.y
+                    dist_sq = dx * dx + dy * dy
+                    radius_sq = plant.variety.radius * plant.variety.radius
+
+                    if dist_sq <= radius_sq:
+                        covered_points += 1
+                        break  # Point is covered, no need to check other plants
+
+        return covered_points / total_points if total_points > 0 else 0.0
+
+    def _calculate_uncovered_area(self) -> float:
+        """
+        Calculate actual uncovered area in the garden (accounting for overlaps).
+
+        Returns:
+            Uncovered area in square units
+        """
+        total_area = self.garden.width * self.garden.height
+        coverage_ratio = self._calculate_garden_coverage()
+        return total_area * (1.0 - coverage_ratio)
+
+    def _estimate_remaining_iterations(self) -> int:
+        """
+        Estimate how many more iterations needed based on actual uncovered area.
+
+        Returns:
+            Estimated remaining iterations
+        """
+        import math
+
+        remaining_varieties = len(self.remaining_varieties)
+
+        if remaining_varieties == 0:
+            return 0
+
+        # Calculate actual uncovered area
+        uncovered_area = self._calculate_uncovered_area()
+
+        if uncovered_area <= 0:
+            # Garden is full, unlikely to place more
+            return max(1, int(remaining_varieties * 0.1))
+
+        # Estimate average plant area from remaining varieties
+        # Use average radius to estimate how many plants can fit
+        avg_radius = sum(v.radius for v in self.remaining_varieties) / len(self.remaining_varieties)
+        avg_plant_area = math.pi * (avg_radius**2)
+
+        # Account for spacing constraints and inefficiency
+        # Plants can't be packed perfectly due to:
+        # - Minimum spacing requirements
+        # - Different species interaction requirements
+        # - Boundary effects
+        packing_efficiency = 0.5  # Assume 50% packing efficiency (conservative)
+
+        # Estimate how many plants can fit in uncovered area
+        estimated_by_area = int((uncovered_area * packing_efficiency) / avg_plant_area)
+
+        # Use the minimum of area-based estimate and remaining varieties
+        # But allow at least 20% of remaining varieties to account for dense packing
+        estimated_remaining = max(
+            int(remaining_varieties * 0.2),  # At least 20%
+            min(estimated_by_area, remaining_varieties),  # But not more than we have
+        )
+
+        return estimated_remaining
+
+    def _check_and_adjust_performance(self, iteration: int) -> None:
+        """
+        Check if we're on track to finish within time budget.
+        If not, dynamically reduce simulation parameters.
+
+        Args:
+            iteration: Current iteration number
+        """
+        if iteration == 0 or iteration % self.check_interval != 0:
+            return
+
+        if len(self.iteration_times) < self.check_interval:
+            return  # Not enough data yet
+
+        # Calculate average time per iteration (recent samples)
+        recent_times = self.iteration_times[-self.check_interval :]
+        avg_time_per_iter = sum(recent_times) / len(recent_times)
+
+        # Estimate remaining work
+        estimated_remaining_iters = self._estimate_remaining_iterations()
+
+        # Calculate elapsed and projected total time
+        elapsed_time = time.time() - self.total_start_time
+        projected_remaining = avg_time_per_iter * estimated_remaining_iters
+        projected_total = elapsed_time + projected_remaining
+
+        if self.config['debug']['verbose']:
+            coverage = self._calculate_garden_coverage()
+            uncovered_area = self._calculate_uncovered_area()
+            total_area = self.garden.width * self.garden.height
+
+            print(f'\n  [Performance Check @ Iter {iteration}]')
+            print(f'    Elapsed: {elapsed_time:.1f}s | Avg/iter: {avg_time_per_iter:.2f}s')
+            print(
+                f'    Coverage: {coverage:.1%} | Uncovered: {uncovered_area:.0f}/{total_area:.0f} units²'
+            )
+            print(f'    Remaining est: {estimated_remaining_iters} iters')
+            print(
+                f'    Projected total: {projected_total:.1f}s (check: {self.max_check_time:.1f}s, timeout: {self.timeout_time:.1f}s)'
+            )
+
+        # Check for hard timeout (less than 5s remaining)
+        time_remaining = self.timeout_time - elapsed_time
+        if time_remaining < 5.0:
+            if self.config['debug']['verbose']:
+                print(
+                    f'    🚨 TIMEOUT IMMINENT (remaining: {time_remaining:.1f}s / {self.timeout_time:.1f}s)'
+                )
+                print('    Stopping placement to avoid timeout')
+            # Signal to stop placement by setting a flag
+            self.timeout_triggered = True
+            return
+
+        # If projected to exceed check time by >10%, scale down parameters
+        if projected_total > self.max_check_time * 1.1:
+            # Calculate how much speedup we need
+            speedup_needed = projected_total / (
+                self.max_check_time * 0.9
+            )  # How many times faster we need to be
+
+            # Dynamic decay ratio: the more we're over, the more aggressive the scaling
+            # scaling_factor = 1 / speedup_needed (to achieve the speedup)
+            decay_ratio = 1.0 / speedup_needed
+
+            # Clamp to reasonable range: use minimum ratio from config, maximum 0.95 (don't scale up)
+            min_decay_ratio = min(
+                self.config['dynamic_tuning'].get('min_ratio_T', 0.125),
+                self.config['dynamic_tuning'].get('min_ratio_adaptive_T_min', 0.125),
+                self.config['dynamic_tuning'].get('min_ratio_finegrained_T', 0.1),
+                self.config['dynamic_tuning'].get('min_ratio_heuristic_top_k', 0.125),
+            )
+            decay_ratio = max(min_decay_ratio, min(0.95, decay_ratio))
+
+            # Calculate minimum bounds using individual ratios for each parameter
+            min_ratio_T = self.config['dynamic_tuning'].get('min_ratio_T', 0.125)
+            min_ratio_adaptive_T_min = self.config['dynamic_tuning'].get(
+                'min_ratio_adaptive_T_min', 0.125
+            )
+            min_ratio_finegrained_T = self.config['dynamic_tuning'].get(
+                'min_ratio_finegrained_T', 0.1
+            )
+            min_ratio_heuristic_top_k = self.config['dynamic_tuning'].get(
+                'min_ratio_heuristic_top_k', 0.125
+            )
+
+            absolute_min_T = self.config['dynamic_tuning'].get('absolute_min_T', 10)
+            absolute_min_adaptive_T_min = self.config['dynamic_tuning'].get(
+                'absolute_min_adaptive_T_min', 5
+            )
+            absolute_min_finegrained_T = self.config['dynamic_tuning'].get(
+                'absolute_min_finegrained_T', 50
+            )
+            absolute_min_heuristic_top_k = self.config['dynamic_tuning'].get(
+                'absolute_min_heuristic_top_k', 4
+            )
+
+            min_T = max(absolute_min_T, int(self.original_config['T'] * min_ratio_T))
+            min_adaptive_T_min = max(
+                absolute_min_adaptive_T_min,
+                int(self.original_config['adaptive_T_min'] * min_ratio_adaptive_T_min),
+            )
+            min_finegrained_T = max(
+                absolute_min_finegrained_T,
+                int(self.original_config['finegrained_T'] * min_ratio_finegrained_T),
+            )
+            min_heuristic_top_k = max(
+                absolute_min_heuristic_top_k,
+                int(self.original_config['heuristic_top_k'] * min_ratio_heuristic_top_k),
+            )
+
+            # Get current values (or original if first time)
+            current_T = self.config['simulation']['T']
+            current_adaptive_T_min = self.config['simulation']['adaptive_T_min']
+            current_finegrained_T = self.config['performance']['finegrained_T']
+            current_heuristic_top_k = self.config['performance']['heuristic_top_k']
+
+            # Apply CUMULATIVE scaling: scale from current values, not original
+            # This allows continuous decay if needed
+            new_T = max(min_T, int(current_T * decay_ratio))
+            new_adaptive_T_min = max(min_adaptive_T_min, int(current_adaptive_T_min * decay_ratio))
+            new_finegrained_T = max(min_finegrained_T, int(current_finegrained_T * decay_ratio))
+            new_heuristic_top_k = max(
+                min_heuristic_top_k, int(current_heuristic_top_k * decay_ratio)
+            )
+
+            # Update config
+            self.config['simulation']['T'] = new_T
+            self.config['simulation']['adaptive_T_min'] = new_adaptive_T_min
+            self.config['performance']['finegrained_T'] = new_finegrained_T
+            self.config['performance']['heuristic_top_k'] = new_heuristic_top_k
+
+            self.scaling_applied = True
+
+            if self.config['debug']['verbose']:
+                if current_T != self.original_config['T']:
+                    # Already scaled before
+                    print(
+                        f'    ⚠️  FURTHER REDUCING PARAMETERS (decay: {decay_ratio:.3f}, speedup needed: {speedup_needed:.1f}×):'
+                    )
+                    print(
+                        f'       T: {current_T} → {new_T} (original: {self.original_config["T"]}, min: {min_T})'
+                    )
+                    print(
+                        f'       adaptive_T_min: {current_adaptive_T_min} → {new_adaptive_T_min} (original: {self.original_config["adaptive_T_min"]}, min: {min_adaptive_T_min})'
+                    )
+                    print(
+                        f'       finegrained_T: {current_finegrained_T} → {new_finegrained_T} (original: {self.original_config["finegrained_T"]}, min: {min_finegrained_T})'
+                    )
+                    print(
+                        f'       heuristic_top_k: {current_heuristic_top_k} → {new_heuristic_top_k} (original: {self.original_config["heuristic_top_k"]}, min: {min_heuristic_top_k})'
+                    )
+                else:
+                    # First time scaling
+                    print(
+                        f'    ⚠️  ADJUSTING PARAMETERS (decay: {decay_ratio:.3f}, speedup needed: {speedup_needed:.1f}×):'
+                    )
+                    print(f'       T: {self.original_config["T"]} → {new_T} (min: {min_T})')
+                    print(
+                        f'       adaptive_T_min: {self.original_config["adaptive_T_min"]} → {new_adaptive_T_min} (min: {min_adaptive_T_min})'
+                    )
+                    print(
+                        f'       finegrained_T: {self.original_config["finegrained_T"]} → {new_finegrained_T} (min: {min_finegrained_T})'
+                    )
+                    print(
+                        f'       heuristic_top_k: {self.original_config["heuristic_top_k"]} → {new_heuristic_top_k} (min: {min_heuristic_top_k})'
+                    )
+        elif self.scaling_applied and projected_total < self.max_check_time * 0.7:
+            # If we over-corrected and now have time to spare, restore some parameters
+            restore_factor = min(1.0, self.max_check_time * 0.8 / projected_total)
+
+            self.config['simulation']['T'] = min(
+                self.original_config['T'], int(self.config['simulation']['T'] * restore_factor)
+            )
+            self.config['simulation']['adaptive_T_min'] = min(
+                self.original_config['adaptive_T_min'],
+                int(self.config['simulation']['adaptive_T_min'] * restore_factor),
+            )
+            self.config['performance']['heuristic_top_k'] = min(
+                self.original_config['heuristic_top_k'],
+                int(self.config['performance']['heuristic_top_k'] * restore_factor),
+            )
+
+            if self.config['debug']['verbose']:
+                print(f'    ✓ Restoring parameters (restore: {restore_factor:.2f})')
+                print(f'       T: → {self.config["simulation"]["T"]}')
+                print(f'       adaptive_T_min: → {self.config["simulation"]["adaptive_T_min"]}')
+                print(f'       heuristic_top_k: → {self.config["performance"]["heuristic_top_k"]}')
 
     def _get_adaptive_T(self) -> int:
         """
@@ -303,15 +633,26 @@ class GreedyGardener(Gardener):
         """
         Main placement loop: iteratively place plants using greedy selection.
         """
+        # Start timing for dynamic performance tuning
+        self.total_start_time = time.time()
+
+        # Reset global iteration counter for this run
+        self.global_iteration = 0
+        self.current_group_num = 1
+
         iteration = 0
         first_group_relaxation_used = False
         first_group_relaxation_plant_idx = None
 
         if self.config['debug']['verbose']:
             print(f'Starting placement with {len(self.remaining_varieties)} varieties')
+            print(
+                f'Time limits: check={self.max_check_time:.1f}s, timeout={self.timeout_time:.1f}s | Check interval: {self.check_interval} iterations'
+            )
 
         while self.remaining_varieties:
             iteration += 1
+            self.iteration_start_time = time.time()
 
             if self.config['debug']['verbose']:
                 constraints = []
@@ -321,8 +662,17 @@ class GreedyGardener(Gardener):
                     constraints.append('2-species interaction')
                 constraint_str = f' [{", ".join(constraints)}]' if constraints else ''
                 print(
-                    f'Iter {iteration}: {len(self.garden.plants)} placed, {len(self.remaining_varieties)} remain{constraint_str}'
+                    f'Iter {self.global_iteration + 1}: Group {self.current_group_num} Plant {iteration} | {len(self.remaining_varieties)} remain{constraint_str}'
                 )
+
+            # Dynamic performance check every N iterations
+            self._check_and_adjust_performance(iteration)
+
+            # Check if timeout was triggered
+            if self.timeout_triggered:
+                if self.config['debug']['verbose']:
+                    print('Stopping first group placement due to timeout')
+                break
 
             # ALWAYS use exhaustive search for better coverage
             exhaustive_candidates = self._generate_exhaustive_candidates()
@@ -345,13 +695,13 @@ class GreedyGardener(Gardener):
             # BEFORE placing: Check relaxation conflicts
             if first_group_relaxation_used and current_used_relaxation:
                 # Both previous and current use relaxation - not allowed!
-                # Rollback: remove previous relaxation plant and stop first group
+                # Rollback: remove previous relaxation plant and KEEP others, then stop
                 if self.config['debug']['verbose']:
                     print(
-                        '  [Relaxation failed: consecutive relaxation in first group. Rolling back...]'
+                        '  [Relaxation failed: consecutive relaxation. Removing relaxation plant and keeping others...]'
                     )
 
-                # Remove previous relaxation plant
+                # Remove ONLY the previous relaxation plant
                 if (
                     first_group_relaxation_plant_idx is not None
                     and first_group_relaxation_plant_idx < len(self.garden.plants)
@@ -371,8 +721,9 @@ class GreedyGardener(Gardener):
                     relaxed_sig = self._variety_signature(relaxed_plant.variety)
                     if relaxed_sig in self.first_group_signatures:
                         self.first_group_signatures.remove(relaxed_sig)
+                    self.global_iteration -= 1  # Decrement since we removed a plant
 
-                # Stop first group placement
+                # Stop first group placement (keep all other plants)
                 break
 
             # Place the plant
@@ -391,6 +742,7 @@ class GreedyGardener(Gardener):
             self.first_group_varieties.append(best_variety)
             self.first_group_signatures.append(self._variety_signature(best_variety))
             self._consume_variety(best_variety)
+            self.global_iteration += 1  # Increment global counter
 
             # Track relaxation for first group
             if current_used_relaxation:
@@ -413,6 +765,11 @@ class GreedyGardener(Gardener):
                     f'  → {best_variety.species.name[0]} at ({int(best_position.x)},{int(best_position.y)}): value={best_value:.2f}, score={self.current_score:.2f}'
                 )
 
+            # Track iteration time for dynamic tuning
+            if self.iteration_start_time is not None:
+                iter_elapsed = time.time() - self.iteration_start_time
+                self.iteration_times.append(iter_elapsed)
+
         # Validate and prune first group before proceeding
         if self.config['debug']['verbose']:
             print(f'\n=== First Group Complete: {len(self.garden.plants)} plants placed ===')
@@ -420,15 +777,51 @@ class GreedyGardener(Gardener):
 
         self._transplant_first_group_to_origin()
         self._cache_first_group_positions()
+        self.current_group_num += 1  # Move to group 2 for replication
         self._replicate_first_group()
 
         # Build new groups and continue with greedy placement
         self._fill_remaining_space()
 
         if self.config['debug']['verbose']:
+            total_elapsed = time.time() - self.total_start_time if self.total_start_time else 0
+
             print('\n=== Placement Complete ===')
             print(f'Total plants placed: {len(self.garden.plants)}')
             print(f'Final score: {self.current_score:.4f}')
+            print(
+                f'Total time: {total_elapsed:.2f}s (check: {self.max_check_time:.1f}s, timeout: {self.timeout_time:.1f}s)'
+            )
+
+            if self.timeout_triggered:
+                print('\n🚨 TIMEOUT PROTECTION TRIGGERED')
+                print(f'  Stopped early with {len(self.remaining_varieties)} varieties remaining')
+                print('  Returning current placement to avoid timeout')
+
+            if self.scaling_applied:
+                print('\n⚠️  Dynamic tuning was applied!')
+                print('  Final parameters:')
+                print(
+                    f'    T: {self.config["simulation"]["T"]} (original: {self.original_config["T"]})'
+                )
+                print(
+                    f'    adaptive_T_min: {self.config["simulation"]["adaptive_T_min"]} (original: {self.original_config["adaptive_T_min"]})'
+                )
+                print(
+                    f'    finegrained_T: {self.config["performance"]["finegrained_T"]} (original: {self.original_config["finegrained_T"]})'
+                )
+                print(
+                    f'    heuristic_top_k: {self.config["performance"]["heuristic_top_k"]} (original: {self.original_config["heuristic_top_k"]})'
+                )
+
+            # Print timing breakdown
+            timing_total = sum(self.timing.values())
+            print(f'\n=== Timing Breakdown (Total: {timing_total:.2f}s) ===')
+            for phase, elapsed in sorted(self.timing.items(), key=lambda x: -x[1]):
+                if elapsed > 0:
+                    pct = (elapsed / timing_total * 100) if timing_total > 0 else 0
+                    print(f'  {phase:25s}: {elapsed:7.2f}s ({pct:5.1f}%)')
+
             # Note: Analysis not shown here - plants haven't grown yet (size=0)
             # Call print_final_analysis() after simulation for meaningful results
 
@@ -503,6 +896,7 @@ class GreedyGardener(Gardener):
         - Not inside existing plants (collision-free)
         - Can potentially interact with at least one existing plant
         """
+        t_start = time.time()
         candidates = []
 
         # Grid sample the entire garden at integer positions
@@ -525,8 +919,11 @@ class GreedyGardener(Gardener):
                 if is_valid:
                     candidates.append(pos)
 
+        t_elapsed = time.time() - t_start
+        self.timing['candidate_generation'] += t_elapsed
+
         if self.config['debug']['verbose'] and candidates:
-            print(f'  Generated {len(candidates)} exhaustive candidates')
+            print(f'  Generated {len(candidates)} exhaustive candidates [{t_elapsed * 1000:.1f}ms]')
 
         return candidates
 
@@ -561,6 +958,7 @@ class GreedyGardener(Gardener):
         # Group candidates by (variety, interaction_pattern)
         from collections import defaultdict
 
+        t_pattern_start = time.time()
         interaction_groups = defaultdict(list)
 
         for position in candidates:
@@ -605,6 +1003,9 @@ class GreedyGardener(Gardener):
                 # Store: (position, variety, space_score)
                 interaction_groups[interaction_key].append((position, variety, space_score))
 
+        t_pattern_elapsed = time.time() - t_pattern_start
+        self.timing['pattern_grouping'] += t_pattern_elapsed
+
         if self.config['debug']['verbose']:
             total_combos = sum(len(group) for group in interaction_groups.values())
             print(
@@ -613,6 +1014,7 @@ class GreedyGardener(Gardener):
 
         # STRATEGY C OPTIMIZATION: Early Pruning with Cheap Heuristics
         # Step 1: Collect representatives from each interaction group
+        t_heuristic_start = time.time()
         representatives = []
         for _interaction_key, group in interaction_groups.items():
             # Sort by space_score (higher = better = closer to existing plants)
@@ -642,6 +1044,9 @@ class GreedyGardener(Gardener):
 
         top_candidates = candidates_with_heuristic[:num_to_evaluate]
 
+        t_heuristic_elapsed = time.time() - t_heuristic_start
+        self.timing['heuristic_filtering'] += t_heuristic_elapsed
+
         # Step 4: Run expensive simulation on top candidates
         # Use adaptive T based on number of plants
         adaptive_T = self._get_adaptive_T()
@@ -654,6 +1059,7 @@ class GreedyGardener(Gardener):
         ) and evaluations_run >= self.config.get('performance', {}).get('parallel_threshold', 8)
 
         # Stage 1: Initial evaluation with adaptive T
+        t_simulation_start = time.time()
         first_stage_results = []
 
         if use_parallel:
@@ -721,9 +1127,13 @@ class GreedyGardener(Gardener):
                     best_variety = variety
                     best_position = position
 
+        t_simulation_elapsed = time.time() - t_simulation_start
+        self.timing['simulation'] += t_simulation_elapsed
+
         # Stage 2: Finegrained search - re-evaluate top K with deeper simulation
         finegrained_enabled = self.config.get('performance', {}).get('finegrained_search', False)
         if finegrained_enabled and len(first_stage_results) > 1:
+            t_finegrained_start = time.time()
             finegrained_top_k = self.config.get('performance', {}).get('finegrained_top_k', 5)
             finegrained_T = self.config.get('performance', {}).get('finegrained_T', 200)
 
@@ -800,6 +1210,9 @@ class GreedyGardener(Gardener):
                         best_value = value
                         best_variety = variety
                         best_position = position
+
+            t_finegrained_elapsed = time.time() - t_finegrained_start
+            self.timing['finegrained'] += t_finegrained_elapsed
 
         if self.config['debug']['verbose']:
             skipped_pattern = sum(
@@ -1383,8 +1796,11 @@ class GreedyGardener(Gardener):
 
                     placed_any = True
                     clones_placed += 1
+                    # Update global iteration for each plant in the clone
+                    self.global_iteration += len(varieties)
                     if self.config['debug']['verbose']:
                         print(f'  → clone #{clones_placed} offset=({offset_x},{offset_y})')
+                    self.current_group_num += 1  # Each clone is a new group
                     found_spot = True
                     break
 
@@ -1415,13 +1831,23 @@ class GreedyGardener(Gardener):
 
         # Try to build new groups
         while self.remaining_varieties and len(self.remaining_varieties) >= 3:
+            # Check for timeout
+            if self.timeout_triggered:
+                if self.config['debug']['verbose']:
+                    print('Stopping new group building due to timeout')
+                break
+
             if self.config['debug']['verbose']:
-                print(f'\n=== Round {round_num}: Building New Group ===')
+                print(
+                    f'\n=== Round {round_num}: Building New Group (Group #{self.current_group_num}) ==='
+                )
                 print(f'{len(self.remaining_varieties)} varieties remaining')
 
             # Try to build a new group
             initial_plant_count = len(self.garden.plants)
             new_group_built = self._build_new_independent_group()
+            if new_group_built:
+                self.current_group_num += 1  # Increment for next group
 
             if not new_group_built:
                 if self.config['debug']['verbose']:
@@ -1447,12 +1873,27 @@ class GreedyGardener(Gardener):
                 print('\n=== Continuing Greedy Placement ===')
                 print(f'{len(self.remaining_varieties)} varieties remaining')
 
-            iteration = 0
+            greedy_plant_num = 0
             relaxation_used = False
             relaxation_plant_idx = None
 
             while self.remaining_varieties:
-                iteration += 1
+                greedy_plant_num += 1
+                self.iteration_start_time = time.time()
+
+                if self.config['debug']['verbose']:
+                    print(
+                        f'Iter {self.global_iteration + 1}: Group {self.current_group_num} Plant {greedy_plant_num} | {len(self.remaining_varieties)} remain'
+                    )
+
+                # Dynamic performance check every N iterations
+                self._check_and_adjust_performance(greedy_plant_num)
+
+                # Check if timeout was triggered
+                if self.timeout_triggered:
+                    if self.config['debug']['verbose']:
+                        print('Stopping greedy placement due to timeout')
+                    break
 
                 # ALWAYS use exhaustive search for better coverage
                 exhaustive_candidates = self._generate_exhaustive_candidates()
@@ -1510,6 +1951,7 @@ class GreedyGardener(Gardener):
                     continue
 
                 self._consume_variety(best_variety)
+                self.global_iteration += 1  # Increment global counter
 
                 # AFTER placing: Check if previous relaxation was successful
                 if (
@@ -1552,6 +1994,11 @@ class GreedyGardener(Gardener):
                     print(
                         f'  → {best_variety.species.name[0]} at ({int(best_position.x)},{int(best_position.y)}): value={best_value:.2f}, score={self.current_score:.2f}'
                     )
+
+                # Track iteration time for dynamic tuning
+                if self.iteration_start_time is not None:
+                    iter_elapsed = time.time() - self.iteration_start_time
+                    self.iteration_times.append(iter_elapsed)
 
             # After loop ends, check if last plant used relaxation
             # If so, remove it (can't have relaxation as final plant)
@@ -1603,11 +2050,22 @@ class GreedyGardener(Gardener):
             # Try to place at least 3 plants for this new group
             for plant_num in range(1, 100):  # Max 100 attempts per position
                 new_group_size = len(self.garden.plants) - new_group_start_idx
+                self.iteration_start_time = time.time()
 
                 if self.config['debug']['verbose']:
                     print(
-                        f'  Iter {plant_num}: {new_group_size} in group, {len(self.remaining_varieties)} remain'
+                        f'  Iter {self.global_iteration + 1}: Group {self.current_group_num} Plant {plant_num} | {len(self.remaining_varieties)} remain'
                     )
+
+                # Dynamic performance check
+                total_iteration = len(self.iteration_times) + 1
+                self._check_and_adjust_performance(total_iteration)
+
+                # Check if timeout was triggered
+                if self.timeout_triggered:
+                    if self.config['debug']['verbose']:
+                        print('  Stopping new group building due to timeout')
+                    break
 
                 # Generate candidates for this plant of the new group
                 if new_group_size == 0:
@@ -1648,6 +2106,7 @@ class GreedyGardener(Gardener):
 
                 new_group_plants.append(plant)
                 self._consume_variety(best_variety)
+                self.global_iteration += 1  # Increment global counter
 
                 # Record if this plant used relaxation
                 # For first 3 plants: check the returned flag
@@ -1699,6 +2158,11 @@ class GreedyGardener(Gardener):
                     print(
                         f'  → {species_letter} at ({int(best_position.x)},{int(best_position.y)})'
                     )
+
+                # Track iteration time for dynamic tuning
+                if self.iteration_start_time is not None:
+                    iter_elapsed = time.time() - self.iteration_start_time
+                    self.iteration_times.append(iter_elapsed)
 
             # Check if we built a valid group
             final_size = len(self.garden.plants) - new_group_start_idx
@@ -1753,26 +2217,49 @@ class GreedyGardener(Gardener):
                 return True
             else:
                 # Failed with this starting position
-                # Record the attempted position
-                if first_plant_position is not None:
-                    self.attempted_new_group_positions.append(
-                        (int(first_plant_position.x), int(first_plant_position.y))
-                    )
+                # NEW BEHAVIOR: Only remove the relaxation plant, KEEP all others
+                if relaxation_plant_idx is not None and relaxation_plant_idx < len(
+                    self.garden.plants
+                ):
+                    if self.config['debug']['verbose']:
+                        print(
+                            f'  Relaxation not resolved. Removing relaxation plant, keeping other {final_size - 1} plants'
+                        )
 
-                # Remove incomplete group
-                for i in range(len(self.garden.plants) - 1, new_group_start_idx - 1, -1):
-                    plant = self.garden.plants[i]
-                    self.garden.plants.remove(plant)
-                    self.garden._used_varieties.discard(id(plant.variety))
-                    # Return variety to available pool
-                    if plant.variety not in self.remaining_varieties:
-                        self.remaining_varieties.append(plant.variety)
-                        sig = self._variety_signature(plant.variety)
+                    relaxed_plant = self.garden.plants[relaxation_plant_idx]
+                    self.garden.plants.remove(relaxed_plant)
+                    self.garden._used_varieties.discard(id(relaxed_plant.variety))
+                    if relaxed_plant.variety not in self.remaining_varieties:
+                        self.remaining_varieties.append(relaxed_plant.variety)
+                        sig = self._variety_signature(relaxed_plant.variety)
                         if sig in self.available_varieties_by_sig:
-                            self.available_varieties_by_sig[sig].append(plant.variety)
+                            self.available_varieties_by_sig[sig].append(relaxed_plant.variety)
+                    self.global_iteration -= 1  # Decrement since we removed one plant
 
-                # Continue to next starting position
-                continue
+                    # Successfully kept the group (minus relaxation plant)
+                    return True
+                else:
+                    # No relaxation issue - small group (< 3 plants)
+                    # Record the attempted position and try new starting position
+                    if first_plant_position is not None:
+                        self.attempted_new_group_positions.append(
+                            (int(first_plant_position.x), int(first_plant_position.y))
+                        )
+
+                    # Remove the small incomplete group
+                    for i in range(len(self.garden.plants) - 1, new_group_start_idx - 1, -1):
+                        plant = self.garden.plants[i]
+                        self.garden.plants.remove(plant)
+                        self.garden._used_varieties.discard(id(plant.variety))
+                        if plant.variety not in self.remaining_varieties:
+                            self.remaining_varieties.append(plant.variety)
+                            sig = self._variety_signature(plant.variety)
+                            if sig in self.available_varieties_by_sig:
+                                self.available_varieties_by_sig[sig].append(plant.variety)
+                        self.global_iteration -= 1
+
+                    # Continue to next starting position
+                    continue
 
         # Failed to build a group with any starting position
         return False
