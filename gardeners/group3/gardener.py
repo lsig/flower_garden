@@ -18,7 +18,7 @@ class Gardener3(Gardener):
     # Grid and placement parameters
     ANCHOR_POINT_STEP = 0.25
     ROTATION_DEGREES = 15
-    PLACEMENT_BUFFER = 0.1
+    PLACEMENT_BUFFER = 0.03
 
     # Performance limits
     MAX_CLUSTERS = 999999
