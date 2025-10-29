@@ -10,7 +10,7 @@
         "G": -0.4,
         "B": -0.5
       },
-      "count": 3
+      "count": 20
     },
     {
       "name": "Average GERANIUM",
@@ -21,7 +21,7 @@
         "G": 0.9,
         "B": -0.2
       },
-      "count": 2
+      "count": 1
     },
     {
       "name": "Tired BEGONIA",
@@ -32,7 +32,7 @@
         "G": -0.1,
         "B": 0.5
       },
-    "count": 4
+    "count": 1
     }
   ]
 }

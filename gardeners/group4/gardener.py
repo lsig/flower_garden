@@ -30,13 +30,19 @@ class Gardener4(Gardener):
         self.DIRS = [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, -1), (-1, 1), (1, -1)]
         self.RADS = [3, 2, 1]
         self.ALL_SPECIES = ['RHODODENDRON', 'GERANIUM', 'BEGONIA']
+        self.debug = False
 
     def _spacing_ok(self, x: int, y: int, r: int, placed: list[Placed]) -> bool:
+        return self._spacing_ok_dist(x, y, r, placed) >= 0
+    
+    
+    def _spacing_ok_dist(self, x: int, y: int, r: int, placed: list[Placed]) -> float:
+        min_dist = float('inf')
         for q in placed:
             d = math.hypot(x - q.x, y - q.y)
-            if d < (max(r, q.r)):
-                return False
-        return True
+            min_dist = min(min_dist, d - max(r, q.r))
+        return min_dist
+            
 
     def _overlap_area(self, r1: float, r2: float, d: float) -> float:
         if d >= r1 + r2:
@@ -117,6 +123,11 @@ class Gardener4(Gardener):
                     sum += 0.1
 
         return sum
+    
+    def _to_xy(self,x:float,y:float, angle: float, distance: float) -> tuple[float, float]:
+        x = x + distance * math.cos(angle)
+        y = y+ distance * math.sin(angle)
+        return x, y
 
     def _place_from(
         self, anchor: Placed, inv: dict[str, list[PlantVariety]], placed: list[Placed]
@@ -125,15 +136,21 @@ class Gardener4(Gardener):
         options: list[tuple[int, float, int, str, int, int]] = []
         # tuple = (missing_filled, score, radius, species_key, x, y)
 
-        for dx, dy in self.DIRS:
-            for r in self.RADS:
-                d = max(anchor.r, r)
-                x, y = anchor.x + d * dx, anchor.y + d * dy
-                if not (0 <= x <= self.W and 0 <= y <= self.H):
+        for r in self.RADS:
+
+            #choose points around the anchor
+            angle_steps = 1440
+
+            d = max(anchor.r, r)
+
+            points = [self._to_xy(anchor.x, anchor.y, i * (2 * math.pi / angle_steps), d) for i in range(angle_steps)]
+
+            #print(f'Generated {len(points)} candidate points around anchor {anchor.species.name} at ({anchor.x},{anchor.y}) with radius {r}')
+
+            for x, y in points:
+                if not (0 <= x <= self.W and 0 <= y <= self.H) or not self._spacing_ok(x, y, r, placed):
                     continue
-                x, y = int(x), int(y)
-                if not self._spacing_ok(x, y, r, placed):
-                    continue
+                
 
                 IC = self._intersecting(x, y, r, placed)
                 score = self._score_candidate(x, y, r, placed)
@@ -147,7 +164,6 @@ class Gardener4(Gardener):
         if not options:
             return None
 
-        print(options)
 
         # Priority: fill most gaps, then best score, then smallest radius
         options.sort(key=lambda t: (-t[0], -t[1], t[2]))
@@ -180,15 +196,18 @@ class Gardener4(Gardener):
                     f'{nb.species.name}(r={nb.r}, x={nb.x}, y={nb.y}, intersections={count})'
                 )
 
-            print(
-                f'Placed {var.species.name} at ({x},{y}) r={r} for anchor {anchor.species.name} at ({anchor.x},{anchor.y})'
-            )
-            if neighbor_info:
-                print('  Neighbors:')
-                for info in neighbor_info:
-                    print('   -', info)
-            else:
-                print('  No neighbors (isolated placement).')
+            if self.debug:
+
+                print(
+                    f'Placed {var.species.name} at ({x},{y}) r={r} for anchor {anchor.species.name} at ({anchor.x},{anchor.y})'
+                )
+
+                if neighbor_info:
+                    print('  Neighbors:')
+                    for info in neighbor_info:
+                        print('   -', info)
+                else:
+                    print('  No neighbors (isolated placement).')
             return node
         return None
 
