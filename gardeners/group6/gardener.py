@@ -1,10 +1,13 @@
-"""Force-directed layout algorithm for optimal plant placement."""
+"""Force-directed layout algorithm for optimal plant placement with structured seeding,
+iterative refinement, and aggressive placement to maximize plant count.
+"""
 
 import random
+import math
+from typing import List, Tuple
 
 # NOTE: Originally used numpy for array operations, but replaced with standard Python
-# to avoid external dependencies. Original implementation used:
-# import numpy as np
+# to avoid external dependencies.
 from core.garden import Garden
 from core.gardener import Gardener
 from core.plants.plant_variety import PlantVariety
@@ -13,11 +16,9 @@ from core.point import Position
 # Optional tqdm import for progress bars
 try:
     from tqdm import tqdm
-
     HAS_TQDM = True
 except ImportError:
     HAS_TQDM = False
-
     # Fallback: tqdm is just a pass-through function
     def tqdm(iterable, desc=None, leave=None):
         return iterable
@@ -32,14 +33,15 @@ from gardeners.group6.algorithms import (
 
 
 class Gardener6(Gardener):
-    def __init__(self, garden: Garden, varieties: list[PlantVariety]):
+    def __init__(self, garden: Garden, varieties: List[PlantVariety]):
         super().__init__(garden, varieties)
 
-        # Dynamic scaling based on nursery size
+        # -------- Capacity & scaling --------
         num_plants = len(varieties)
 
-        # Limit to 50 plants for very large configs, but ensure species diversity
-        if num_plants > 50:
+        # Old cap kept as an option (OFF by default). Toggle True to re-enable 50-cap sampling.
+        self.enforce_variety_cap = False
+        if self.enforce_variety_cap and num_plants > 50:
             # Shuffle to get representative sample from all species
             random.shuffle(varieties)
             self.varieties = varieties[:50]
@@ -58,8 +60,35 @@ class Gardener6(Gardener):
         self.step_size_feasible = 0.18  # Stronger separation forces
         self.step_size_nutrient = 0.0002  # Weaker attraction forces
 
+        # -------- Optional radius-based refinement --------
+        self.enable_radius_refinement = True
+        self.refine_iters = max(50, 300 // scale_factor)
+        self.refine_step = 0.08
+        self.inner_margin = 0.18   # inner ring (fraction of half-min dimension)
+        self.outer_margin = 0.06   # buffer from edges
+
+        # -------- Structured seeding controls --------
+        # Fraction of *smallest-radius* plants forced into central diamond
+        self.center_small_fraction = 0.40
+        # Outer band where large plants are pushed
+        self.edge_band_thickness = 0.12
+        # Central diamond size relative to min(W,H)
+        self.diamond_radius_fraction = 0.28
+        # Minimal jitter when placing targets (helps break ties/alignment)
+        self.target_jitter = 0.015
+
+        # -------- Placement maximization settings --------
+        # Spiral/jitter search around a target if add_plant fails
+        self.place_retry_attempts = 80
+        self.place_retry_growth = 1.15  # radial growth per ring
+        self.place_retry_start = 0.5    # start radius multiplier of plant radius
+        # Final recovery sweep attempts per remaining plant
+        self.recovery_attempts = 120
+
+    # ------------------ Main entry ------------------
+
     def cultivate_garden(self) -> None:
-        """Place plants optimally using force-directed layout."""
+        """Place plants optimally using structured seeding + force-directed polishing."""
         if not self.varieties:
             return
 
@@ -67,13 +96,13 @@ class Gardener6(Gardener):
         best_layout = None
         best_labels = None
 
-        # Calculate how many plants to try placing
-        # Aim for ~2x the variety count to fill empty spaces
-        target_plants = min(len(self.varieties) * 8, 320)
+        # Allow more candidate points for denser packing
+        # Aim for ~10x the variety count, capped
+        target_plants = min(len(self.varieties) * 10, 640)
 
         # Multi-start: try multiple random seeds
         for _seed_idx in tqdm(range(self.num_seeds), desc='Multi-start optimization', leave=True):
-            # Step 1: Scatter MORE seeds than varieties to fill space
+            # Step 1: Scatter seeds (we’ll overwrite positions with structure)
             X, labels, inv = scatter_seeds_randomly(
                 self.varieties,
                 W=self.garden.width,
@@ -81,7 +110,10 @@ class Gardener6(Gardener):
                 target_count=target_plants,
             )
 
-            # Step 2: Create beneficial interactions FIRST
+            # Step 1.5: Impose structured seed — small → central diamond, large → edge band
+            X = self._impose_center_diamond_and_edge_band(X, labels)
+
+            # Step 2: Create beneficial interactions FIRST (don’t enforce feasibility yet)
             X = create_beneficial_interactions(
                 X,
                 self.varieties,
@@ -94,14 +126,25 @@ class Gardener6(Gardener):
                 keep_feasible=False,  # Don't enforce separation yet
             )
 
-            # Step 3: Separate ONLY plants that violate hard constraints
+            # Step 3: Enforce feasibility (non-overlap / hard constraints)
             X = separate_overlapping_plants(
                 X,
                 self.varieties,
                 labels,
-                iters=self.feasible_iters // 2,  # Fewer iterations
-                step_size=self.step_size_feasible * 0.5,  # Gentler separation
+                iters=self.feasible_iters,
+                step_size=self.step_size_feasible,
             )
+
+            # Step 3.5: Optional iterative Layout Refinement (small → center, large → edges)
+            if self.enable_radius_refinement:
+                X = self._iterative_radius_layout_refinement(
+                    X,
+                    labels,
+                    iters=self.refine_iters,
+                    step=self.refine_step,
+                    inner_margin=self.inner_margin,
+                    outer_margin=self.outer_margin,
+                )
 
             # Step 4: Measure garden quality
             score = measure_garden_quality(X, self.varieties, labels)
@@ -109,21 +152,360 @@ class Gardener6(Gardener):
             # Keep best
             if score > best_score:
                 best_score = score
-                # NUMPY: Originally used X.copy() for numpy array copying
                 best_layout = [pos for pos in X]  # Copy list of positions
                 best_labels = labels.copy()
 
-        # Place the best layout in the garden
+        # Place the best layout in the garden, maximizing count
         if best_layout is not None:
-            self._place_plants(best_layout, best_labels)
+            self._place_plants_maximizing_count(best_layout, best_labels)
 
-    def _place_plants(self, X: list[tuple[float, float]], labels: list[int]) -> None:
-        """Place plants from layout into the garden."""
-        # NUMPY: Originally used np.ndarray with shape (N, 2) for coordinates
-        # Access was X[i, 0] and X[i, 1] instead of X[i][0] and X[i][1]
+    # ------------------ Structured seeding core ------------------
+
+    def _impose_center_diamond_and_edge_band(
+        self,
+        X: List[Tuple[float, float]],
+        labels: List[int],
+    ) -> List[Tuple[float, float]]:
+        """
+        Rewrites X to:
+          - Place the smallest-radius plants inside a central diamond (rhombus),
+            split into four triangular quadrants (rotated square).
+          - Push the largest-radius plants toward an outer edge band.
+          - Leave the remaining "medium" plants in a ring between diamond and edge.
+        """
+        if not X:
+            return X
+
+        W, H = self.garden.width, self.garden.height
+        cx, cy = W / 2.0, H / 2.0
+        m = min(W, H)
+
+        # Sort indices by plant radius (ascending)
+        radii = [self.varieties[lbl].radius for lbl in labels]
+        idx_sorted_small_to_large = sorted(range(len(labels)), key=lambda i: radii[i])
+
+        n = len(labels)
+        n_center = max(1, int(self.center_small_fraction * n))
+        center_ids = idx_sorted_small_to_large[:n_center]
+        edge_ids   = idx_sorted_small_to_large[-n_center:]  # mirror count for edges
+        middle_ids = [i for i in range(n) if i not in center_ids and i not in edge_ids]
+
+        diamond_radius = self.diamond_radius_fraction * m
+
+        center_targets = self._diamond_quadrant_targets(
+            count=n_center,
+            cx=cx, cy=cy,
+            radius=diamond_radius,
+            jitter=self.target_jitter * m
+        )
+        edge_targets = self._edge_band_targets(
+            count=len(edge_ids),
+            W=W, H=H,
+            band=self.edge_band_thickness * m,
+            jitter=self.target_jitter * m
+        )
+        middle_targets = self._annulus_targets_between_diamond_and_edge(
+            count=len(middle_ids),
+            cx=cx, cy=cy,
+            W=W, H=H,
+            inner=diamond_radius * 1.05,
+            outer=(m / 2.0) - (self.edge_band_thickness * m) * 1.25,
+            jitter=self.target_jitter * m
+        )
+
+        for k, i in enumerate(center_ids):
+            X[i] = center_targets[k]
+        for k, i in enumerate(edge_ids):
+            X[i] = edge_targets[k]
+        for k, i in enumerate(middle_ids):
+            X[i] = middle_targets[k]
+
+        return X
+
+    # ---------- Target generation helpers ----------
+
+    def _diamond_quadrant_targets(
+        self, count: int, cx: float, cy: float, radius: float, jitter: float
+    ) -> List[Tuple[float, float]]:
+        """
+        Create 'count' points inside a diamond defined by |x-cx|/a + |y-cy|/a <= 1
+        with a = radius. We distribute across 4 triangular quadrants to
+        get a triangular/diamond middle.
+        """
+        if count <= 0:
+            return []
+        pts: List[Tuple[float, float]] = []
+        per_quad = [count // 4] * 4
+        for r in range(count % 4):
+            per_quad[r] += 1  # distribute remainder
+
+        def tri_sample(n, p0, p1, p2):
+            out = []
+            for _ in range(n):
+                t = random.random()
+                u = random.random() * (1.0 - t)
+                x = p0[0] + t * (p1[0] - p0[0]) + u * (p2[0] - p0[0])
+                y = p0[1] + t * (p1[1] - p0[1]) + u * (p2[1] - p0[1])
+                x += (random.random() - 0.5) * 2 * jitter
+                y += (random.random() - 0.5) * 2 * jitter
+                out.append((x, y))
+            return out
+
+        top    = (cx, cy - radius)
+        right  = (cx + radius, cy)
+        bottom = (cx, cy + radius)
+        left   = (cx - radius, cy)
+
+        pts += tri_sample(per_quad[0], (cx, cy), top, right)
+        pts += tri_sample(per_quad[1], (cx, cy), right, bottom)
+        pts += tri_sample(per_quad[2], (cx, cy), bottom, left)
+        pts += tri_sample(per_quad[3], (cx, cy), left, top)
+
+        return [self._clamp_to_diamond(p, cx, cy, radius) for p in pts]
+
+    def _edge_band_targets(
+        self, count: int, W: float, H: float, band: float, jitter: float
+    ) -> List[Tuple[float, float]]:
+        """
+        Evenly fan points along the outer band near the rectangle edges.
+        We alternate edges (top/right/bottom/left) round-robin to spread out.
+        """
+        if count <= 0:
+            return []
+        edges = ['top', 'right', 'bottom', 'left']
+        pts: List[Tuple[float, float]] = []
+        for i in range(count):
+            edge = edges[i % 4]
+            if edge == 'top':
+                x = random.uniform(band, W - band); y = band
+            elif edge == 'right':
+                x = W - band; y = random.uniform(band, H - band)
+            elif edge == 'bottom':
+                x = random.uniform(band, W - band); y = H - band
+            else:
+                x = band; y = random.uniform(band, H - band)
+            x += (random.random() - 0.5) * 2 * jitter
+            y += (random.random() - 0.5) * 2 * jitter
+            pts.append((self._clamp(x, 0, W), self._clamp(y, 0, H)))
+        return pts
+
+    def _annulus_targets_between_diamond_and_edge(
+        self, count: int, cx: float, cy: float, W: float, H: float,
+        inner: float, outer: float, jitter: float
+    ) -> List[Tuple[float, float]]:
+        """Points in the ring between the central diamond and the outer edge band."""
+        if count <= 0:
+            return []
+        pts: List[Tuple[float, float]] = []
+        for _ in range(count):
+            theta = random.random() * 2 * math.pi
+            r = random.uniform(inner, max(inner, outer))
+            x = cx + r * math.cos(theta)
+            y = cy + r * math.sin(theta)
+            x += (random.random() - 0.5) * 2 * jitter
+            y += (random.random() - 0.5) * 2 * jitter
+            pts.append((self._clamp(x, 0, W), self._clamp(y, 0, H)))
+        return pts
+
+    # ---------- Geometry helpers ----------
+
+    @staticmethod
+    def _clamp(v: float, lo: float, hi: float) -> float:
+        return max(lo, min(hi, v))
+
+    @staticmethod
+    def _clamp_to_diamond(p: Tuple[float, float], cx: float, cy: float, a: float) -> Tuple[float, float]:
+        """
+        Clamp a point softly into the diamond defined by |x-cx|/a + |y-cy|/a <= 1
+        by projecting to the closest point on the diamond boundary if needed.
+        """
+        x, y = p
+        dx, dy = abs(x - cx), abs(y - cy)
+        s = dx / a + dy / a
+        if s <= 1.0 or a <= 0:
+            return x, y
+        if dx + dy == 0:
+            return cx, cy
+        k = a / (dx + dy)  # project onto |dx|+|dy|=a
+        nx = cx + (x - cx) * k
+        ny = cy + (y - cy) * k
+        return nx, ny
+
+    # ------------------ Optional refinement ------------------
+
+    def _iterative_radius_layout_refinement(
+        self,
+        X: List[Tuple[float, float]],
+        labels: List[int],
+        iters: int = 100,
+        step: float = 0.08,
+        inner_margin: float = 0.18,
+        outer_margin: float = 0.06,
+        tol: float = 1e-3,
+    ) -> List[Tuple[float, float]]:
+        """Gently rebalances positions by plant size (small → center, large → edge)."""
+        if not X:
+            return X
+
+        W, H = self.garden.width, self.garden.height
+        cx, cy = W / 2.0, H / 2.0
+        garden_half = min(W, H) / 2.0
+
+        radii = [self.varieties[lbl].radius for lbl in labels]
+        r_min = min(radii); r_max = max(radii)
+        r_span = (r_max - r_min) if (r_max > r_min) else 1.0
+
+        target_inner = garden_half * inner_margin
+        target_outer = garden_half * (1.0 - outer_margin)
+
+        Xw = [list(p) for p in X]
+        for _ in range(iters):
+            max_shift = 0.0
+            for i, (x, y) in enumerate(Xw):
+                r_norm = (radii[i] - r_min) / r_span
+                target = target_inner + (target_outer - target_inner) * r_norm
+                dx, dy = x - cx, y - cy
+                dist = (dx * dx + dy * dy) ** 0.5 or 1e-6
+                ux, uy = dx / dist, dy / dist
+                delta = target - dist
+                move = step * delta
+                nx = self._clamp(cx + ux * (dist + move), 0.0, W)
+                ny = self._clamp(cy + uy * (dist + move), 0.0, H)
+                max_shift = max(max_shift, abs(move))
+                Xw[i][0], Xw[i][1] = nx, ny
+            if max_shift < tol:
+                break
+        return [(p[0], p[1]) for p in Xw]
+
+    # ------------------ Placement (maximize count) ------------------
+
+    def _place_plants_maximizing_count(self, X: List[Tuple[float, float]], labels: List[int]) -> None:
+        """
+        Place plants with:
+          1) Big-first ordering to preserve space.
+          2) Local spiral/jitter retry if a placement fails.
+          3) Recovery sweep for any unplaced plants using size-aware fallback targets.
+        """
+        n = len(labels)
+        W, H = self.garden.width, self.garden.height
+        cx, cy = W / 2.0, H / 2.0
+        m = min(W, H)
+        diamond_radius = self.diamond_radius_fraction * m
+
+        radii = [self.varieties[lbl].radius for lbl in labels]
+        order = sorted(range(n), key=lambda i: radii[i], reverse=True)  # big first
+
+        failed_indices: List[int] = []
+
+        # First pass: try original targets with backoff
+        for idx in order:
+            lbl = labels[idx]
+            variety = self.varieties[lbl]
+            target = X[idx]
+            if not self._try_place_with_backoff(variety, target):
+                failed_indices.append(idx)
+
+        if not failed_indices:
+            return  # everything placed
+
+        # Prepare fallback targets
+        r_sorted = sorted([(i, radii[i]) for i in failed_indices], key=lambda t: t[1])
+        k = len(r_sorted) // 3 or 1
+        small_idxs = [i for i, _ in r_sorted[:k]]
+        large_idxs = [i for i, _ in r_sorted[-k:]]
+        middle_idxs = [i for i, _ in r_sorted if i not in small_idxs and i not in large_idxs]
+
+        small_targets = self._diamond_quadrant_targets(
+            count=len(small_idxs),
+            cx=cx, cy=cy,
+            radius=diamond_radius,
+            jitter=self.target_jitter * m
+        )
+        large_targets = self._edge_band_targets(
+            count=len(large_idxs),
+            W=W, H=H,
+            band=self.edge_band_thickness * m,
+            jitter=self.target_jitter * m
+        )
+        middle_targets = self._annulus_targets_between_diamond_and_edge(
+            count=len(middle_idxs),
+            cx=cx, cy=cy,
+            W=W, H=H,
+            inner=diamond_radius * 1.05,
+            outer=(m / 2.0) - (self.edge_band_thickness * m) * 1.25,
+            jitter=self.target_jitter * m
+        )
+
+        # Second pass: try fallback targets with more retries
+        for i, tgt in zip(small_idxs, small_targets):
+            lbl = labels[i]; variety = self.varieties[lbl]
+            self._try_place_with_backoff(variety, tgt, attempts=self.recovery_attempts)
+
+        for i, tgt in zip(large_idxs, large_targets):
+            lbl = labels[i]; variety = self.varieties[lbl]
+            self._try_place_with_backoff(variety, tgt, attempts=self.recovery_attempts)
+
+        for i, tgt in zip(middle_idxs, middle_targets):
+            lbl = labels[i]; variety = self.varieties[lbl]
+            self._try_place_with_backoff(variety, tgt, attempts=self.recovery_attempts)
+
+    def _try_place_with_backoff(
+        self,
+        variety: PlantVariety,
+        target_xy: Tuple[float, float],
+        attempts: int = None,
+    ) -> bool:
+        """
+        Try to place a plant at (or near) target_xy. If add_plant fails, we
+        spiral/jitter outward with a radius that grows relative to plant size.
+        Returns True if placed, False otherwise.
+        """
+        if attempts is None:
+            attempts = self.place_retry_attempts
+
+        W, H = self.garden.width, self.garden.height
+        base_r = getattr(variety, "radius", 1.0)
+        radius = max(0.1, float(base_r))
+        # Start with a small search radius and grow it multiplicatively
+        search_r = max(0.2, self.place_retry_start * radius)
+
+        cx, cy = target_xy
+        for i in range(attempts):
+            if i == 0:
+                x, y = cx, cy
+            else:
+                angle = random.random() * 2 * math.pi
+                # ring grows gradually; within ring, choose random point
+                ring = search_r * (self.place_retry_growth ** (i / 6.0))
+                dist = random.uniform(0.0, ring)
+                x = cx + dist * math.cos(angle)
+                y = cy + dist * math.sin(angle)
+
+            # Clamp to garden bounds
+            x = self._clamp(x, 0.0, W)
+            y = self._clamp(y, 0.0, H)
+
+            pos = Position(x=x, y=y)
+            try:
+                ok = self.garden.add_plant(variety, pos)
+            except Exception:
+                # Some implementations raise on invalid; treat as failure and continue
+                ok = False
+
+            # Some add_plant() return None on success; accept True or None
+            if ok or ok is None:
+                return True
+
+        return False
+
+    # ------------------ Final placement API (legacy/backward-compat) ------------------
+
+    def _place_plants(self, X: List[Tuple[float, float]], labels: List[int]) -> None:
+        """
+        Legacy simple placement kept for compatibility with earlier callers/tests.
+        Prefer _place_plants_maximizing_count which uses retries & recovery.
+        """
         for i, label in enumerate(labels):
             variety = self.varieties[label]
             position = Position(x=X[i][0], y=X[i][1])
-
-            # Attempt to place plant
             self.garden.add_plant(variety, position)
