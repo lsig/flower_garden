@@ -80,6 +80,9 @@ class Nursery:
                     )
 
         if r + g + b <= 0:
+            print(f'R: {r}')
+            print(f'G: {g}')
+            print(f'B: {b}')
             raise ValueError(
                 f'Invalid coefficients for {variety.name}: sum is {r + g + b}. '
                 f'Net micronutrient production (R+G+B) must be positive.'
@@ -111,7 +114,6 @@ class Nursery:
     def _generate_valid_coefficients(
         self, species: Species, radius: int
     ) -> dict[Micronutrient, float]:
-        min_val = -2 * radius
         max_val = 2 * radius
 
         if species == Species.RHODODENDRON:
@@ -133,20 +135,23 @@ class Nursery:
                 Micronutrient.G,
             )
 
-        produced_val = random.uniform(0.2, max_val)
+        produced_val = random.uniform(0.3, max_val)
 
         max_consumed_total = produced_val - 0.1
 
-        consumed1_abs = random.uniform(0.1, min(max_consumed_total * 0.6, -min_val))
-        consumed2_abs = random.uniform(0.1, min(max_consumed_total - consumed1_abs, -min_val))
+        consumed1_abs = random.uniform(0.1, max_consumed_total - 0.1)
+        consumed2_abs = random.uniform(0.1, max_consumed_total - consumed1_abs)
 
         consumed1_val = -consumed1_abs
         consumed2_val = -consumed2_abs
 
+        coefficients = [consumed1_val, consumed2_val]
+        random.shuffle(coefficients)
+
         return {
             produced: round(produced_val, 2),
-            consumed1: round(consumed1_val, 2),
-            consumed2: round(consumed2_val, 2),
+            consumed1: round(coefficients.pop(), 2),
+            consumed2: round(coefficients.pop(), 2),
         }
 
     def get_varieties(self) -> list[PlantVariety]:
