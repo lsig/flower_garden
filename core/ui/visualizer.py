@@ -34,8 +34,12 @@ class GardenVisualizer:
 
         self.padding = 80
         info_pane_width = 220
-        self.scale_x = (width - self.padding * 2 - info_pane_width) / garden.width
-        self.scale_y = (height - self.padding * 2) / garden.height
+        scale = min(
+            (width - self.padding * 2 - info_pane_width) / garden.width,
+            (height - self.padding * 2) / garden.height,
+        )
+        self.scale_x = scale
+        self.scale_y = scale
         self.offset_x = self.padding
         self.offset_y = self.padding
 
@@ -243,10 +247,3 @@ class GardenVisualizer:
             self.clock.tick(60)
 
         pygame.quit()
-
-
-def visualize_simulation(garden: Garden, turns: int = 1000):
-    """Initializes and runs the garden visualization."""
-    engine = Engine(garden)
-    visualizer = GardenVisualizer(garden, engine, turns)
-    visualizer.run()
