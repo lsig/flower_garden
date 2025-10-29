@@ -1,4 +1,6 @@
-# Assuming this import works based on your file structure
+# FIX: Import Set for type hinting
+
+# Assuming these core classes are available in the project structure
 from contextlib import suppress
 
 from core.garden import Garden
@@ -9,8 +11,8 @@ from core.plants.species import Species
 from core.point import Position
 
 
-class Gardener2(Gardener):
-    STEP = 0.1  # Smaller = better but slower
+class BalancerGreedy(Gardener):
+    STEP = 0.2  # Smaller = better but slower
 
     def __init__(self, garden: Garden, varieties: list[PlantVariety]):
         super().__init__(garden, varieties)
@@ -83,6 +85,9 @@ class Gardener2(Gardener):
     def _get_species_for_most_deficient_nutrient(self) -> set[str]:
         """
         Identifies the species that produces the most deficient micronutrient.
+
+        The 'underrepresented species' is the one that would fix the current
+        limiting factor (the nutrient with the lowest net amount).
         """
         net_nutrients = self._get_current_net_nutrients()
 
@@ -122,7 +127,11 @@ class Gardener2(Gardener):
         self, scored_varieties: list[tuple[float, PlantVariety]], underrepresented_species: set[str]
     ) -> tuple[float, PlantVariety] | None:
         """
-        Selects the single highest-scoring variety that belongs to the "fixing" species.
+        Selects the single highest-scoring variety that belongs to the "fixing" species
+        (the one that produces the most deficient nutrient).
+
+        Note: The logic here assumes 'underrepresented_species' will contain exactly one species
+        based on the _get_species_for_most_deficient_nutrient logic.
         """
         if not scored_varieties or not underrepresented_species:
             return None
@@ -155,18 +164,12 @@ class Gardener2(Gardener):
 
         return positions
 
-    def _count_potential_interactions_simple(
-        self, variety: PlantVariety, position: Position
-    ) -> int:
-        """
-        Calculates the total number of inter-species interactions (Simple Max Count).
-        This is the method for the early/dense phase.
-        """
+    def _count_potential_interactions(self, variety: PlantVariety, position: Position) -> int:
+        """Counts # interaction"""
         count = 0
         new_radius = variety.radius
 
         for existing_plant in self.garden.plants:
-            # Only count interactions with DIFFERENT species
             if existing_plant.variety.species == variety.species:
                 continue
 
@@ -178,69 +181,13 @@ class Gardener2(Gardener):
 
         return count
 
-    def _count_potential_interactions_strict_balanced(
-        self, variety: PlantVariety, position: Position
-    ) -> int:
-        """
-        Calculates the total number of inter-species interactions, returning 0 unless
-        interactions occur with *both* complementary species.
-        This is the method for the later phase.
-        """
-        total_interaction_count = 0
-        interacting_species = set()
-        new_radius = variety.radius
-
-        for existing_plant in self.garden.plants:
-            # 1. Check if the existing plant is a different species (inter-species interaction)
-            if existing_plant.variety.species == variety.species:
-                continue
-
-            distance = self.garden._calculate_distance(position, existing_plant.position)
-            interaction_distance = new_radius + existing_plant.variety.radius
-
-            # 2. Check for root system overlap
-            if distance < interaction_distance:
-                total_interaction_count += 1
-                interacting_species.add(existing_plant.variety.species)
-
-        # 3. Final Check: Determine if *both* complementary species are present.
-
-        # All three species
-        all_species = {Species.RHODODENDRON, Species.GERANIUM, Species.BEGONIA}
-
-        # The two species that should be interacting with the current variety
-        complementary_species = all_species - {variety.species}
-
-        # Check if all required complementary species are in the set of interacting species
-        if interacting_species.issuperset(complementary_species):
-            return total_interaction_count
-        elif interacting_species:
-            return 1
-        else:
-            # If the plant interacts with only one or none of the complementary species, return 0.
-            return 0
-
     # --- Main Cultivation Method ---
 
     def cultivate_garden(self) -> None:
         plantable_varieties = self._get_sorted_varieties()
         candidate_positions = self._generate_placement_grid()
 
-        # Check if this is the very first plant placement
-        is_first_plant = not self.garden.plants
-
         while plantable_varieties:
-            # current_plant_count = len(self.garden.plants)
-
-            # len(self.varieties) < 150 --> balanced
-            # 200 --> simple
-            if False:
-                # print('simple')
-                interaction_func = self._count_potential_interactions_simple
-            else:
-                print('planting')
-                interaction_func = self._count_potential_interactions_strict_balanced
-
             # 1. Determine the species needed to fix the nutrient deficiency
             underrepresented_species = self._get_underrepresented_species()
             if not underrepresented_species:
@@ -255,45 +202,26 @@ class Gardener2(Gardener):
                 break
 
             best_score, best_variety = best_variety_tuple
-            best_position = None
+
+            # 3. Find a good position (needs work tbh)
+            best_placement: tuple[Position, int] | None = None
             max_interactions = -1
 
-            # --- First Plant Logic: Place in the Middle ---
-            if is_first_plant:
-                center_x = self.garden.width / 2
-                center_y = self.garden.height / 2
-                potential_center_position = Position(center_x, center_y)
+            for position in candidate_positions:
+                if not self.garden.can_place_plant(best_variety, position):
+                    continue
 
-                if self.garden.can_place_plant(best_variety, potential_center_position):
-                    best_position = potential_center_position
-                    is_first_plant = False
-                else:
-                    is_first_plant = False
+                interactions = self._count_potential_interactions(best_variety, position)
 
-            # 3. Find a good position (Normal logic, runs if not first plant)
-            if best_position is None:
-                best_placement: tuple[Position, int] | None = None
-
-                for position in candidate_positions:
-                    if not self.garden.can_place_plant(best_variety, position):
-                        continue
-
-                    # Use the dynamically selected function
-                    interactions = interaction_func(best_variety, position)
-
-                    # Selection Criteria: Maximize interactions
-                    if interactions > max_interactions:
-                        max_interactions = interactions
-                        best_placement = (position, interactions)
-
-                if best_placement:
-                    best_position, _ = best_placement
-                else:
-                    # Could not find a single place to put the highest-priority plant.
-                    break
+                # Selection Criteria: Maximize interactions (Not ideal but I'm too lazy to implement)
+                if interactions > max_interactions:
+                    max_interactions = interactions
+                    best_placement = (position, interactions)
 
             # 4. Execute the placement
-            if best_position:
+            if best_placement:
+                best_position, _ = best_placement
+
                 plant = self.garden.add_plant(best_variety, best_position)
 
                 if plant is not None:
@@ -303,8 +231,7 @@ class Gardener2(Gardener):
                             plantable_varieties.pop(i)
                             break
                     with suppress(ValueError):
-                        # Remove the position from the candidate grid if it was in there
                         candidate_positions.remove(best_position)
-                else:
-                    # Placement failed (e.g., radius issue)
-                    break
+            else:
+                # Could not find a single place to put the highest-priority plant.
+                break

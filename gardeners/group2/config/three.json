@@ -10,11 +10,11 @@
     },
     {
       "name": "Greedy GERANIUM",
-      "radius": 2,
+      "radius": 3,
       "species": "GERANIUM",
       "nutrient_coefficients": {
         "R": -3.5, 
-        "G": 5.0, 
+        "G": 4.6, 
         "B": -1.0
     },
       "count": 8

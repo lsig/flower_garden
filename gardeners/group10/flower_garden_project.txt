@@ -1,0 +1,55 @@
+Project 3 — Flower Garden
+
+Overview
+You will design and place plants in a 16m × 10m garden to optimize a metric of your choice. There are three species—Rhododendron, Geranium, Begonia—and multiple varieties per species. Each individual plant is placed at a 2D location (x, y). Varieties differ by root radius r ∈ {1, 2, 3} and by how they produce/consume three micronutrients: R, G, and B.
+
+Plant & Variety Model
+• Variety parameters: (species s, root radius r, micronutrient vector (R, G, B)).
+• Constraints on (R, G, B):
+  – Each of R, G, B lies in [−2r, 2r].
+  – Net production is positive: R + G + B > 0.
+  – Species-specific sign pattern:
+      Rhododendron:   R > 0, G < 0, B < 0
+      Geranium:       G > 0, R < 0, B < 0
+      Begonia:        B > 0, R < 0, G < 0
+• Spacing: No two plants of the same variety may be closer than r. Two plants of different species “interact” if their root disks overlap, i.e., distance < r1 + r2. Root disks may extend beyond the garden boundary.
+• Storage: Each plant has per-nutrient reservoir capacity of 10r. Excess cannot be received or produced beyond that capacity.
+
+Daily Simulation (repeats after initial placement)
+Initial state: each plant’s reservoir for each nutrient is half full.
+1) Daytime — Production: Update inventories by the plant’s (R, G, B) amounts as long as no inventory would go negative.
+2) Evening — Exchange (between interacting plants of different species):
+   • A plant offers only the nutrient it produces, up to 25% of its current inventory of that nutrient.
+   • If both sides offer, the exchange magnitude is the minimum of the two offered amounts.
+   • Exchange occurs only if each plant has more of its offered nutrient than the nutrient it would receive.
+   For example, if a variety of rhododendron currently has 16 units of R, it will offer exactly 4 units total, split evenly among all interaction partners.
+3) Overnight — Growth:
+   • If a plant has at least 2r of each nutrient, it consumes r of each and grows by r “size units.”
+   • Full size is reached at 100 r^2 size units; plants then stop growing but continue producing and exchanging.
+
+Objective Metrics (choose your target)
+• Total plant growth: Maximize g_t at large t (steady state).
+• Fastest to threshold G: Minimize t where total growth g_t ≥ G.
+• Biggest by time T: Maximize g_T for some intermediate T.
+• “No plant left behind”: Minimize t by which every plant reaches at least 0.5 × (full size) = 50 r^2.
+
+Metric Variants / Constraints (optional)
+• Use only three distinct varieties.
+• Use every available variety at least once.
+• Use exactly P plants (parameter P).
+
+Optimization & Limits
+• You decide which varieties to plant and where to place them; then the simulation runs automatically.
+• A CPU time limit of 1 minute is imposed for the selection/placement phase (subject to adjustment).
+• There is no intrinsic cap on the number of plants, but spacing constraints imply a finite packing capacity (e.g., with r = 1 everywhere, determine the capacity).
+
+Variety Sets & Tournaments
+• The “nursery” (the set of available varieties) is a parameter and will be provided; assume at least one variety per species. Randomly generated sets may also be used.
+• You may pick whichever metric you want to optimize. At the end, we’ll run multiple tournaments to compare submissions across several metrics.
+
+Notes
+• Interactions are only across different species (Rhododendron ↔ Geranium ↔ Begonia); same-species plants do not exchange.
+• Placement may allow root disks to extend beyond garden walls; this only affects interactions via distance thresholds, not containment.
+• Remember the reservoirs: growth depends on having all three nutrients available in sufficient quantities without exceeding capacity.
+
+End of summary.
