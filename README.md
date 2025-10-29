@@ -45,7 +45,7 @@ The `--gardener` argument allows you to specify the gardener which will cultivat
 | Code | Gardener Type |
 | :--- | :--- |
 | `gr` | RandomGardener |
-| `g1`-`g10` | Player0 through Player11 |
+| `g1`-`g10` | Gardener1 through Gardener10|
 
 ---
 

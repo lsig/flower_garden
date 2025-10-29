@@ -9,7 +9,7 @@ from core.plants.species import Species
 from core.point import Position
 
 
-class Gardener9(Gardener):
+class ring_Gardener(Gardener):
     def __init__(self, garden: Garden, varieties: list[PlantVariety]):
         super().__init__(garden, varieties)
 
@@ -179,55 +179,70 @@ class Gardener9(Gardener):
         for _ in range(8):
             palnt_layer = self.run_layer(palnt_layer)
 
-        # fill gaps
-        other_blue_varieties = [v for v in self.varieties if v.species == Species.BEGONIA]
-        s_other_blue_varieties = sorted(
-            other_blue_varieties, key=self.get_production_value, reverse=True
-        )
-        other_green_varieties = [v for v in self.varieties if v.species == Species.GERANIUM]
-        s_other_green_varieties = sorted(
-            other_green_varieties, key=self.get_production_value, reverse=True
-        )
-        other_red_varieties = [v for v in self.varieties if v.species == Species.RHODODENDRON]
-        s_other_red_varieties = sorted(
-            other_red_varieties, key=self.get_production_value, reverse=True
-        )
+        # SECOND RING: Place plants around each first ring plant
+        # if len(first_ring_positions) > 0:
+        #     for ring_plant in first_ring_positions:
+        #         # Get complementary varieties (different from the ring plant)
+        #         complementary = self.complimentary_plants_for_plants( ring_plant)
 
-        sorted_varieties = [
-            x
-            for x in chain.from_iterable(
-                zip_longest(s_other_blue_varieties, s_other_green_varieties, s_other_red_varieties)
-            )
-            if x is not None
-        ]
+        #         for variety in complementary:
+        #             # Calculate radius from first ring plant
+        #             sub_ring_radius = max(ring_plant['variety'].radius, variety.radius) + 0.1
 
-        # sorted_varieties = sorted(self.varieties, key=lambda v: v.radius)
+        #             # Place 2-3 plants around each first ring plant
+        #             # Offset angles to create a spiral pattern
+        #             num_sub_plants = 2
+        #             base_angle = ring_plant['angle']  # Continue the radial direction
 
-        # smallest variety first to fill gaps
-        small_variety = sorted_varieties[0]
-        spacing = small_variety.radius * 2 + 0.2
+        #             for j in range(num_sub_plants):
+        #                 # Spread plants at angles perpendicular to radial direction
+        #                 angle_offset = (j - 0.5) * (math.pi / 3)  # ±60 degrees
+        #                 angle = base_angle + angle_offset
 
-        x = small_variety.radius + 0.5
-        while x < self.garden.width - small_variety.radius:
-            y = small_variety.radius + 0.5
-            while y < self.garden.height - small_variety.radius:
-                pos = Position(x, y)
-                if self.garden.can_place_plant(small_variety, pos):
-                    self.garden.add_plant(small_variety, pos)
-                y += spacing
-            x += spacing
+        #                 x = ring_plant['x'] + sub_ring_radius * math.cos(angle)
+        #                 y = ring_plant['y'] + sub_ring_radius * math.sin(angle)
+        #                 pos = Position(x, y)
 
-        # larger varieties next
-        for variety in sorted_varieties[1:]:
-            # Try a grid of positions
-            step = variety.radius * 1.5
-            x = variety.radius
+        #                 if self.garden.can_place_plant(variety, pos):
+        #                     self.garden.add_plant(variety, pos)
 
-            while x < self.garden.width - variety.radius:
-                y = variety.radius
-                while y < self.garden.height - variety.radius:
-                    pos = Position(x, y)
-                    if self.garden.can_place_plant(variety, pos):
-                        self.garden.add_plant(variety, pos)
-                    y += step
-                x += step
+        # # fill gaps
+        # other_blue_varieties = [v for v in self.varieties if v.species == Species.BEGONIA]
+        # s_other_blue_varieties = sorted(other_blue_varieties, key=self.get_production_value, reverse=True)
+        # other_green_varieties = [v for v in self.varieties if  v.species == Species.GERANIUM]
+        # s_other_green_varieties = sorted(other_green_varieties, key=self.get_production_value, reverse=True)
+        # other_red_varieties = [v for v in self.varieties if  v.species == Species.RHODODENDRON]
+        # s_other_red_varieties = sorted(other_red_varieties, key=self.get_production_value, reverse=True)
+
+        # sorted_varieties = [x for x in chain.from_iterable(zip_longest(s_other_blue_varieties, s_other_green_varieties, s_other_red_varieties)) if x is not None]
+
+        # # sorted_varieties = sorted(self.varieties, key=lambda v: v.radius)
+
+        # # smallest variety first to fill gaps
+        # small_variety = sorted_varieties[0]
+        # spacing = small_variety.radius * 2 + 0.2
+
+        # x = small_variety.radius + 0.5
+        # while x < self.garden.width - small_variety.radius:
+        #     y = small_variety.radius + 0.5
+        #     while y < self.garden.height - small_variety.radius:
+        #         pos = Position(x, y)
+        #         if self.garden.can_place_plant(small_variety, pos):
+        #             self.garden.add_plant(small_variety, pos)
+        #         y += spacing
+        #     x += spacing
+
+        # # larger varieties next
+        # for variety in sorted_varieties[1:]:
+        #     # Try a grid of positions
+        #     step = variety.radius * 1.5
+        #     x = variety.radius
+
+        #     while x < self.garden.width - variety.radius:
+        #         y = variety.radius
+        #         while y < self.garden.height - variety.radius:
+        #             pos = Position(x, y)
+        #             if self.garden.can_place_plant(variety, pos):
+        #                 self.garden.add_plant(variety, pos)
+        #             y += step
+        #         x += step

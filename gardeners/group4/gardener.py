@@ -192,6 +192,18 @@ class Gardener4(Gardener):
             return node
         return None
 
+    def sort_plants_score(self):
+        self.varieties.sort(
+            key=lambda v: (
+                sum(v.nutrient_coefficients.values()) / (v.radius**2),
+                max(v.nutrient_coefficients.values())
+                / abs(
+                    sum(v.nutrient_coefficients.values()) - max(v.nutrient_coefficients.values())
+                ),
+            ),
+            reverse=True,
+        )
+
     def cultivate_garden(self) -> None:
         if not self.varieties:
             return
@@ -205,6 +217,7 @@ class Gardener4(Gardener):
         # preplacing lacking varieties spread out around the middle might be helpful
 
         self.varieties.sort(key=lambda v: v.radius)
+        # self.sort_plants_score()
         inv = self._split_by_species(self.varieties[1:])
         seed = self.varieties[0]
         if self.garden.add_plant(seed, Position(self.W / 2, self.H / 2)) is not None:
