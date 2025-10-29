@@ -302,7 +302,6 @@ class Gardener7(Gardener):
                             return failed.pop(k)
                 return failed.pop(0) if failed else None
 
-
             placed_here = 0
             for _ in range(self._REFINE_MAX_PER_NODE):
                 if not failed or successes >= self._REFINE_MAX_PLANTS:
