@@ -155,7 +155,9 @@ class Gardener2(Gardener):
 
         return positions
 
-    def _count_potential_interactions_simple(self, variety: PlantVariety, position: Position) -> int:
+    def _count_potential_interactions_simple(
+        self, variety: PlantVariety, position: Position
+    ) -> int:
         """
         Calculates the total number of inter-species interactions (Simple Max Count).
         This is the method for the early/dense phase.
@@ -176,9 +178,11 @@ class Gardener2(Gardener):
 
         return count
 
-    def _count_potential_interactions_strict_balanced(self, variety: PlantVariety, position: Position) -> int:
+    def _count_potential_interactions_strict_balanced(
+        self, variety: PlantVariety, position: Position
+    ) -> int:
         """
-        Calculates the total number of inter-species interactions, returning 0 unless 
+        Calculates the total number of inter-species interactions, returning 0 unless
         interactions occur with *both* complementary species.
         This is the method for the later phase.
         """
@@ -200,13 +204,13 @@ class Gardener2(Gardener):
                 interacting_species.add(existing_plant.variety.species)
 
         # 3. Final Check: Determine if *both* complementary species are present.
-        
+
         # All three species
         all_species = {Species.RHODODENDRON, Species.GERANIUM, Species.BEGONIA}
-        
+
         # The two species that should be interacting with the current variety
         complementary_species = all_species - {variety.species}
-        
+
         # Check if all required complementary species are in the set of interacting species
         if interacting_species.issuperset(complementary_species):
             return total_interaction_count
@@ -224,15 +228,15 @@ class Gardener2(Gardener):
         is_first_plant = not self.garden.plants
 
         while plantable_varieties:
-            #current_plant_count = len(self.garden.plants)
-            
+            # current_plant_count = len(self.garden.plants)
+
             # len(self.varieties) < 150 --> balanced
             # 200 --> simple
             if False:
-                print("simple")
+                print('simple')
                 interaction_func = self._count_potential_interactions_simple
             else:
-                print("balanaced")
+                print('balanaced')
                 interaction_func = self._count_potential_interactions_strict_balanced
 
             # 1. Determine the species needed to fix the nutrient deficiency
@@ -260,7 +264,7 @@ class Gardener2(Gardener):
 
                 if self.garden.can_place_plant(best_variety, potential_center_position):
                     best_position = potential_center_position
-                    is_first_plant = False 
+                    is_first_plant = False
                 else:
                     is_first_plant = False
 
@@ -271,7 +275,7 @@ class Gardener2(Gardener):
                 for position in candidate_positions:
                     if not self.garden.can_place_plant(best_variety, position):
                         continue
-                    
+
                     # Use the dynamically selected function
                     interactions = interaction_func(best_variety, position)
 

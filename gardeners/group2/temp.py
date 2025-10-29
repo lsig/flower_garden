@@ -48,7 +48,7 @@ class Gardener2(Gardener):
             return float('inf')
 
         base_ratio = production / total_consumption
-        radius_multiplier = 10 - (variety.radius * variety.radius) 
+        radius_multiplier = 10 - (variety.radius * variety.radius)
 
         composite_score = base_ratio * radius_multiplier
         return composite_score
@@ -76,7 +76,7 @@ class Gardener2(Gardener):
         Identifies the species that produces the most deficient micronutrient.
         """
         net_nutrients = self._get_current_net_nutrients()
-        
+
         if not net_nutrients:
             most_deficient_nutrient = Micronutrient.R
         else:
@@ -118,7 +118,9 @@ class Gardener2(Gardener):
 
     # --- Placement Scoring Methods ---
 
-    def _get_interaction_counts(self, variety: PlantVariety, position: Position) -> dict[Species, int]:
+    def _get_interaction_counts(
+        self, variety: PlantVariety, position: Position
+    ) -> dict[Species, int]:
         """Counts the number of interactions for each species."""
         counts = {s: 0 for s in Species}
         new_radius = variety.radius
@@ -141,16 +143,15 @@ class Gardener2(Gardener):
 
         # Interactions with other species only
         inter_species_counts = [
-            count for species, count in counts.items() 
-            if species != current_species
+            count for species, count in counts.items() if species != current_species
         ]
 
         # Calculate Intra-species interactions (interactions with self)
         intra_species_count = counts.get(current_species, 0)
-        
+
         # PENALTY: Disqualify positions with self-species interaction
         if intra_species_count > 0:
-            return -1.0 
+            return -1.0
 
         # If there are no inter-species interactions, the score is 0
         if not inter_species_counts or sum(inter_species_counts) == 0:
@@ -163,7 +164,6 @@ class Gardener2(Gardener):
         score = (min_inter_count * 100) + total_inter_count
 
         return score
-
 
     def _generate_placement_grid(self) -> list[Position]:
         """Generates a grid of candidate positions across the garden."""
@@ -197,59 +197,67 @@ class Gardener2(Gardener):
         Calculates four non-overlapping cluster centers in the specified order:
         Top-Left (0), Bottom-Right (1), Top-Right (2), Bottom-Left (3)
         """
-        R = self.max_radius + 1.0  
+        R = self.max_radius + 1.0
         W, H = self.garden.width, self.garden.height
-        
+
         # Order: TL, BR, TR, BL
         centers = [
-            Position(R, H - R),      # Index 0: Top-Left
-            Position(W - R, R),      # Index 1: Bottom-Right
+            Position(R, H - R),  # Index 0: Top-Left
+            Position(W - R, R),  # Index 1: Bottom-Right
             Position(W - R, H - R),  # Index 2: Top-Right
-            Position(R, R),          # Index 3: Bottom-Left
+            Position(R, R),  # Index 3: Bottom-Left
         ]
         return centers
 
-    def _grow_cluster(self, center: Position, available_varieties: list[PlantVariety], max_plants: int, cluster_index: int) -> list[PlantVariety]:
+    def _grow_cluster(
+        self,
+        center: Position,
+        available_varieties: list[PlantVariety],
+        max_plants: int,
+        cluster_index: int,
+    ) -> list[PlantVariety]:
         """
         Grows a cluster, using the cluster_index to seed the first plant.
         """
         used_varieties = []
-        cluster_plants = [] 
-        
+        cluster_plants = []
+
         local_positions = []
-        grid_size = 3 * self.max_radius 
-        
+        grid_size = 3 * self.max_radius
+
         for i in range(-int(grid_size / self.STEP), int(grid_size / self.STEP) + 1):
             for j in range(-int(grid_size / self.STEP), int(grid_size / self.STEP) + 1):
                 x = center.x + i * self.STEP
                 y = center.y + j * self.STEP
                 local_positions.append(Position(x, y))
 
-        local_positions.sort(key=lambda p: self.garden._calculate_distance(p, center)) 
+        local_positions.sort(key=lambda p: self.garden._calculate_distance(p, center))
 
         all_scored_varieties = self._get_sorted_varieties()
 
         # Define the seeding sequence: R, G, B, R (using modulo 3 for index)
         seeding_species_map = {
-            0: Species.RHODODENDRON, # Top-Left
-            1: Species.GERANIUM,     # Bottom-Right
-            2: Species.BEGONIA,      # Top-Right
-            3: Species.RHODODENDRON, # Bottom-Left (Reruns R since there are only 3 species)
+            0: Species.RHODODENDRON,  # Top-Left
+            1: Species.GERANIUM,  # Bottom-Right
+            2: Species.BEGONIA,  # Top-Right
+            3: Species.RHODODENDRON,  # Bottom-Left (Reruns R since there are only 3 species)
         }
-        
+
         starting_species = seeding_species_map[cluster_index]
 
-
-        for _ in range(max_plants): 
-            
+        for _ in range(max_plants):
             plant_to_place = None
             best_position = None  # Reset best_position for each iteration
-            
-            if not cluster_plants: 
+
+            if not cluster_plants:
                 # SEEDING LOGIC: Determine the variety to place
                 top_variety_tuple = next(
-                    ((s, v) for s, v in all_scored_varieties if v in available_varieties and v.species == starting_species), 
-                    None
+                    (
+                        (s, v)
+                        for s, v in all_scored_varieties
+                        if v in available_varieties and v.species == starting_species
+                    ),
+                    None,
                 )
                 plant_to_place = top_variety_tuple[1] if top_variety_tuple else None
 
@@ -260,69 +268,69 @@ class Gardener2(Gardener):
                 # If the center is not valid (e.g., radius too big), we let best_position remain None,
                 # which will cause the loop to break, as the intended corner position isn't usable.
                 # *** MODIFICATION END ***
-            
+
             else:
                 # Subsequent plants: Use global deficiency check to find variety
-                underrepresented = self._get_species_for_most_deficient_nutrient() 
+                underrepresented = self._get_species_for_most_deficient_nutrient()
                 target_species = next(iter(underrepresented), None)
 
                 if target_species:
                     target_variety_tuple = self._find_best_variety_to_plant(
-                        [(s, v) for s, v in all_scored_varieties if v in available_varieties], 
-                        underrepresented
+                        [(s, v) for s, v in all_scored_varieties if v in available_varieties],
+                        underrepresented,
                     )
                     if target_variety_tuple:
                         plant_to_place = target_variety_tuple[1]
 
             if not plant_to_place:
-                break 
+                break
 
             # --- Placement Logic (Only runs for SUBSEQUENT plants) ---
             if cluster_plants and best_position is None:
-                max_score = -2.0 
+                max_score = -2.0
                 for position in local_positions:
                     if not self.garden.can_place_plant(plant_to_place, position):
                         continue
 
                     # MAXIMIZE BALANCE SCORE
-                    score = self._calculate_placement_score(plant_to_place, position) 
-                    
-                    if score > max_score: 
+                    score = self._calculate_placement_score(plant_to_place, position)
+
+                    if score > max_score:
                         max_score = score
                         best_position = position
-                
+
                 # If no suitable position was found (score >= 0)
                 if max_score < 0:
                     best_position = None
 
-            
             # --- Execute Placement ---
             # Placement proceeds if a valid best_position was found (either 'center' or scored)
-            if best_position: 
+            if best_position:
                 plant = self.garden.add_plant(plant_to_place, best_position)
                 if plant:
                     cluster_plants.append(plant)
                     used_varieties.append(plant_to_place)
-                    available_varieties[:] = [v for v in available_varieties if id(v) != id(plant_to_place)]
+                    available_varieties[:] = [
+                        v for v in available_varieties if id(v) != id(plant_to_place)
+                    ]
                 else:
                     break
             else:
                 break
-            
+
         for i in used_varieties:
             print(i)
-            print("-------")
+            print('-------')
         return used_varieties
 
     # --- Main Cultivation Method ---
 
     def cultivate_garden(self) -> None:
-        
         # 1. Setup Phase
-        all_varieties = list(self.varieties) 
+        all_varieties = list(self.varieties)
         # Centers are now ordered: TL(0), BR(1), TR(2), BL(3)
         cluster_centers = self._get_cluster_seed_positions()
-        MAX_PLANTS_PER_CLUSTER = 15 
+        MAX_PLANTS_PER_CLUSTER = 15
 
         # 2. Clustering Phase: Grow isolated, balanced clusters
         for index, center in enumerate(cluster_centers):
@@ -331,28 +339,29 @@ class Gardener2(Gardener):
 
         # 3. Space-Filling/Greedy Phase
         candidate_positions = self._generate_placement_grid()
-        
+
         while all_varieties:
             all_scored_varieties = self._get_sorted_varieties()
             plantable_varieties = [
-                (score, variety) for score, variety in all_scored_varieties 
+                (score, variety)
+                for score, variety in all_scored_varieties
                 if variety in all_varieties
             ]
 
             underrepresented_species = self._get_species_for_most_deficient_nutrient()
             if not underrepresented_species:
                 break
-                
+
             best_variety_tuple = self._find_best_variety_to_plant(
                 plantable_varieties, underrepresented_species
             )
-            
+
             if best_variety_tuple is None:
                 break
 
             best_variety = best_variety_tuple[1]
             best_position = None
-            max_score = -2.0 
+            max_score = -2.0
 
             # Place the remaining plants in the best available spot (max balance score)
             for position in candidate_positions:
@@ -365,7 +374,7 @@ class Gardener2(Gardener):
                 if score > max_score:
                     max_score = score
                     best_position = position
-            
+
             if best_position and max_score >= 0:
                 plant = self.garden.add_plant(best_variety, best_position)
 
@@ -374,6 +383,6 @@ class Gardener2(Gardener):
                     with suppress(ValueError):
                         candidate_positions.remove(best_position)
                 else:
-                    break 
+                    break
             else:
                 break
