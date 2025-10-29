@@ -14,11 +14,14 @@ from core.point import Position
 # Optional tqdm import for progress bars
 try:
     from tqdm import tqdm
+
     HAS_TQDM = True
 except ImportError:
     HAS_TQDM = False
+
     def tqdm(iterable, desc=None, leave=None):
         return iterable
+
 
 from gardeners.group6.algorithms import (
     create_beneficial_interactions,
@@ -71,7 +74,7 @@ class Gardener6(Gardener):
         # Spiral/jitter search around a target if add_plant fails
         self.place_retry_attempts = 80
         self.place_retry_growth = 1.15  # radial growth per ring
-        self.place_retry_start = 0.5    # start radius multiplier of plant radius
+        self.place_retry_start = 0.5  # start radius multiplier of plant radius
         # Final recovery sweep attempts per remaining plant
         self.recovery_attempts = 120
 
@@ -164,30 +167,30 @@ class Gardener6(Gardener):
         n = len(labels)
         n_center = max(1, int(self.center_small_fraction * n))
         center_ids = idx_sorted_small_to_large[:n_center]
-        edge_ids   = idx_sorted_small_to_large[-n_center:]
+        edge_ids = idx_sorted_small_to_large[-n_center:]
         middle_ids = [i for i in range(n) if i not in center_ids and i not in edge_ids]
 
         diamond_radius = self.diamond_radius_fraction * m
 
         center_targets = self._diamond_quadrant_targets(
-            count=n_center,
-            cx=cx, cy=cy,
-            radius=diamond_radius,
-            jitter=self.target_jitter * m
+            count=n_center, cx=cx, cy=cy, radius=diamond_radius, jitter=self.target_jitter * m
         )
         edge_targets = self._edge_band_targets(
             count=len(edge_ids),
-            W=W, H=H,
+            W=W,
+            H=H,
             band=self.edge_band_thickness * m,
-            jitter=self.target_jitter * m
+            jitter=self.target_jitter * m,
         )
         middle_targets = self._annulus_targets_between_diamond_and_edge(
             count=len(middle_ids),
-            cx=cx, cy=cy,
-            W=W, H=H,
+            cx=cx,
+            cy=cy,
+            W=W,
+            H=H,
             inner=diamond_radius * 1.05,
             outer=(m / 2.0) - (self.edge_band_thickness * m) * 1.25,
-            jitter=self.target_jitter * m
+            jitter=self.target_jitter * m,
         )
 
         for k, i in enumerate(center_ids):
@@ -222,10 +225,10 @@ class Gardener6(Gardener):
                 out.append((x, y))
             return out
 
-        top    = (cx, cy - radius)
-        right  = (cx + radius, cy)
+        top = (cx, cy - radius)
+        right = (cx + radius, cy)
         bottom = (cx, cy + radius)
-        left   = (cx - radius, cy)
+        left = (cx - radius, cy)
 
         pts += tri_sample(per_quad[0], (cx, cy), top, right)
         pts += tri_sample(per_quad[1], (cx, cy), right, bottom)
@@ -244,21 +247,32 @@ class Gardener6(Gardener):
         for i in range(count):
             edge = edges[i % 4]
             if edge == 'top':
-                x = random.uniform(band, W - band); y = band
+                x = random.uniform(band, W - band)
+                y = band
             elif edge == 'right':
-                x = W - band; y = random.uniform(band, H - band)
+                x = W - band
+                y = random.uniform(band, H - band)
             elif edge == 'bottom':
-                x = random.uniform(band, W - band); y = H - band
+                x = random.uniform(band, W - band)
+                y = H - band
             else:
-                x = band; y = random.uniform(band, H - band)
+                x = band
+                y = random.uniform(band, H - band)
             x += (random.random() - 0.5) * 2 * jitter
             y += (random.random() - 0.5) * 2 * jitter
             pts.append((self._clamp(x, 0, W), self._clamp(y, 0, H)))
         return pts
 
     def _annulus_targets_between_diamond_and_edge(
-        self, count: int, cx: float, cy: float, W: float, H: float,
-        inner: float, outer: float, jitter: float
+        self,
+        count: int,
+        cx: float,
+        cy: float,
+        W: float,
+        H: float,
+        inner: float,
+        outer: float,
+        jitter: float,
     ) -> List[Tuple[float, float]]:
         if count <= 0:
             return []
@@ -280,7 +294,9 @@ class Gardener6(Gardener):
         return max(lo, min(hi, v))
 
     @staticmethod
-    def _clamp_to_diamond(p: Tuple[float, float], cx: float, cy: float, a: float) -> Tuple[float, float]:
+    def _clamp_to_diamond(
+        p: Tuple[float, float], cx: float, cy: float, a: float
+    ) -> Tuple[float, float]:
         x, y = p
         dx, dy = abs(x - cx), abs(y - cy)
         s = dx / a + dy / a
@@ -312,7 +328,8 @@ class Gardener6(Gardener):
         garden_half = min(W, H) / 2.0
 
         radii = [self.varieties[lbl].radius for lbl in labels]
-        r_min = min(radii); r_max = max(radii)
+        r_min = min(radii)
+        r_max = max(radii)
         r_span = (r_max - r_min) if (r_max > r_min) else 1.0
 
         target_inner = garden_half * inner_margin
@@ -339,7 +356,9 @@ class Gardener6(Gardener):
 
     # ------------------ Placement (maximize count) ------------------
 
-    def _place_plants_maximizing_count(self, X: List[Tuple[float, float]], labels: List[int]) -> None:
+    def _place_plants_maximizing_count(
+        self, X: List[Tuple[float, float]], labels: List[int]
+    ) -> None:
         """
         Place plants with:
           1) Big-first ordering to preserve space.
@@ -379,36 +398,43 @@ class Gardener6(Gardener):
         # Build new fallback targets
         small_targets = self._diamond_quadrant_targets(
             count=len(small_idxs),
-            cx=cx, cy=cy,
+            cx=cx,
+            cy=cy,
             radius=diamond_radius,
-            jitter=self.target_jitter * m
+            jitter=self.target_jitter * m,
         )
         large_targets = self._edge_band_targets(
             count=len(large_idxs),
-            W=W, H=H,
+            W=W,
+            H=H,
             band=self.edge_band_thickness * m,
-            jitter=self.target_jitter * m
+            jitter=self.target_jitter * m,
         )
         middle_targets = self._annulus_targets_between_diamond_and_edge(
             count=len(middle_idxs),
-            cx=cx, cy=cy,
-            W=W, H=H,
+            cx=cx,
+            cy=cy,
+            W=W,
+            H=H,
             inner=diamond_radius * 1.05,
             outer=(m / 2.0) - (self.edge_band_thickness * m) * 1.25,
-            jitter=self.target_jitter * m
+            jitter=self.target_jitter * m,
         )
 
         # Second pass: try fallback targets with more retries
         for i, tgt in zip(small_idxs, small_targets):
-            lbl = labels[i]; variety = self.varieties[lbl]
+            lbl = labels[i]
+            variety = self.varieties[lbl]
             self._try_place_with_backoff(variety, tgt, attempts=self.recovery_attempts)
 
         for i, tgt in zip(large_idxs, large_targets):
-            lbl = labels[i]; variety = self.varieties[lbl]
+            lbl = labels[i]
+            variety = self.varieties[lbl]
             self._try_place_with_backoff(variety, tgt, attempts=self.recovery_attempts)
 
         for i, tgt in zip(middle_idxs, middle_targets):
-            lbl = labels[i]; variety = self.varieties[lbl]
+            lbl = labels[i]
+            variety = self.varieties[lbl]
             self._try_place_with_backoff(variety, tgt, attempts=self.recovery_attempts)
 
     def _try_place_with_backoff(
@@ -426,7 +452,7 @@ class Gardener6(Gardener):
             attempts = self.place_retry_attempts
 
         W, H = self.garden.width, self.garden.height
-        base_r = getattr(variety, "radius", 1.0)
+        base_r = getattr(variety, 'radius', 1.0)
         radius = max(0.1, float(base_r))
         # Start with a small search radius and grow it multiplicatively
         search_r = max(0.2, self.place_retry_start * radius)

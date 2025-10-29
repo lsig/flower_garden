@@ -47,4 +47,3 @@ def scatter_seeds_randomly(
         inv.append([half_capacity, half_capacity, half_capacity])
 
     return X, labels, inv
-

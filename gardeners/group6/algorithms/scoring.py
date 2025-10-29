@@ -22,7 +22,6 @@ def measure_garden_quality(
 
     same_species_penalty = 0
 
-
     for i in range(N):
         for j in range(i + 1, N):
             species_i = varieties[labels[i]].species
@@ -53,5 +52,5 @@ def measure_garden_quality(
     # NUMPY: Originally used np.sum(degrees >= 2)
     nodes_with_degree_2_plus = sum(1 for d in degrees if d >= 2)
 
-    score = cross_species_edges + lambda_weight * nodes_with_degree_2_plus + same_species_penalty 
+    score = cross_species_edges + lambda_weight * nodes_with_degree_2_plus + same_species_penalty
     return score
