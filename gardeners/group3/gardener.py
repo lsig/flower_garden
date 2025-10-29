@@ -612,7 +612,7 @@ class Gardener3(Gardener):
                         abs_x = anchor_x + pos.x
                         abs_y = anchor_y + pos.y
                         new_circles.append((abs_x, abs_y, variety.radius))
-                    
+
                     added_area = self.calculate_added_area(
                         [(x, y, r) for x, y, r, _ in placed_plants], new_circles
                     )
@@ -756,16 +756,16 @@ class Gardener3(Gardener):
     ) -> float:
         if not new_circles:
             return 0.0
-        
+
         # Calculate area of new circles
         new_area = sum(math.pi * r**2 for _, _, r in new_circles)
-        
+
         # Subtract overlaps between new circles and existing circles
         for x1, y1, r1 in new_circles:
             for x2, y2, r2 in existing_circles:
                 overlap = self.calculate_circle_overlap(x1, y1, r1, x2, y2, r2)
                 new_area -= overlap
-        
+
         # Add back overlaps between new circles (they were subtracted twice)
         for i in range(len(new_circles)):
             for j in range(i + 1, len(new_circles)):
@@ -773,31 +773,31 @@ class Gardener3(Gardener):
                 x2, y2, r2 = new_circles[j]
                 overlap = self.calculate_circle_overlap(x1, y1, r1, x2, y2, r2)
                 new_area += overlap
-        
+
         return max(0.0, new_area)
-    
+
     def calculate_circle_overlap(
         self, x1: float, y1: float, r1: float, x2: float, y2: float, r2: float
     ) -> float:
         # Calculate distance between centers
-        distance = math.sqrt((x2 - x1)**2 + (y2 - y1)**2)
-        
+        distance = math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+
         # Check if circles don't overlap at all
         if distance >= r1 + r2:
             return 0.0
-        
+
         # Calculate overlap using the circle-circle intersection formula
         a = distance
         R = r1
         r = r2
-        
+
         # Calculate the intersection area
         term1 = r**2 * math.acos((a**2 + r**2 - R**2) / (2 * a * r))
         term2 = R**2 * math.acos((a**2 + R**2 - r**2) / (2 * a * R))
         term3 = 0.5 * math.sqrt((-a + r + R) * (a + r - R) * (a - r + R) * (a + r + R))
-        
+
         overlap = term1 + term2 - term3
-        
+
         return overlap
 
     def place_cluster_at_anchor(
