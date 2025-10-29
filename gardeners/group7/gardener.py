@@ -1,5 +1,5 @@
 import math
-from collections import defaultdict
+from collections import defaultdict, deque
 
 from core.gardener import Gardener
 from core.plants.species import Species
@@ -7,216 +7,378 @@ from core.point import Position
 
 
 class Gardener7(Gardener):
+    """
+    Total-growth oriented placement with interaction-graph analysis and refinement.
+
+    Flow:
+      1) Core RGB triangle at center (tight, non-violating).
+      2) Species-balanced adaptive packing (R,G,B interleaving; bounded runtime).
+      3) Build interaction graph over placed plants (edges are cross-species overlaps).
+      4) Refinement: try to place leftover/failed plants as "bridges" near isolated nodes.
+      5) Print debug stats before/after refinement.
+
+    Notes:
+      • We do not remove already-placed plants (no API assumed). Refinement places from the failed pool.
+      • All search loops are strictly bounded to avoid stalls.
+      • We locally track placements (variety + position) so we can compute the interaction graph.
+    """
+
+    # ---------- Tunables (safe defaults for 16x10 garden, radii 1..3) ----------
+    _EPS = 0.2
+    _TINY = 1e-3
+
+    # Adaptive packer bounds
+    _BASE_STEP_MIN = 0.8
+    _MAX_PHASES = 3
+    _MAX_RING_RADIUS_FACTOR = 1.1
+    _PTS_PER_RING_MAX = 60
+    _MAX_PLANT_ATTEMPTS = 3
+    _MAX_SWEEPS_WITH_NO_PLACEMENT = 3
+
+    # Refinement
+    _MIN_NEIGHBORS_TARGET = 2  # aim for at least 2 cross-species neighbors
+    _REFINE_CANDIDATE_RADIUS = 2.5  # radius around isolated node to search for bridge placement
+    _REFINE_POINTS = 24  # angular granularity near isolated node
+    _REFINE_MAX_PLANTS = 10  # cap number of bridge attempts total
+    _REFINE_MAX_PER_NODE = 2  # cap attempts per isolated node
+
     def __init__(self, garden, varieties):
         super().__init__(garden, varieties)
+        # Local record of placed plants as dicts: {"v": variety, "x": float, "y": float}
+        self._placed = []
 
+    # ---------- Scoring ----------
     def _cooperation_score(self, v):
-        # Retrieve R,G,B production/consumption values
-        R = v.nutrient_coefficients.get('R', 0)
-        G = v.nutrient_coefficients.get('G', 0)
-        B = v.nutrient_coefficients.get('B', 0)
+        coeffs = v.nutrient_coefficients
+        if len(coeffs) > 0 and not isinstance(next(iter(coeffs.keys())), str):
+            coeffs = {k.name: val for k, val in coeffs.items()}
+        R = coeffs.get('R', 0.0)
+        G = coeffs.get('G', 0.0)
+        B = coeffs.get('B', 0.0)
+        best_surplus = abs(max(R, G, B))
+        best_deficit = abs(min(R, G, B))
+        return best_surplus / (best_deficit * pow(v.radius, 2))
 
-        # Surplus is anything positive, deficit is negative turned positive for comparison
-        surpluses = [max(R, 0), max(G, 0), max(B, 0)]
-        deficits = [abs(min(R, 0)), abs(min(G, 0)), abs(min(B, 0))]
+    # Possible metrics:
+    # what it's producing minus what it takes
+    # divided by r^2?
+    # Try multiple triangles
+    #
 
-        # The most valuable characteristics are strong production and strong need
-        best_surplus = max(surpluses)
-        best_deficit = max(deficits)
+    # ---------- Low-level helpers ----------
+    def _add_and_track(self, v, x, y):
+        """Try to add plant and record placement locally if successful."""
+        if (
+            0.0 < x < self.garden.width
+            and 0.0 < y < self.garden.height
+            and self.garden.add_plant(v, Position(x, y))
+        ):
+            self._placed.append({'v': v, 'x': x, 'y': y})
+            return True
 
-        # Plants with both a strong production and a strong need contribute most to exchange
-        return best_surplus * best_deficit
+    def _safe_place(self, v, x, y):
+        """Place with small jitters for last-mile fits, recording on success."""
+        for dx in (0.0, 0.3, -0.3, 0.7, -0.7, 1.0, -1.0):
+            for dy in (0.0, 0.3, -0.3, 0.7, -0.7, 1.0, -1.0):
+                if self._add_and_track(v, x + dx, y + dy):
+                    return True
+        return False
 
-    def cultivate_garden(self) -> None:
-        # Split plants by species to later build an RGB interaction network
-        reds = [v for v in self.varieties if v.species == Species.RHODODENDRON]
-        greens = [v for v in self.varieties if v.species == Species.GERANIUM]
-        blues = [v for v in self.varieties if v.species == Species.BEGONIA]
-
-        # Sort each group by compatibility score and then size
-        def sort_key(v):
-            return (self._cooperation_score(v), v.radius)
-
-        reds.sort(key=sort_key, reverse=True)
-        greens.sort(key=sort_key, reverse=True)
-        blues.sort(key=sort_key, reverse=True)
-
-        # Calculate center of garden for initial placements
-        cx = self.garden.width / 2.0
-        cy = self.garden.height / 2.0
-
-        # Build a strong central triangle using highest-value plant of each species
-        r = reds.pop(0)
-        g = greens.pop(0)
-        b = blues.pop(0)
-
-        # Order those three by radius so largest is fully centered
-        core = sorted([r, g, b], key=lambda v: v.radius, reverse=True)
-        p0, p1, p2 = core[0], core[1], core[2]
-
-        # Place largest at exact center
-        self.garden.add_plant(p0, Position(cx, cy))
-
-        # Compute ideal distances to create strong but non-violating overlap
-        eps = 0.2
-        a = p0.radius + p1.radius - eps
-        bdist = p0.radius + p2.radius - eps
-        c = p1.radius + p2.radius - eps
-
-        # Ensure triangle inequality remains valid
-        tiny = 1e-3
-        for _ in range(3):
-            if a >= bdist + c:
-                a = bdist + c - tiny
-            if bdist >= a + c:
-                bdist = a + c - tiny
-            if c >= a + bdist:
-                c = a + bdist - tiny
-            if a <= abs(bdist - c):
-                a = abs(bdist - c) + tiny
-            if bdist <= abs(a - c):
-                bdist = abs(a - c) + tiny
-            if c <= abs(a - bdist):
-                c = abs(a - bdist) + tiny
-
-        # Place second plant along x-axis at correct overlap distance
-        x1 = cx + a
-        y1 = cy
-        self.garden.add_plant(p1, Position(x1, y1))
-
-        # Compute the intersection point for the third plant
-        x2, y2 = self._circle_intersection(cx, cy, bdist, x1, y1, c, choose_upper=True)
-
-        # Slightly pull the point inward to improve overlap strength
-        def pull_toward(xa, ya, xb, yb, factor):
-            return xa + (xb - xa) * factor, ya + (yb - ya) * factor
-
-        x2, y2 = pull_toward(x2, y2, cx, cy, 0.3)
-        x2, y2 = pull_toward(x2, y2, x1, y1, 0.3)
-
-        self.garden.add_plant(p2, Position(x2, y2))
-
-        # Remaining plants sorted by cooperation priority
-        leftovers = reds + greens + blues
-        leftovers.sort(key=self._cooperation_score, reverse=True)
-
-        # Group leftovers by species to possibly build another RGB triangle
-        species_map = defaultdict(list)
-        for v in leftovers:
-            species_map[v.species].append(v)
-
-        # Used as reference radius for secondary placement spacing
-        core_dist = p0.radius + p1.radius + p2.radius
-
-        # Build a second strong RGB triangle if one of each species is still available
-        if all(species_map[sp] for sp in [Species.RHODODENDRON, Species.GERANIUM, Species.BEGONIA]):
-            t0 = species_map[Species.RHODODENDRON].pop(0)
-            t1 = species_map[Species.GERANIUM].pop(0)
-            t2 = species_map[Species.BEGONIA].pop(0)
-
-            triangle_dist = core_dist * 1.8
-            angle_offset = math.pi / 6
-            for i, v in enumerate([t0, t1, t2]):
-                angle = angle_offset + i * (2 * math.pi / 3)
-                px = cx + triangle_dist * math.cos(angle)
-                py = cy + triangle_dist * math.sin(angle)
-                self._safe_place(v, px, py)
-
-            leftovers = (
-                species_map[Species.RHODODENDRON]
-                + species_map[Species.GERANIUM]
-                + species_map[Species.BEGONIA]
-            )
-
-        # If less than three remain, spread them strategically opposite center
-        elif len(leftovers) == 2:
-            angles = [math.pi / 3, -math.pi / 3]
-            for i, v in enumerate(leftovers):
-                px = cx + core_dist * 2.0 * math.cos(angles[i])
-                py = cy + core_dist * 2.0 * math.sin(angles[i])
-                self._safe_place(v, px, py)
-            leftovers = []
-
-        elif len(leftovers) == 1:
-            angle = math.pi
-            px = cx + core_dist * 2.2 * math.cos(angle)
-            py = cy + core_dist * 2.2 * math.sin(angle)
-            self._safe_place(leftovers[0], px, py)
-            leftovers = []
-
-        # Place the remaining plants in a ring, highest cooperation first
-        if leftovers:
-            leftovers.sort(key=self._cooperation_score, reverse=True)
-
-            # Determine how large the ring can be without leaving the garden
-            usable_radius = min(cx, cy, self.garden.width - cx, self.garden.height - cy)
-            margin = max(v.radius for v in leftovers) + 0.5
-            max_ring = max(0.0, usable_radius - margin)
-
-            ring_dist = min(core_dist * 2.2, max_ring)
-            start_angle = math.pi / 6
-
-            # Place them around the ring, trying small jitters to avoid overlap failures
-            for i, v in enumerate(leftovers):
-                placed = False
-                for jitter in range(12):
-                    angle = (
-                        start_angle + i * (2 * math.pi / len(leftovers)) + jitter * (math.pi / 24)
-                    )
-                    px = cx + ring_dist * math.cos(angle)
-                    py = cy + ring_dist * math.sin(angle)
-                    if self._safe_place(v, px, py):
-                        placed = True
-                        break
-
-                # If not placed yet, spiral inward slightly to find workable spot
-                if not placed:
-                    for step in range(1, 10):
-                        r = ring_dist * (1 - 0.06 * step)
-                        px = cx + r * math.cos(angle)
-                        py = cy + r * math.sin(angle)
-                        if self._safe_place(v, px, py):
-                            break
-
+    # ---------- Geometry ----------
     def _circle_intersection(self, x0, y0, r0, x1, y1, r1, choose_upper=True):
-        # Computes intersection points of two circles centered at (x0,y0) and (x1,y1)
         dx = x1 - x0
         dy = y1 - y0
         d = math.hypot(dx, dy)
+        if d < 1e-9:
+            # arbitrary opposite points along +x/-x from (x0,y0)
+            return (x0 + min(r0, r1), y0) if choose_upper else (x0 - min(r0, r1), y0)
 
-        # Solve the circle intersection geometry
-        a = (r0**2 - r1**2 + d**2) / (2 * d)
-        h_sq = max(0.0, r0**2 - a**2)
+        a = (r0 * r0 - r1 * r1 + d * d) / (2 * d)
+        h_sq = max(0.0, r0 * r0 - a * a)
         h = math.sqrt(h_sq)
 
         xm = x0 + a * dx / d
         ym = y0 + a * dy / d
-
         rx = -dy * (h / d)
         ry = dx * (h / d)
 
-        xi = xm + rx
-        yi = ym + ry
-        xi2 = xm - rx
-        yi2 = ym - ry
-
-        # Return the intersection based on orientation preference
+        xi, yi = xm + rx, ym + ry
+        xi2, yi2 = xm - rx, ym - ry
         if choose_upper:
             return (xi, yi) if yi >= yi2 else (xi2, yi2)
         else:
             return (xi, yi) if yi < yi2 else (xi2, yi2)
 
-    def _safe_place(self, variety, x, y):
-        # Attempt slight jitters around the proposed location to avoid invalid placement
-        for dx in [0.0, 0.5, -0.5, 1.0, -1.0, 1.5, -1.5]:
-            for dy in [0.0, 0.5, -0.5, 1.0, -1.0, 1.5, -1.5]:
-                px = x + dx
-                py = y + dy
-                # Only accept if inside boundaries and respecting root constraints
-                if (
-                    0.0 < px < self.garden.width
-                    and 0.0 < py < self.garden.height
-                    and self.garden.add_plant(variety, Position(px, py))
-                ):
-                    return True
-        return False
+    # ---------- Candidate generation for adaptive packer ----------
+    def _spiral_candidates(self, cx, cy, base_step):
+        """Bounded outward ring scan around center."""
+        diag = math.hypot(self.garden.width, self.garden.height)
+        r = base_step
+        limit = diag * self._MAX_RING_RADIUS_FACTOR
+        while r < limit:
+            pts = min(self._PTS_PER_RING_MAX, max(8, int(2 * math.pi * r / max(base_step, 0.2))))
+            for i in range(pts):
+                ang = 2 * math.pi * i / pts
+                yield (cx + r * math.cos(ang), cy + r * math.sin(ang))
+            r += base_step
+
+    # ---------- Balanced queue to avoid species monopolizing early slots ----------
+    def _balanced_queue(self, reds, greens, blues):
+        q = []
+        groups = [deque(reds), deque(greens), deque(blues)]
+        while any(groups):
+            for g in groups:
+                if g:
+                    q.append(g.popleft())
+        return q
+
+    # ---------- Adaptive packer with bounded attempts; returns list of unplaced plants ----------
+    def _pack_adaptive(self, queue, cx, cy):
+        attempts = {id(v): self._MAX_PLANT_ATTEMPTS for v in queue}
+        sweeps_without_progress = 0
+        failed = []
+
+        while queue and sweeps_without_progress < self._MAX_SWEEPS_WITH_NO_PLACEMENT:
+            placed_any = False
+            next_q = []
+
+            for v in queue:
+                if attempts[id(v)] <= 0:
+                    failed.append(v)
+                    continue
+
+                placed = False
+                base_step = max(self._BASE_STEP_MIN, v.radius * 0.7)
+
+                for _ in range(self._MAX_PHASES):
+                    for x, y in self._spiral_candidates(cx, cy, base_step):
+                        if self._safe_place(v, x, y):
+                            placed = True
+                            placed_any = True
+                            break
+                    if placed:
+                        break
+
+                if not placed:
+                    attempts[id(v)] -= 1
+                    if attempts[id(v)] > 0:
+                        next_q.append(v)
+                    else:
+                        failed.append(v)
+
+            sweeps_without_progress = 0 if placed_any else sweeps_without_progress + 1
+            queue = next_q
+
+        # Anything left in queue after loops gets marked failed
+        failed.extend(queue)
+        return failed
+
+    # ---------- Core RGB triangle ----------
+    def _place_core_triangle(self, r, g, b, cx, cy):
+        core = sorted([r, g, b], key=lambda v: v.radius, reverse=True)
+        A, B, C = core
+        self._add_and_track(A, cx, cy)
+
+        eps = self._EPS
+        AB = A.radius + B.radius - eps
+        AC = A.radius + C.radius - eps
+
+        # Place B on +x from center
+        self._add_and_track(B, cx + max(AB, self._TINY), cy)
+
+        # Place C roughly above-left using a safe distance
+        xC, yC = self._circle_intersection(
+            cx,
+            cy,
+            max(AC, self._TINY),
+            cx + max(AB, self._TINY),
+            cy,
+            B.radius + C.radius - eps,
+            choose_upper=True,
+        )
+
+        # gentle pull toward both A and B to tighten but not violate
+        def pull(xa, ya, xb, yb, f):
+            return xa + (xb - xa) * f, ya + (yb - ya) * f
+
+        xC, yC = pull(xC, yC, cx, cy, 0.25)
+        xC, yC = pull(xC, yC, cx + max(AB, self._TINY), cy, 0.25)
+        self._safe_place(C, xC, yC)
+
+    # ---------- Interaction graph ----------
+    def _distance(self, i, j):
+        pi, pj = self._placed[i], self._placed[j]
+        dx = pi['x'] - pj['x']
+        dy = pi['y'] - pj['y']
+        return math.hypot(dx, dy)
+
+    def _neighbors_cross_species(self, i):
+        vi = self._placed[i]['v']
+        ri = vi.radius
+        si = vi.species
+        neigh = []
+        for j in range(len(self._placed)):
+            if j == i:
+                continue
+            vj = self._placed[j]['v']
+            if vj.species == si:
+                continue
+            rj = vj.radius
+            if self._distance(i, j) < ri + rj:
+                neigh.append(j)
+        return neigh
+
+    def _build_interaction_graph(self):
+        adj = {i: set() for i in range(len(self._placed))}
+        degs = []
+        for i in range(len(self._placed)):
+            nbrs = self._neighbors_cross_species(i)
+            for j in nbrs:
+                adj[i].add(j)
+                adj[j].add(i)
+        for i in range(len(self._placed)):
+            degs.append(len(adj[i]))
+        return adj, degs
+
+    def _print_graph_stats(self, when_label):
+        by_species = defaultdict(int)
+        for p in self._placed:
+            by_species[p['v'].species] += 1
+
+        total = len(self._placed)
+        r = by_species[Species.RHODODENDRON]
+        g = by_species[Species.GERANIUM]
+        b = by_species[Species.BEGONIA]
+
+        adj, degs = self._build_interaction_graph()
+        iso = sum(1 for d in degs if d == 0)
+        leaves = sum(1 for d in degs if d == 1)
+        avg_deg = (sum(degs) / total) if total else 0.0
+
+        hist = defaultdict(int)
+        for d in degs:
+            hist[d] += 1
+        hist_str = ' '.join(f'{k}:{v}' for k, v in sorted(hist.items()))
+
+        print(f'[{when_label}] Placed={total} (R={r}, G={g}, B={b})')
+        print(f'[{when_label}] Avg cross-species neighbors: {avg_deg:.2f}')
+        print(f'[{when_label}] Isolated: {iso}, Leaves: {leaves}  | Degree hist: {hist_str}')
+
+    # ---------- Refinement using failed pool as bridges ----------
+    def _refine_with_failed_pool(self, failed):
+        if not failed:
+            print('[Refine] No failed plants available for bridging. Skipping.')
+            return
+
+        adj, degs = self._build_interaction_graph()
+        isolated_ids = [i for i, d in enumerate(degs) if d < self._MIN_NEIGHBORS_TARGET]
+
+        if not isolated_ids:
+            print('[Refine] No isolated/low-degree plants found. Skipping.')
+            return
+
+        # Sort failed pool by radius small->large to fit near isolated nodes,
+        # and by cooperation score to pick helpful donors/receivers.
+        failed.sort(key=lambda v: (v.radius, -self._cooperation_score(v)))
+
+        successes = 0
+        attempts_total = 0
+
+        for iso_idx in isolated_ids:
+            if successes >= self._REFINE_MAX_PLANTS:
+                break
+            # Target plant info
+            pv = self._placed[iso_idx]['v']
+            px = self._placed[iso_idx]['x']
+            py = self._placed[iso_idx]['y']
+
+            # Prefer a species different from the isolated plant
+            def pop_preferred(target_species=pv.species):
+                for s in (Species.RHODODENDRON, Species.GERANIUM, Species.BEGONIA):
+                    if s == target_species:
+                        continue
+                    for k in range(len(failed)):
+                        if failed[k].species == s:
+                            return failed.pop(k)
+                return failed.pop(0) if failed else None
+
+            placed_here = 0
+            for _ in range(self._REFINE_MAX_PER_NODE):
+                if not failed or successes >= self._REFINE_MAX_PLANTS:
+                    break
+                cand = pop_preferred()
+                if cand is None:
+                    break
+
+                attempts_total += 1
+
+                # Try a ring of points around the isolated plant
+                r = max(0.6, min(self._REFINE_CANDIDATE_RADIUS, cand.radius * 3.0))
+                pts = self._REFINE_POINTS
+                for i in range(pts):
+                    ang = 2 * math.pi * i / pts
+                    x = px + r * math.cos(ang)
+                    y = py + r * math.sin(ang)
+                    if self._safe_place(cand, x, y):
+                        successes += 1
+                        placed_here += 1
+                        break
+
+                # If failed to place, discard this candidate (no infinite requeue here)
+
+            if placed_here > 0:
+                # Recompute to see if this node is now healthy
+                adj, degs = self._build_interaction_graph()
+
+        print(f'[Refine] Tried placing {attempts_total} bridge plants. Successes: {successes}')
+
+    # ---------- Main ----------
+    def cultivate_garden(self):
+        self._placed = []  # reset local record for a fresh run
+
+        reds = [v for v in self.varieties if v.species == Species.RHODODENDRON]
+        greens = [v for v in self.varieties if v.species == Species.GERANIUM]
+        blues = [v for v in self.varieties if v.species == Species.BEGONIA]
+
+        cx = self.garden.width / 2.0
+        cy = self.garden.height / 2.0
+
+        # If any species missing, just do balanced adaptive packing on everything.
+        if not reds or not greens or not blues:
+            queue = sorted(self.varieties, key=self._cooperation_score, reverse=True)
+            failed = self._pack_adaptive(queue, cx, cy)
+            print('[Placement] Missing a species → no core triangle.')
+            self._print_graph_stats('After placement (no-core)')
+            self._refine_with_failed_pool(failed)
+            self._print_graph_stats('After refinement (no-core)')
+            return
+
+        # Sort each species by cooperation score (best exchangers first)
+        reds.sort(key=self._cooperation_score, reverse=True)
+        greens.sort(key=self._cooperation_score, reverse=True)
+        blues.sort(key=self._cooperation_score, reverse=True)
+
+        # 1) Core triangle
+        r, g, b = reds.pop(0), greens.pop(0), blues.pop(0)
+        self._place_core_triangle(r, g, b, cx, cy)
+
+        # 2) Balanced queue for remaining plants, largest first inside each species
+        for group in (reds, greens, blues):
+            group.sort(key=lambda v: (v.radius, self._cooperation_score(v)), reverse=True)
+        queue = self._balanced_queue(reds, greens, blues)
+
+        # 3) Adaptive packing
+        failed = self._pack_adaptive(queue, cx, cy)
+
+        # 4) Print stats after placement
+        print('[Placement] Finished initial placement.')
+        self._print_graph_stats('After placement')
+
+        if failed:
+            print(f'[Placement] Unplaced plants remaining: {len(failed)}')
+
+        # 5) Refinement: try to bridge isolated/low-degree nodes with failed pool
+        self._refine_with_failed_pool(failed)
+
+        # 6) Final stats
+        self._print_graph_stats('After refinement')
