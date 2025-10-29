@@ -224,7 +224,7 @@ class Gardener2(Gardener):
         is_first_plant = not self.garden.plants
 
         while plantable_varieties:
-            current_plant_count = len(self.garden.plants)
+            #current_plant_count = len(self.garden.plants)
             
             # len(self.varieties) < 150 --> balanced
             # 200 --> simple
