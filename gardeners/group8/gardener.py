@@ -105,7 +105,7 @@ class Gardener8(Gardener):
 
         # iteratively place remaining plants until no more can be placed
         stuck_counter = 0
-        while stuck_counter < 50:
+        while stuck_counter < 10:
             #check if all species exhausted
             if all(indices[s] >= len(species_data[s][0]) for s in indices):
                 break
@@ -148,11 +148,12 @@ class Gardener8(Gardener):
 #this can def be imporved no need for fix distance probably and angles
     def find_position_with_diverse_neighbors(self, variety, required_species):
         """
-        Find a valid position for a variety that ensures 2+ different-species neighbors.
+        Optimized placement search that tries to ensure 2+ different-species neighbors.
 
-        Searches around existing plants at different distances (75%, 85% of combined radii)
-        and angles (every 30 degrees). Scores positions by diversity and tightness.
-        Returns the best position found, or None if no valid position exists.
+        Early rejection:
+            - Out of bounds check (cheap)
+            - Same-species overlap check using squared distance
+            - Full neighbor scan only if above checks pass
         """
         if not self.garden.plants:
             return None
@@ -160,40 +161,65 @@ class Gardener8(Gardener):
         best_pos = None
         best_score = -1
 
-        #try positions around each existing plant
+        var_r = variety.radius
+
+        # loop through anchors
         for anchor in self.garden.plants:
             if anchor.variety.species == variety.species:
                 continue
 
+            anchor_x = anchor.position.x
+            anchor_y = anchor.position.y
+
             # test positions at different distances and angles
             for distance_mult in [0.75, 0.85]:
                 dist = (variety.radius + anchor.variety.radius) * distance_mult
-
                 for angle in range(0, 360, 30):
-                    x = anchor.position.x + dist * math.cos(math.radians(angle))
-                    y = anchor.position.y + dist * math.sin(math.radians(angle))
+                    # compute candidate point
+                    x = anchor_x + dist * math.cos(math.radians(angle))
+                    y = anchor_y + dist * math.sin(math.radians(angle))
 
+                    # quick bounds check
                     if not (0 <= x <= self.garden.width and 0 <= y <= self.garden.height):
                         continue
 
-                    # check validity and count diverse neighbors
+                    # pre-calc avoid sqrt
                     neighbor_species = set()
                     valid = True
 
+                    # cheap screening first: same-species spacing
                     for plant in self.garden.plants:
-                        d = math.sqrt((x - plant.position.x)**2 + (y - plant.position.y)**2)
-
-                        if d < max(variety.radius, plant.variety.radius):
+                        dx = x - plant.position.x
+                        dy = y - plant.position.y
+                        dist_sq = dx * dx + dy * dy
+                        
+                        # squared overlap check (cheap)
+                        r_limit = max(var_r, plant.variety.radius)
+                        if dist_sq < r_limit * r_limit:  # too close → invalid
                             valid = False
                             break
 
-                        if d < variety.radius + plant.variety.radius:
+                    if not valid:
+                        continue  # skip further checks
+
+                    # now check interaction neighbors only if still valid
+                    for plant in self.garden.plants:
+                        dx = x - plant.position.x
+                        dy = y - plant.position.y
+                        dist_sq = dx * dx + dy * dy
+                        r_sum = var_r + plant.variety.radius
+
+                        if dist_sq < r_sum * r_sum:
+                            # interacting neighbor
                             if plant.variety.species == variety.species:
                                 valid = False
                                 break
                             neighbor_species.add(plant.variety.species)
+                            if len(neighbor_species) >= 2:
+                                break
 
-                    #require 2+ different species neighbors
+
+                    # need 2+ other species neighbors for exchange
                     if valid and len(neighbor_species) >= 2:
                         score = len(neighbor_species) * 10 + (1.0 - distance_mult) * 5
                         if score > best_score:
@@ -201,6 +227,7 @@ class Gardener8(Gardener):
                             best_pos = Position(x, y)
 
         return best_pos
+
 
 
 
