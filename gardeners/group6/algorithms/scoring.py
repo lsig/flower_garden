@@ -20,6 +20,9 @@ def measure_garden_quality(
     # NUMPY: Originally used np.zeros(N, dtype=int)
     degrees = [0] * N
 
+    same_species_penalty = 0
+
+
     for i in range(N):
         for j in range(i + 1, N):
             species_i = varieties[labels[i]].species
@@ -32,15 +35,23 @@ def measure_garden_quality(
             delta_y = X[i][1] - X[j][1]
             dist = math.sqrt(delta_x * delta_x + delta_y * delta_y)
 
+            interaction_range = r_i + r_j
+            same_species_range_sq = (interaction_range * 1.2) ** 2
+
             # Cross-species within interaction range
             if species_i != species_j and dist < r_i + r_j:
                 cross_species_edges += 1
                 degrees[i] += 1
                 degrees[j] += 1
 
+            # Penalty if plants of the same species are too close to each other
+            if species_i == species_j and dist < (r_i + r_j):
+                penalty = 1 - (dist / same_species_range_sq)
+                same_species_penalty -= penalty
+
     # Count nodes with degree >= 2
     # NUMPY: Originally used np.sum(degrees >= 2)
     nodes_with_degree_2_plus = sum(1 for d in degrees if d >= 2)
 
-    score = cross_species_edges + lambda_weight * nodes_with_degree_2_plus
+    score = cross_species_edges + lambda_weight * nodes_with_degree_2_plus + same_species_penalty 
     return score
