@@ -64,8 +64,27 @@ class Gardener8(Gardener):
 
         r1, g1, b1 = rhodos[0], geraniums[0], begonias[0]
 
-        min_dist = min(r1.radius + g1.radius, r1.radius + b1.radius, g1.radius + b1.radius)
-        side = min_dist * 0.85
+        # Pairwise plant combinations
+        pairs = [(r1, g1), (r1, b1), (g1, b1)]
+
+        # Compute min/max distances for each pair
+        # min_distance = largest radius (avoid one inside another)
+        # max_distance = sum of radii (ensures interaction)
+        min_dists = [max(p[0].radius, p[1].radius) for p in pairs]
+        max_dists = [p[0].radius + p[1].radius for p in pairs]
+
+        # Determine spacing for the triad
+        min_required = max(min_dists)  # safe minimum to prevent overlap
+        max_allowed = min(max_dists)   # max distance that still allows interaction
+
+        if min_required <= max_allowed:
+            # feasible: all pairs can interact, pick 50% toward max for extra space (can be tweaked)
+            side = min_required + 0.5 * (max_allowed - min_required)
+        else:
+            # no single distance fits all, stick to min_required to avoid overlap
+            side = min_required
+
+        # Compute height for equilateral layout
         height = side * math.sqrt(3) / 2
 
         p_r = Position(start_x, start_y - height / 3)
