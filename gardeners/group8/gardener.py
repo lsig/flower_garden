@@ -1,4 +1,5 @@
 import math
+
 from core.garden import Garden
 from core.gardener import Gardener
 from core.micronutrients import Micronutrient
@@ -13,7 +14,7 @@ class Gardener8(Gardener):
 
     def cultivate_garden(self) -> None:
         """Separate varieties by species, sort by quality, and place them in the garden."""
-        #separate varieties by species
+        # separate varieties by species
         rhodos = [v for v in self.varieties if v.species == Species.RHODODENDRON]
         geraniums = [v for v in self.varieties if v.species == Species.GERANIUM]
         begonias = [v for v in self.varieties if v.species == Species.BEGONIA]
@@ -35,19 +36,19 @@ class Gardener8(Gardener):
         """
         coeffs = variety.nutrient_coefficients
 
-        #get the production of the plant's own nutrient type and consumption of others
+        # get the production of the plant's own nutrient type and consumption of others
         if variety.species == Species.RHODODENDRON:
             own_production = coeffs.get(Micronutrient.R, 0)
             other_consumption = abs(coeffs.get(Micronutrient.G, 0) + coeffs.get(Micronutrient.B, 0))
         elif variety.species == Species.GERANIUM:
             own_production = coeffs.get(Micronutrient.G, 0)
             other_consumption = abs(coeffs.get(Micronutrient.R, 0) + coeffs.get(Micronutrient.B, 0))
-        else:  #BEGONIA
+        else:  # BEGONIA
             own_production = coeffs.get(Micronutrient.B, 0)
             other_consumption = abs(coeffs.get(Micronutrient.R, 0) + coeffs.get(Micronutrient.G, 0))
 
-        #score balances own production vs other consumption, penalized by radius
-        return (own_production - other_consumption) / (variety.radius ** 2)
+        # score balances own production vs other consumption, penalized by radius
+        return (own_production - other_consumption) / (variety.radius**2)
 
     def place_plants(self, rhodos, geraniums, begonias):
         """
@@ -75,7 +76,7 @@ class Gardener8(Gardener):
 
         # Determine spacing for the triad
         min_required = max(min_dists)  # safe minimum to prevent overlap
-        max_allowed = min(max_dists)   # max distance that still allows interaction
+        max_allowed = min(max_dists)  # max distance that still allows interaction
 
         if min_required <= max_allowed:
             # feasible: all pairs can interact, pick 50% toward max for extra space (can be tweaked)
@@ -91,7 +92,7 @@ class Gardener8(Gardener):
         p_g = Position(start_x - side / 2, start_y + 2 * height / 3)
         p_b = Position(start_x + side / 2, start_y + 2 * height / 3)
 
-        #place the initial triad
+        # place the initial triad
         self.garden.add_plant(r1, p_r)
         self.garden.add_plant(g1, p_g)
         self.garden.add_plant(b1, p_b)
@@ -100,13 +101,13 @@ class Gardener8(Gardener):
         species_data = {
             'R': (rhodos, [Species.GERANIUM, Species.BEGONIA]),
             'G': (geraniums, [Species.RHODODENDRON, Species.BEGONIA]),
-            'B': (begonias, [Species.RHODODENDRON, Species.GERANIUM])
+            'B': (begonias, [Species.RHODODENDRON, Species.GERANIUM]),
         }
 
         # iteratively place remaining plants until no more can be placed
         stuck_counter = 0
         while stuck_counter < 10:
-            #check if all species exhausted
+            # check if all species exhausted
             if all(indices[s] >= len(species_data[s][0]) for s in indices):
                 break
 
@@ -135,7 +136,7 @@ class Gardener8(Gardener):
                             best_score = placement_score
                             best_placement = (species_type, variety, pos, i)
 
-            #place the best variety-position combination
+            # place the best variety-position combination
             if best_placement:
                 species_type, variety, pos, variety_idx = best_placement
                 self.garden.add_plant(variety, pos)
@@ -145,7 +146,7 @@ class Gardener8(Gardener):
             else:
                 stuck_counter += 1
 
-#this can def be imporved no need for fix distance probably and angles
+    # this can def be imporved no need for fix distance probably and angles
     def find_position_with_diverse_neighbors(self, variety, required_species):
         """
         Optimized placement search that tries to ensure 2+ different-species neighbors.
@@ -192,7 +193,7 @@ class Gardener8(Gardener):
                         dx = x - plant.position.x
                         dy = y - plant.position.y
                         dist_sq = dx * dx + dy * dy
-                        
+
                         # squared overlap check (cheap)
                         r_limit = max(var_r, plant.variety.radius)
                         if dist_sq < r_limit * r_limit:  # too close → invalid
@@ -218,7 +219,6 @@ class Gardener8(Gardener):
                             if len(neighbor_species) >= 2:
                                 break
 
-
                     # need 2+ other species neighbors for exchange
                     if valid and len(neighbor_species) >= 2:
                         score = len(neighbor_species) * 10 + (1.0 - distance_mult) * 5
@@ -227,7 +227,3 @@ class Gardener8(Gardener):
                             best_pos = Position(x, y)
 
         return best_pos
-
-
-
-
