@@ -649,21 +649,29 @@ class Gardener3(Gardener):
         return None
 
     def generate_anchor_points(self) -> list[tuple[float, float]]:
+        """ Generates anchor points hexagonaly """
+        # get smallest as they allow denser anchor grids for finer placement control
+        min_radius = min(v.radius for v in self.varieties)
+        # adaptive steps instead of fixed: use percentage of smallest radius, but at least 0.25
+        step = max(0.25, min_radius * 0.4)
+        
         anchor_points = []
-        step = self.ANCHOR_POINT_STEP
-
-        # Generate regular grid
-        x = 0.0
-        while x <= self.garden.width:
-            y = 0.0
-            while y <= self.garden.height:
+        y = 0.0
+        row = 0
+        # go top to bottom
+        while y <= self.garden.height:
+            # offset odd rows by half step to create hexagonal pattern
+            x_offset = (step / 2) if row % 2 == 1 else 0
+            x = x_offset
+            
+            while x <= self.garden.width:
                 anchor_points.append((x, y))
-                y += step
-            x += step
-
-        anchor_points = list(set(anchor_points))
-        anchor_points.sort()
-
+                x += step
+            
+            # hexagonal vertical placing
+            y += step * math.sqrt(3) / 2
+            row += 1
+        
         return anchor_points
 
     def remove_anchor_points(
