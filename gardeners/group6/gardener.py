@@ -1,535 +1,387 @@
-"""Force-directed layout algorithm for optimal plant placement with structured seeding,
-iterative refinement, and aggressive placement to maximize plant count.
+# gardeners/group6/gardener.py
+"""
+Gardener6 — Hex Packer with Time Budgets & Spatial Hash (fast & robust)
+
+- Hexagonal anchor grid (center-out).
+- Greedy triads for balanced groups (O(n), not exponential).
+- Time budgets: global + per-plant; prints when trimming search to meet time.
+- Spatial hash to score/check only local neighbors (fast).
+- Throttled candidate evaluation per plant to avoid timeouts.
+- Multi-phase refills preserved, but budget-aware.
+
+This file is self-contained; no imports from old group algorithms.
 """
 
+from __future__ import annotations
 import math
 import random
+import time
+from typing import List, Tuple, Dict, Optional
 
-# NOTE: Originally used numpy for array operations, but replaced with standard Python
-# to avoid external dependencies.
 from core.garden import Garden
 from core.gardener import Gardener
+from core.micronutrients import Micronutrient
 from core.plants.plant_variety import PlantVariety
 from core.point import Position
 
-# Optional tqdm import for progress bars
-try:
-    from tqdm import tqdm
 
-    HAS_TQDM = True
-except ImportError:
-    HAS_TQDM = False
+class SpatialHash:
+    """Tiny grid index for fast neighbor queries."""
+    def __init__(self, cell: float):
+        self.cell = max(1e-6, float(cell))
+        self.buckets: Dict[Tuple[int, int], List[Tuple[str, float, float, float]]] = {}
 
-    # Fallback: tqdm is just a pass-through function
-    def tqdm(iterable, desc=None, leave=None):
-        return iterable
+    def _key(self, x: float, y: float) -> Tuple[int, int]:
+        return (int(x // self.cell), int(y // self.cell))
 
+    def insert(self, species: str, x: float, y: float, r: float) -> None:
+        k = self._key(x, y)
+        self.buckets.setdefault(k, []).append((species, x, y, r))
 
-from gardeners.group6.algorithms import (
-    create_beneficial_interactions,
-    measure_garden_quality,
-    scatter_seeds_randomly,
-    separate_overlapping_plants,
-)
+    def nearby(self, x: float, y: float, radius: float) -> List[Tuple[str, float, float, float]]:
+        """Return plants in 3x3 cells around (x,y)."""
+        cx, cy = self._key(x, y)
+        out: List[Tuple[str, float, float, float]] = []
+        for dx in (-1, 0, 1):
+            for dy in (-1, 0, 1):
+                out.extend(self.buckets.get((cx + dx, cy + dy), []))
+        return out
 
 
 class Gardener6(Gardener):
-    def __init__(self, garden: Garden, varieties: list[PlantVariety]):
+    # ---------------- Tunables (speed & quality) ----------------
+    EDGE_MARGIN_FRAC       = 0.010
+    STEP_FACTOR_MINR       = 0.95          # hex step = factor * min_r
+    GROUP_SIZE             = 3              # triads
+    MICRO_JITTER_TRIES     = 4              # keep small for speed
+    MICRO_JITTER_SCALE     = 0.28
+    MAX_CANDIDATES_PER_PLANT = 60         # hard cap per variety
+    MULTI_PHASE_REFILLS    = True
+    SEED                   = None
+
+    # Time budgets (seconds)
+    GLOBAL_TIME_BUDGET_S   = 5.0            # total time allowed in cultivate_garden
+    PER_PLANT_BUDGET_MS    = 15.0           # max ms to search anchors for one plant
+
+    # Rules
+    FORBID_SAME_SPECIES_OVERLAP = True
+
+    def __init__(self, garden: Garden, varieties: List[PlantVariety]):
         super().__init__(garden, varieties)
+        self.W, self.H = self.garden.width, self.garden.height
+        self.margin = self.EDGE_MARGIN_FRAC * min(self.W, self.H)
+        self.radii = [max(0.1, float(getattr(v, "radius", 1.0))) for v in self.varieties]
+        self.min_r = min(self.radii) if self.radii else 1.0
+        if self.SEED is not None:
+            random.seed(self.SEED)
 
-        # -------- Capacity & scaling --------
-        num_plants = len(varieties)
+        # spatial hash for already placed
+        self.shash = SpatialHash(cell=self.min_r)
 
-        # Old cap kept as an option (OFF by default). Toggle True to re-enable 50-cap sampling.
-        self.enforce_variety_cap = False
-        if self.enforce_variety_cap and num_plants > 50:
-            # Shuffle to get representative sample from all species
-            random.shuffle(varieties)
-            self.varieties = varieties[:50]
-            num_plants = 50
-
-        # Scale parameters inversely with problem size
-        scale_factor = max(1, num_plants // 10)  # 1 for ≤10, 2 for ≤20, 5 for ≤50
-        self.num_seeds = max(3, 18 // scale_factor)
-        self.feasible_iters = max(40, 300 // scale_factor)
-        self.nutrient_iters = max(75, 420 // scale_factor)
-
-        # Adjust force parameters to prevent over-clustering
-        self.band_delta = 0.25
-        self.degree_cap = 5
-        self.top_k_simulate = 1
-        self.step_size_feasible = 0.18  # Stronger separation forces
-        self.step_size_nutrient = 0.0002  # Weaker attraction forces
-
-        # -------- Optional radius-based refinement --------
-        self.enable_radius_refinement = True
-        self.refine_iters = max(50, 300 // scale_factor)
-        self.refine_step = 0.08
-        self.inner_margin = 0.18  # inner ring (fraction of half-min dimension)
-        self.outer_margin = 0.06  # buffer from edges
-
-        # -------- Structured seeding controls --------
-        # Fraction of *smallest-radius* plants forced into central diamond
-        self.center_small_fraction = 0.40
-        # Outer band where large plants are pushed
-        self.edge_band_thickness = 0.12
-        # Central diamond size relative to min(W,H)
-        self.diamond_radius_fraction = 0.28
-        # Minimal jitter when placing targets (helps break ties/alignment)
-        self.target_jitter = 0.015
-
-        # -------- Placement maximization settings --------
-        # Spiral/jitter search around a target if add_plant fails
-        self.place_retry_attempts = 80
-        self.place_retry_growth = 1.15  # radial growth per ring
-        self.place_retry_start = 0.5  # start radius multiplier of plant radius
-        # Final recovery sweep attempts per remaining plant
-        self.recovery_attempts = 120
-
-    # ------------------ Main entry ------------------
+    # ---------------- Main ----------------
 
     def cultivate_garden(self) -> None:
-        """Place plants optimally using structured seeding + force-directed polishing."""
         if not self.varieties:
+            print("[DEBUG] No varieties; exiting.")
             return
 
-        best_score = -float('inf')
-        best_layout = None
-        best_labels = None
+        t0 = time.time()
+        print(f"[DEBUG] Start with {len(self.varieties)} varieties; budget {self.GLOBAL_TIME_BUDGET_S:.1f}s")
 
-        # Allow more candidate points for denser packing
-        # Aim for ~10x the variety count, capped
-        target_plants = min(len(self.varieties) * 10, 640)
+        step = max(0.2, self.STEP_FACTOR_MINR * self.min_r)
+        base_grid = self._hex_grid(step)
+        print(f"[DEBUG] Hex anchors: {len(base_grid)} (step={step:.3f})")
 
-        # Multi-start: try multiple random seeds
-        for _seed_idx in tqdm(range(self.num_seeds), desc='Multi-start optimization', leave=True):
-            # Step 1: Scatter seeds (we’ll overwrite positions with structure)
-            X, labels, inv = scatter_seeds_randomly(
-                self.varieties,
-                W=self.garden.width,
-                H=self.garden.height,
-                target_count=target_plants,
+        # Greedy triads (fast grouping)
+        groups = self._greedy_triads()
+        print(f"[DEBUG] Greedy groups formed: {len(groups)} triads (size<=3)")
+
+        used_anchor = set()
+        placed_before = self._placed_count()
+
+        # Place groups first (better growth), time-aware
+        for gi, group in enumerate(groups, 1):
+            if self._time_up(t0):
+                print("[DEBUG] Time budget hit during groups; continuing with refills.")
+                break
+            self._place_group_fast(group, base_grid, used_anchor, t0)
+            now = self._placed_count()
+            if gi % 10 == 0:
+                print(f"[DEBUG] Groups {gi}/{len(groups)} — placed +{now - placed_before}")
+                placed_before = now
+
+        # Leftovers (anything not yet planted)
+        leftovers = [v for v in self.varieties if not self._in_garden(v)]
+        print(f"[DEBUG] Leftovers after groups: {len(leftovers)}")
+
+        # Refill passes (multi-phase), time-aware
+        if leftovers and not self._time_up(t0):
+            grids = [base_grid]
+            if self.MULTI_PHASE_REFILLS:
+                grids += self._hex_grid_multiphase(step)
+                print(f"[DEBUG] Refill grids: {len(grids)}")
+
+            for gi, grid in enumerate(grids, 1):
+                if self._time_up(t0):
+                    print("[DEBUG] Time budget hit during refills.")
+                    break
+                added = 0
+                for v in list(leftovers):
+                    if self._time_up(t0): break
+                    if self._place_one_fast(v, grid, t0):
+                        leftovers.remove(v)
+                        added += 1
+                print(f"[DEBUG] Refill {gi}/{len(grids)} placed {added}; remaining {len(leftovers)}")
+                if not leftovers:
+                    break
+
+        # Tight final pass if time remains
+        if leftovers and not self._time_up(t0):
+            tight_step = max(0.15, 0.88 * step)
+            tight_grid = self._hex_grid(tight_step)
+            random.shuffle(tight_grid)
+            added = 0
+            for v in list(leftovers):
+                if self._time_up(t0): break
+                if self._place_one_fast(v, tight_grid, t0):
+                    leftovers.remove(v)
+                    added += 1
+            print(f"[DEBUG] Tight pass placed {added}; remaining {len(leftovers)}")
+
+        print(f"[DEBUG] Done. Planted={self._placed_count()}  Unplaced={len(leftovers)}  Elapsed={time.time()-t0:.2f}s")
+
+    # ---------------- Fast placement pieces ----------------
+
+    def _place_group_fast(self, group: List[PlantVariety], grid: List[Position],
+                          used_anchor: set, t0: float) -> None:
+        """Place up to 3 plants, larger-first, evaluating limited anchors w/ time budget."""
+        group_sorted = sorted(group, key=lambda v: getattr(v, "radius", 1.0), reverse=True)
+        for v in group_sorted:
+            if self._time_up(t0): return
+            self._place_one_fast(v, grid, t0, used_anchor)
+
+    def _place_one_fast(self, v: PlantVariety, grid: List[Position], t0: float,
+                        used_anchor: Optional[set] = None) -> bool:
+        """Try to place one plant scanning at most MAX_CANDIDATES_PER_PLANT anchors."""
+        ms_budget = self.PER_PLANT_BUDGET_MS / 1000.0
+        start = time.time()
+        r = max(0.1, float(getattr(v, "radius", 1.0)))
+
+        # Iterate center-out, but limited; skip anchors we’ve “consumed”
+        tried = 0
+        best_pos = None
+        best_score = -1e9
+
+        for pos in grid:
+            if self._time_up(t0): break
+            if time.time() - start > ms_budget: break
+            if tried >= self.MAX_CANDIDATES_PER_PLANT: break
+
+            k = (round(pos.x, 3), round(pos.y, 3))
+            if used_anchor and k in used_anchor:
+                continue
+
+            # quick same-species feasibility via shash
+            if self.FORBID_SAME_SPECIES_OVERLAP and not self._same_species_ok(v, pos.x, pos.y, r):
+                continue
+
+            # cheap precheck
+            if hasattr(self.garden, "can_place_plant"):
+                try:
+                    if not self.garden.can_place_plant(v, pos):
+                        tried += 1
+                        continue
+                except Exception:
+                    pass
+
+            # score = #cross-species neighbors overlap (local only) - small edge penalty
+            score = self._local_overlaps_cross_species(v, pos.x, pos.y, r) - 0.02 * (
+                abs(pos.x - self.W / 2.0) + abs(pos.y - self.H / 2.0)
             )
-
-            # Step 1.5: Impose structured seed — small → central diamond, large → edge band
-            X = self._impose_center_diamond_and_edge_band(X, labels)
-
-            # Step 2: Create beneficial interactions FIRST (don’t enforce feasibility yet)
-            X = create_beneficial_interactions(
-                X,
-                self.varieties,
-                labels,
-                inv,
-                iters=self.nutrient_iters,
-                band_delta=self.band_delta,
-                degree_cap=self.degree_cap,
-                step_size=self.step_size_nutrient,
-                keep_feasible=False,  # Don't enforce separation yet
-            )
-
-            # Step 3: Enforce feasibility (non-overlap / hard constraints)
-            X = separate_overlapping_plants(
-                X,
-                self.varieties,
-                labels,
-                iters=self.feasible_iters,
-                step_size=self.step_size_feasible,
-            )
-
-            # Step 3.5: Optional iterative Layout Refinement (small → center, large → edges)
-            if self.enable_radius_refinement:
-                X = self._iterative_radius_layout_refinement(
-                    X,
-                    labels,
-                    iters=self.refine_iters,
-                    step=self.refine_step,
-                    inner_margin=self.inner_margin,
-                    outer_margin=self.outer_margin,
-                )
-
-            # Step 4: Measure garden quality
-            score = measure_garden_quality(X, self.varieties, labels)
-
-            # Keep best
             if score > best_score:
                 best_score = score
-                best_layout = [pos for pos in X]  # Copy list of positions
-                best_labels = labels.copy()
+                best_pos = pos
 
-        # Place the best layout in the garden, maximizing count
-        if best_layout is not None:
-            self._place_plants_maximizing_count(best_layout, best_labels)
+            tried += 1
 
-    # ------------------ Structured seeding core ------------------
+        if best_pos:
+            if self._add_with_jitter(v, best_pos, r):
+                if used_anchor is not None:
+                    used_anchor.add((round(best_pos.x, 3), round(best_pos.y, 3)))
+                return True
 
-    def _impose_center_diamond_and_edge_band(
-        self,
-        X: list[tuple[float, float]],
-        labels: list[int],
-    ) -> list[tuple[float, float]]:
-        """
-        Rewrites X to:
-          - Place the smallest-radius plants inside a central diamond (rhombus),
-            split into four triangular quadrants (rotated square).
-          - Push the largest-radius plants toward an outer edge band.
-          - Leave the remaining "medium" plants in a ring between diamond and edge.
-        """
-        if not X:
-            return X
-
-        W, H = self.garden.width, self.garden.height
-        cx, cy = W / 2.0, H / 2.0
-        m = min(W, H)
-
-        # Sort indices by plant radius (ascending)
-        radii = [self.varieties[lbl].radius for lbl in labels]
-        idx_sorted_small_to_large = sorted(range(len(labels)), key=lambda i: radii[i])
-
-        n = len(labels)
-        n_center = max(1, int(self.center_small_fraction * n))
-        center_ids = idx_sorted_small_to_large[:n_center]
-        edge_ids = idx_sorted_small_to_large[-n_center:]  # mirror count for edges
-        middle_ids = [i for i in range(n) if i not in center_ids and i not in edge_ids]
-
-        diamond_radius = self.diamond_radius_fraction * m
-
-        center_targets = self._diamond_quadrant_targets(
-            count=n_center, cx=cx, cy=cy, radius=diamond_radius, jitter=self.target_jitter * m
-        )
-        edge_targets = self._edge_band_targets(
-            count=len(edge_ids),
-            W=W,
-            H=H,
-            band=self.edge_band_thickness * m,
-            jitter=self.target_jitter * m,
-        )
-        middle_targets = self._annulus_targets_between_diamond_and_edge(
-            count=len(middle_ids),
-            cx=cx,
-            cy=cy,
-            W=W,
-            H=H,
-            inner=diamond_radius * 1.05,
-            outer=(m / 2.0) - (self.edge_band_thickness * m) * 1.25,
-            jitter=self.target_jitter * m,
-        )
-
-        for k, i in enumerate(center_ids):
-            X[i] = center_targets[k]
-        for k, i in enumerate(edge_ids):
-            X[i] = edge_targets[k]
-        for k, i in enumerate(middle_ids):
-            X[i] = middle_targets[k]
-
-        return X
-
-    # ---------- Target generation helpers ----------
-
-    def _diamond_quadrant_targets(
-        self, count: int, cx: float, cy: float, radius: float, jitter: float
-    ) -> list[tuple[float, float]]:
-        """
-        Create 'count' points inside a diamond defined by |x-cx|/a + |y-cy|/a <= 1
-        with a = radius. We distribute across 4 triangular quadrants to
-        get a triangular/diamond middle.
-        """
-        if count <= 0:
-            return []
-        pts: list[tuple[float, float]] = []
-        per_quad = [count // 4] * 4
-        for r in range(count % 4):
-            per_quad[r] += 1  # distribute remainder
-
-        def tri_sample(n, p0, p1, p2):
-            out = []
-            for _ in range(n):
-                t = random.random()
-                u = random.random() * (1.0 - t)
-                x = p0[0] + t * (p1[0] - p0[0]) + u * (p2[0] - p0[0])
-                y = p0[1] + t * (p1[1] - p0[1]) + u * (p2[1] - p0[1])
-                x += (random.random() - 0.5) * 2 * jitter
-                y += (random.random() - 0.5) * 2 * jitter
-                out.append((x, y))
-            return out
-
-        top = (cx, cy - radius)
-        right = (cx + radius, cy)
-        bottom = (cx, cy + radius)
-        left = (cx - radius, cy)
-
-        pts += tri_sample(per_quad[0], (cx, cy), top, right)
-        pts += tri_sample(per_quad[1], (cx, cy), right, bottom)
-        pts += tri_sample(per_quad[2], (cx, cy), bottom, left)
-        pts += tri_sample(per_quad[3], (cx, cy), left, top)
-
-        return [self._clamp_to_diamond(p, cx, cy, radius) for p in pts]
-
-    def _edge_band_targets(
-        self, count: int, W: float, H: float, band: float, jitter: float
-    ) -> list[tuple[float, float]]:
-        """
-        Evenly fan points along the outer band near the rectangle edges.
-        We alternate edges (top/right/bottom/left) round-robin to spread out.
-        """
-        if count <= 0:
-            return []
-        edges = ['top', 'right', 'bottom', 'left']
-        pts: list[tuple[float, float]] = []
-        for i in range(count):
-            edge = edges[i % 4]
-            if edge == 'top':
-                x = random.uniform(band, W - band)
-                y = band
-            elif edge == 'right':
-                x = W - band
-                y = random.uniform(band, H - band)
-            elif edge == 'bottom':
-                x = random.uniform(band, W - band)
-                y = H - band
-            else:
-                x = band
-                y = random.uniform(band, H - band)
-            x += (random.random() - 0.5) * 2 * jitter
-            y += (random.random() - 0.5) * 2 * jitter
-            pts.append((self._clamp(x, 0, W), self._clamp(y, 0, H)))
-        return pts
-
-    def _annulus_targets_between_diamond_and_edge(
-        self,
-        count: int,
-        cx: float,
-        cy: float,
-        W: float,
-        H: float,
-        inner: float,
-        outer: float,
-        jitter: float,
-    ) -> list[tuple[float, float]]:
-        """Points in the ring between the central diamond and the outer edge band."""
-        if count <= 0:
-            return []
-        pts: list[tuple[float, float]] = []
-        for _ in range(count):
-            theta = random.random() * 2 * math.pi
-            r = random.uniform(inner, max(inner, outer))
-            x = cx + r * math.cos(theta)
-            y = cy + r * math.sin(theta)
-            x += (random.random() - 0.5) * 2 * jitter
-            y += (random.random() - 0.5) * 2 * jitter
-            pts.append((self._clamp(x, 0, W), self._clamp(y, 0, H)))
-        return pts
-
-    # ---------- Geometry helpers ----------
-
-    @staticmethod
-    def _clamp(v: float, lo: float, hi: float) -> float:
-        return max(lo, min(hi, v))
-
-    @staticmethod
-    def _clamp_to_diamond(
-        p: tuple[float, float], cx: float, cy: float, a: float
-    ) -> tuple[float, float]:
-        """
-        Clamp a point softly into the diamond defined by |x-cx|/a + |y-cy|/a <= 1
-        by projecting to the closest point on the diamond boundary if needed.
-        """
-        x, y = p
-        dx, dy = abs(x - cx), abs(y - cy)
-        s = dx / a + dy / a
-        if s <= 1.0 or a <= 0:
-            return x, y
-        if dx + dy == 0:
-            return cx, cy
-        k = a / (dx + dy)  # project onto |dx|+|dy|=a
-        nx = cx + (x - cx) * k
-        ny = cy + (y - cy) * k
-        return nx, ny
-
-    # ------------------ Optional refinement ------------------
-
-    def _iterative_radius_layout_refinement(
-        self,
-        X: list[tuple[float, float]],
-        labels: list[int],
-        iters: int = 100,
-        step: float = 0.08,
-        inner_margin: float = 0.18,
-        outer_margin: float = 0.06,
-        tol: float = 1e-3,
-    ) -> list[tuple[float, float]]:
-        """Gently rebalances positions by plant size (small → center, large → edge)."""
-        if not X:
-            return X
-
-        W, H = self.garden.width, self.garden.height
-        cx, cy = W / 2.0, H / 2.0
-        garden_half = min(W, H) / 2.0
-
-        radii = [self.varieties[lbl].radius for lbl in labels]
-        r_min = min(radii)
-        r_max = max(radii)
-        r_span = (r_max - r_min) if (r_max > r_min) else 1.0
-
-        target_inner = garden_half * inner_margin
-        target_outer = garden_half * (1.0 - outer_margin)
-
-        Xw = [list(p) for p in X]
-        for _ in range(iters):
-            max_shift = 0.0
-            for i, (x, y) in enumerate(Xw):
-                r_norm = (radii[i] - r_min) / r_span
-                target = target_inner + (target_outer - target_inner) * r_norm
-                dx, dy = x - cx, y - cy
-                dist = (dx * dx + dy * dy) ** 0.5 or 1e-6
-                ux, uy = dx / dist, dy / dist
-                delta = target - dist
-                move = step * delta
-                nx = self._clamp(cx + ux * (dist + move), 0.0, W)
-                ny = self._clamp(cy + uy * (dist + move), 0.0, H)
-                max_shift = max(max_shift, abs(move))
-                Xw[i][0], Xw[i][1] = nx, ny
-            if max_shift < tol:
-                break
-        return [(p[0], p[1]) for p in Xw]
-
-    # ------------------ Placement (maximize count) ------------------
-
-    def _place_plants_maximizing_count(
-        self, X: list[tuple[float, float]], labels: list[int]
-    ) -> None:
-        """
-        Place plants with:
-          1) Big-first ordering to preserve space.
-          2) Local spiral/jitter retry if a placement fails.
-          3) Recovery sweep for any unplaced plants using size-aware fallback targets.
-        """
-        n = len(labels)
-        W, H = self.garden.width, self.garden.height
-        cx, cy = W / 2.0, H / 2.0
-        m = min(W, H)
-        diamond_radius = self.diamond_radius_fraction * m
-
-        radii = [self.varieties[lbl].radius for lbl in labels]
-        order = sorted(range(n), key=lambda i: radii[i], reverse=True)  # big first
-
-        failed_indices: list[int] = []
-
-        # First pass: try original targets with backoff
-        for idx in order:
-            lbl = labels[idx]
-            variety = self.varieties[lbl]
-            target = X[idx]
-            if not self._try_place_with_backoff(variety, target):
-                failed_indices.append(idx)
-
-        if not failed_indices:
-            return  # everything placed
-
-        # Prepare fallback targets
-        r_sorted = sorted([(i, radii[i]) for i in failed_indices], key=lambda t: t[1])
-        k = len(r_sorted) // 3 or 1
-        small_idxs = [i for i, _ in r_sorted[:k]]
-        large_idxs = [i for i, _ in r_sorted[-k:]]
-        middle_idxs = [i for i, _ in r_sorted if i not in small_idxs and i not in large_idxs]
-
-        small_targets = self._diamond_quadrant_targets(
-            count=len(small_idxs),
-            cx=cx,
-            cy=cy,
-            radius=diamond_radius,
-            jitter=self.target_jitter * m,
-        )
-        large_targets = self._edge_band_targets(
-            count=len(large_idxs),
-            W=W,
-            H=H,
-            band=self.edge_band_thickness * m,
-            jitter=self.target_jitter * m,
-        )
-        middle_targets = self._annulus_targets_between_diamond_and_edge(
-            count=len(middle_idxs),
-            cx=cx,
-            cy=cy,
-            W=W,
-            H=H,
-            inner=diamond_radius * 1.05,
-            outer=(m / 2.0) - (self.edge_band_thickness * m) * 1.25,
-            jitter=self.target_jitter * m,
-        )
-
-        # Second pass: try fallback targets with more retries
-        for i, tgt in zip(small_idxs, small_targets, strict=False):
-            lbl = labels[i]
-            variety = self.varieties[lbl]
-            self._try_place_with_backoff(variety, tgt, attempts=self.recovery_attempts)
-
-        for i, tgt in zip(large_idxs, large_targets, strict=False):
-            lbl = labels[i]
-            variety = self.varieties[lbl]
-            self._try_place_with_backoff(variety, tgt, attempts=self.recovery_attempts)
-
-        for i, tgt in zip(middle_idxs, middle_targets, strict=False):
-            lbl = labels[i]
-            variety = self.varieties[lbl]
-            self._try_place_with_backoff(variety, tgt, attempts=self.recovery_attempts)
-
-    def _try_place_with_backoff(
-        self,
-        variety: PlantVariety,
-        target_xy: tuple[float, float],
-        attempts: int = None,
-    ) -> bool:
-        """
-        Try to place a plant at (or near) target_xy. If add_plant fails, we
-        spiral/jitter outward with a radius that grows relative to plant size.
-        Returns True if placed, False otherwise.
-        """
-        if attempts is None:
-            attempts = self.place_retry_attempts
-
-        W, H = self.garden.width, self.garden.height
-        base_r = getattr(variety, 'radius', 1.0)
-        radius = max(0.1, float(base_r))
-        # Start with a small search radius and grow it multiplicatively
-        search_r = max(0.2, self.place_retry_start * radius)
-
-        cx, cy = target_xy
-        for i in range(attempts):
-            if i == 0:
-                x, y = cx, cy
-            else:
-                angle = random.random() * 2 * math.pi
-                # ring grows gradually; within ring, choose random point
-                ring = search_r * (self.place_retry_growth ** (i / 6.0))
-                dist = random.uniform(0.0, ring)
-                x = cx + dist * math.cos(angle)
-                y = cy + dist * math.sin(angle)
-
-            # Clamp to garden bounds
-            x = self._clamp(x, 0.0, W)
-            y = self._clamp(y, 0.0, H)
-
-            pos = Position(x=x, y=y)
-            try:
-                ok = self.garden.add_plant(variety, pos)
-            except Exception:
-                # Some implementations raise on invalid; treat as failure and continue
-                ok = False
-
-            # Some add_plant() return None on success; accept True or None
-            if ok or ok is None:
+        # as a fallback: try immediate anchors sequentially until budget hits
+        for pos in grid:
+            if self._time_up(t0): break
+            if time.time() - start > ms_budget: break
+            if used_anchor and (round(pos.x,3), round(pos.y,3)) in used_anchor:
+                continue
+            if self.FORBID_SAME_SPECIES_OVERLAP and not self._same_species_ok(v, pos.x, pos.y, r):
+                continue
+            if hasattr(self.garden, "can_place_plant"):
+                try:
+                    if not self.garden.can_place_plant(v, pos):
+                        continue
+                except Exception:
+                    pass
+            if self._add_with_jitter(v, pos, r):
+                if used_anchor is not None:
+                    used_anchor.add((round(pos.x, 3), round(pos.y, 3)))
                 return True
 
         return False
 
-    # ------------------ Final placement API (legacy/backward-compat) ------------------
+    def _add_with_jitter(self, v: PlantVariety, pos: Position, r: float) -> bool:
+        # direct
+        if self._try_add(v, pos.x, pos.y, r):
+            return True
+        # micro jitters
+        for _ in range(self.MICRO_JITTER_TRIES):
+            ang = random.random() * 2 * math.pi
+            d = random.uniform(0.0, self.MICRO_JITTER_SCALE * r)
+            px = self._clamp(pos.x + d * math.cos(ang), 0.0, self.W)
+            py = self._clamp(pos.y + d * math.sin(ang), 0.0, self.H)
+            if self._try_add(v, px, py, r):
+                return True
+        # (no spiral here to keep it fast)
+        return False
 
-    def _place_plants(self, X: list[tuple[float, float]], labels: list[int]) -> None:
-        """
-        Legacy simple placement kept for compatibility with earlier callers/tests.
-        Prefer _place_plants_maximizing_count which uses retries & recovery.
-        """
-        for i, label in enumerate(labels):
-            variety = self.varieties[label]
-            position = Position(x=X[i][0], y=X[i][1])
-            self.garden.add_plant(variety, position)
+    # ---------------- Scoring & feasibility (fast, local) ----------------
+
+    def _same_species_ok(self, v: PlantVariety, x: float, y: float, r: float) -> bool:
+        """Reject if same-species neighbor would overlap; checks only local cells."""
+        my_s = self._species_code(v)
+        for s, px, py, pr in self.shash.nearby(x, y, r + self.min_r):
+            if s != my_s:
+                continue
+            dx, dy = x - px, y - py
+            if dx * dx + dy * dy < (r + pr) ** 2:
+                return False
+        return True
+
+    def _local_overlaps_cross_species(self, v: PlantVariety, x: float, y: float, r: float) -> float:
+        """Count overlapping roots with other species in neighboring cells only."""
+        my_s = self._species_code(v)
+        count = 0
+        for s, px, py, pr in self.shash.nearby(x, y, r + self.min_r):
+            if s == my_s:
+                continue
+            dx, dy = x - px, y - py
+            if dx * dx + dy * dy < (r + pr) ** 2:
+                count += 1
+        return float(count)
+
+    def _try_add(self, v: PlantVariety, x: float, y: float, r: float) -> bool:
+        try:
+            ok = self.garden.add_plant(v, Position(x, y))
+        except Exception:
+            ok = False
+        if ok or ok is None:
+            s = self._species_code(v)
+            self.shash.insert(s, x, y, r)
+            return True
+        return False
+
+    # ---------------- Hex grids ----------------
+
+    def _hex_grid(self, spacing: float) -> List[Position]:
+        positions: List[Position] = []
+        dx = spacing
+        dy = spacing * math.sqrt(3) / 2.0
+        # center-out order
+        y = self.margin
+        row = 0
+        while y <= self.H - self.margin:
+            x_off = (dx / 2.0) if (row % 2) else 0.0
+            x = self.margin + x_off
+            while x <= self.W - self.margin:
+                positions.append(Position(x, y))
+                x += dx
+            y += dy
+            row += 1
+        positions.sort(key=lambda p: abs(p.x - self.W/2.0) + abs(p.y - self.H/2.0))
+        return positions
+
+    def _hex_grid_multiphase(self, spacing: float) -> List[List[Position]]:
+        phases = [(0.00, 0.50), (0.50, 0.25), (0.50, 0.75), (0.25, 0.25), (0.75, 0.75)]
+        dx = spacing
+        dy = spacing * math.sqrt(3) / 2.0
+        grids: List[List[Position]] = []
+        for rp, cp in phases:
+            grid: List[Position] = []
+            y = self.margin + rp * dy
+            row = 0
+            while y <= self.H - self.margin:
+                x_off = (dx / 2.0) if (row % 2) else 0.0
+                x = self.margin + x_off + cp * dx
+                while x <= self.W - self.margin:
+                    grid.append(Position(x, y))
+                    x += dx
+                y += dy
+                row += 1
+            grid.sort(key=lambda p: abs(p.x - self.W/2.0) + abs(p.y - self.H/2.0))
+            grids.append(grid)
+        return grids
+
+    # ---------------- Greedy groups (fast) ----------------
+
+    def _greedy_triads(self) -> List[List[PlantVariety]]:
+        """Form R/G/B-balanced groups quickly using signs of coefficients."""
+        by_s: Dict[str, List[PlantVariety]] = {"R": [], "G": [], "B": []}
+        for v in self.varieties:
+            by_s[self._species_code(v)].append(v)
+
+        # small→big so we can pack more
+        for s in by_s:
+            by_s[s].sort(key=lambda v: getattr(v, "radius", 1.0))
+
+        groups: List[List[PlantVariety]] = []
+        # exact triads first
+        while all(by_s[s] for s in ("R","G","B")):
+            groups.append([by_s["R"].pop(0), by_s["G"].pop(0), by_s["B"].pop(0)])
+
+        # make pairs or singles with what’s left (still helpful)
+        leftovers = by_s["R"] + by_s["G"] + by_s["B"]
+        leftovers.sort(key=lambda v: getattr(v, "radius", 1.0))
+        i = 0
+        while i < len(leftovers):
+            groups.append([leftovers[i]])
+            i += 1
+        return groups
+
+    # ---------------- Helpers ----------------
+
+    def _species_code(self, v: PlantVariety) -> str:
+        """Classify by nutrient coefficient signs; fall back to name prefix."""
+        try:
+            R = float(v.nutrient_coefficients[Micronutrient.R])
+            G = float(v.nutrient_coefficients[Micronutrient.G])
+            B = float(v.nutrient_coefficients[Micronutrient.B])
+            eps = 1e-12
+            if R > eps and G < -eps and B < -eps: return "R"
+            if G > eps and R < -eps and B < -eps: return "G"
+            if B > eps and R < -eps and G < -eps: return "B"
+        except Exception:
+            pass
+        name = str(getattr(v, "species", "") or getattr(v, "name", "")).lower()
+        if name.startswith("r"): return "R"
+        if name.startswith("g"): return "G"
+        if name.startswith("b"): return "B"
+        return random.choice(["R","G","B"])  # never collapse to one bucket
+
+    def _placed_count(self) -> int:
+        try:
+            return len(getattr(self.garden, "plants", []))
+        except Exception:
+            return 0
+
+    def _in_garden(self, v: PlantVariety) -> bool:
+        # If you track placements per-variety elsewhere, wire it; we keep simple here.
+        return False
+
+    def _time_up(self, t0: float) -> bool:
+        return (time.time() - t0) >= self.GLOBAL_TIME_BUDGET_S
+
+    @staticmethod
+    def _clamp(v: float, lo: float, hi: float) -> float:
+        return max(lo, min(hi, v))
