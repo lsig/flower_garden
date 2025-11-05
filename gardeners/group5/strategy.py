@@ -450,6 +450,7 @@ class TripletStrategy:
             self._triplet_cache[cache_key] = evaluation
         return evaluation
 
+    # UPDATED: prefer small-radius, compact triplets via a growth-per-area score
     def _build_triplet_plans(
         self,
         by_species: dict[Species, list[TripletStrategy._VarType]],
@@ -463,25 +464,32 @@ class TripletStrategy:
 
         candidates: list[
             tuple[
-                float,
+                float,  # score
                 TripletStrategy._VarType,
                 TripletStrategy._VarType,
                 TripletStrategy._VarType,
                 TripletStrategy._TripletEval,
             ]
         ] = []
+
         for r_type in r_types:
             for g_type in g_types:
                 for b_type in b_types:
                     evaluation = self._get_triplet_eval(r_type, g_type, b_type)
                     if evaluation is None or not evaluation.sustaining:
                         continue
-                    candidates.append((evaluation.total_growth, r_type, g_type, b_type, evaluation))
+                    # Smaller clusters & radii are better: growth / area with a small radius regularizer
+                    extent = max(evaluation.cluster_extent, 1e-3)
+                    avg_r = (r_type.radius + g_type.radius + b_type.radius) / 3.0
+                    score = evaluation.total_growth / (extent * extent + 1e-6) - 0.05 * avg_r
+                    candidates.append((score, r_type, g_type, b_type, evaluation))
 
+        # higher score first
         candidates.sort(key=lambda item: item[0], reverse=True)
 
         plans: list[TripletStrategy._TripletPlan] = []
         cluster_extent = 0.0
+
         while True:
             chosen: (
                 tuple[
@@ -533,6 +541,7 @@ class TripletStrategy:
             TripletStrategy._TripletEval,
         ] = {}
 
+    # UPDATED
     def cultivate(self) -> None:
         if not self.varieties:
             return
@@ -558,28 +567,56 @@ class TripletStrategy:
         if cluster_extent <= 0.0:
             cluster_extent = max(self._get_radius(v) for v in self.varieties) + 0.5
 
+        # --- radius stats for "large" detection ---
+        all_radii = sorted(self._get_radius(v) for v in self.varieties)
+        if all_radii:
+            idx75 = max(0, min(len(all_radii) - 1, int(0.75 * (len(all_radii) - 1))))
+            large_threshold = all_radii[idx75]
+        else:
+            large_threshold = 1e9  # nothing is large if empty
+
+        # base anchors (hex lattice) + corner-biased set for large clusters
         anchor_spacing = max(cluster_extent * 1.8, min(width, height) / 6.0)
         anchors = self._tri_lattice(width, height, anchor_spacing)
         rng.shuffle(anchors)
-        anchor_idx = 0
 
+        corner_pad = min(width, height) * 0.06
+        corner_first = self._corner_anchors(width, height, pad=corner_pad)
+        rng.shuffle(corner_first)
+
+        # --- place triplets ---
+        anchor_idx = 0
         for plan in triplet_plans:
+            # if this triplet contains a large-radius member, try corners first
+            max_r = max(plan.r_type.radius, plan.g_type.radius, plan.b_type.radius)
+            try_sets = [corner_first, anchors] if max_r >= large_threshold else [anchors]
             success = False
-            while anchor_idx < len(anchors):
-                anchor = anchors[anchor_idx]
-                anchor_idx += 1
-                if self._place_triplet_plan(
-                    plan,
-                    anchor,
-                    space,
-                    placements,
-                    placed,
-                    width,
-                    height,
-                    rng,
-                ):
-                    success = True
+            for pool in try_sets:
+                # iterate through pools without consuming anchors permanently for other plans
+                # but we still advance an index for the main anchors list to avoid reusing same spots
+                pool_iter = pool if pool is corner_first else pool[anchor_idx:]
+                for anchor in pool_iter:
+                    if self._place_triplet_plan(
+                        plan,
+                        anchor,
+                        space,
+                        placements,
+                        placed,
+                        width,
+                        height,
+                        rng,
+                    ):
+                        # if we used a main lattice anchor, move the index forward
+                        if pool is not corner_first and anchor_idx < len(anchors):
+                            # find where this anchor was and advance past it
+                            # (cheap approach: just bump index)
+                            anchor_idx += 1
+                        success = True
+                        break
+                if success:
                     break
+
+            # last resort: random
             if not success:
                 for _ in range(40):
                     anchor = (rng.uniform(0.0, width), rng.uniform(0.0, height))
@@ -596,10 +633,22 @@ class TripletStrategy:
                         success = True
                         break
 
-        for idx in range(len(self.varieties)):
-            if placed[idx]:
-                continue
-            self._place_single(idx, space, placements, placed, width, height, rng)
+        # --- place remaining singles, small -> large, with 2-neighbor rule ---
+        remaining_indices = [i for i in range(len(self.varieties)) if not placed[i]]
+        remaining_indices.sort(key=lambda i: self._get_radius(self.varieties[i]))  # small first
+
+        for idx in remaining_indices:
+            self._place_single(
+                idx,
+                space,
+                placements,
+                placed,
+                width,
+                height,
+                rng,
+                large_threshold=large_threshold,
+                corner_pad=corner_pad,
+            )
 
     # ---------------------------
     # Small geometry helpers
@@ -615,7 +664,7 @@ class TripletStrategy:
         self,
         plan: TripletStrategy._TripletPlan,
         anchor: tuple[float, float],
-        space: _SpatialHash,
+        space: TripletStrategy._SpatialHash,
         placements: list[TripletStrategy._Placement],
         placed: list[bool],
         width: float,
@@ -678,34 +727,65 @@ class TripletStrategy:
 
         return False
 
+    # UPDATED: corner bias for large plants + must have >=2 connections
     def _place_single(
         self,
         idx: int,
-        space: _SpatialHash,
+        space: TripletStrategy._SpatialHash,
         placements: list[TripletStrategy._Placement],
         placed: list[bool],
         width: float,
         height: float,
         rng: random.Random,
+        *,
+        large_threshold: float,
+        corner_pad: float,
     ) -> bool:
         if placed[idx]:
             return True
 
+        radius = self._get_radius(self.varieties[idx])
+        is_large = radius >= large_threshold
+
+        # candidate generators
+        corner_candidates = self._corner_anchors(width, height, pad=corner_pad)
+        rng.shuffle(corner_candidates)
+
         attempts = 0
-        while attempts < 1200:
-            attempts += 1
-            x = rng.uniform(0.0, width)
-            y = rng.uniform(0.0, height)
+        max_attempts = 1200
+
+        def try_place_at(x: float, y: float) -> bool:
             cand = self._Placement(idx, x, y)
             if not space.can_place(cand, self.varieties, allow_cross_existing=False):
-                continue
+                return False
+            # enforce connectivity: must connect to >=2 neighbors
+            if self._count_connections(space, cand, self.varieties) < 2:
+                return False
             plant = self.garden.add_plant(self.varieties[idx], Position(x, y))
             if plant is None:
-                continue
+                return False
             space.add(cand)
             placements.append(cand)
             placed[idx] = True
             return True
+
+        # 1) Large: corners/edges first
+        if is_large:
+            for x, y in corner_candidates:
+                attempts += 1
+                if attempts > max_attempts:
+                    break
+                if try_place_at(x, y):
+                    return True
+
+        # 2) Uniform random scan
+        while attempts < max_attempts:
+            attempts += 1
+            x = rng.uniform(0.0, width)
+            y = rng.uniform(0.0, height)
+            if try_place_at(x, y):
+                return True
+
         return False
 
     @staticmethod
@@ -726,3 +806,65 @@ class TripletStrategy:
                     break
                 pts.append((x, y))
         return pts
+
+    # NEW: quick radius fetcher for raw variety objects
+    def _var_radius(self, v: Any) -> float:
+        return self._get_radius(v)
+
+    # NEW: when are two plants "connected"? within interaction threshold (a_r + b_r)
+    @staticmethod
+    def _connection_threshold(a_r: float, b_r: float) -> float:
+        # a tiny epsilon to be generous about floating point
+        return (a_r + b_r) + 1e-6
+
+    # NEW: count how many neighbors would be connected to cand at (x,y)
+    def _count_connections(
+        self,
+        space: TripletStrategy._SpatialHash,
+        cand: TripletStrategy._Placement,
+        varieties: list[Any],
+    ) -> int:
+        a_r = self._get_radius(varieties[cand.idx])
+        ax, ay = cand.x, cand.y
+        count = 0
+        # reuse spatial hash neighborhood
+        for key in space._neighbor_keys(ax, ay, a_r + space.cell):
+            for p in space.grid.get(key, []):
+                if p.idx == cand.idx and p.x == ax and p.y == ay:
+                    continue
+                b_r = self._get_radius(varieties[p.idx])
+                dx = ax - p.x
+                dy = ay - p.y
+                d2 = dx * dx + dy * dy
+                thr = self._connection_threshold(a_r, b_r)
+                if d2 <= thr * thr:
+                    count += 1
+        return count
+
+    # NEW: corner/edge biased anchors for large plants
+    @staticmethod
+    def _corner_anchors(
+        width: float, height: float, pad: float, per_corner: int = 24
+    ) -> list[tuple[float, float]]:
+        # Generate points near four corners and along the nearest edges
+        corners = [(pad, pad), (width - pad, pad), (pad, height - pad), (width - pad, height - pad)]
+        anchors: list[tuple[float, float]] = []
+        # small edge fans from each corner
+        steps = max(6, per_corner // 4)
+        for cx, cy in corners:
+            # along x edge
+            for i in range(steps):
+                t = i / max(1, steps - 1)
+                x = cx + (pad if cx < width / 2 else -pad) * t
+                anchors.append((x, cy))
+            # along y edge
+            for i in range(steps):
+                t = i / max(1, steps - 1)
+                y = cy + (pad if cy < height / 2 else -pad) * t
+                anchors.append((cx, y))
+            anchors.append((cx, cy))
+        # clamp inside bounds
+        clamped = []
+        for x, y in anchors:
+            clamped.append((min(max(x, pad), width - pad), min(max(y, pad), height - pad)))
+        return clamped
