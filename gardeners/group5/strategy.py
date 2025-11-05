@@ -3,7 +3,7 @@ from __future__ import annotations
 import math
 import random
 from collections import defaultdict, deque
-from typing import Iterable
+from collections.abc import Iterable
 
 from core.garden import Garden
 from core.micronutrients import Micronutrient
@@ -106,12 +106,11 @@ class TripletStrategy:
     def _variety_priority(self, variety: PlantVariety) -> float:
         coeffs = variety.nutrient_coefficients
         produce = coeffs.get(self._SUPPLIES.get(variety.species, Micronutrient.R), 0.0)
-        consume = sum(abs(coeffs.get(nutrient, 0.0)) for nutrient in self._CONSUMES.get(variety.species, ()))
+        consume = sum(
+            abs(coeffs.get(nutrient, 0.0)) for nutrient in self._CONSUMES.get(variety.species, ())
+        )
 
-        if produce <= 0.0:
-            efficiency = -abs(consume)
-        else:
-            efficiency = produce / (consume + 1e-6)
+        efficiency = -abs(consume) if produce <= 0.0 else produce / (consume + 1e-6)
 
         radius_penalty = 1.0 + variety.radius * variety.radius
 
@@ -199,13 +198,17 @@ class TripletStrategy:
 
     def _remove_position_if_present(self, position: Position, positions: list[Position]) -> None:
         for idx, candidate in enumerate(positions):
-            if math.isclose(candidate.x, position.x, abs_tol=1e-6) and math.isclose(candidate.y, position.y, abs_tol=1e-6):
+            if math.isclose(candidate.x, position.x, abs_tol=1e-6) and math.isclose(
+                candidate.y, position.y, abs_tol=1e-6
+            ):
                 positions.pop(idx)
                 return
 
     # Placement scoring -------------------------------------------------
 
-    def _attempt_clustered_placement(self, variety: PlantVariety, candidates: list[Position]) -> bool:
+    def _attempt_clustered_placement(
+        self, variety: PlantVariety, candidates: list[Position]
+    ) -> bool:
         scored_indices = []
         for idx, position in enumerate(candidates):
             if not self._garden.can_place_plant(variety, position):
@@ -253,7 +256,9 @@ class TripletStrategy:
 
     # Auxiliary placement helpers --------------------------------------
 
-    def _attempt_direct_placement(self, variety: PlantVariety, positions: Iterable[Position]) -> bool:
+    def _attempt_direct_placement(
+        self, variety: PlantVariety, positions: Iterable[Position]
+    ) -> bool:
         for position in positions:
             if self._garden.can_place_plant(variety, position):
                 planted = self._garden.add_plant(variety, position)
