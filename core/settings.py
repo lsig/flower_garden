@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 from core.gardener import Gardener
 from gardeners.group1.gardener import Gardener1
-from gardeners.group2.adaptivegardener import Gardener2
+from gardeners.group2.gardener import Gardener2
 from gardeners.group3.gardener import Gardener3
 from gardeners.group4.gardener import Gardener4
 from gardeners.group5.gardener import Gardener5
