@@ -115,7 +115,7 @@ class Gardener9(Gardener):
 
                 for variety in complementary:
                     # Calculate radius from first ring plant
-                    sub_ring_radius = max(ring_plant['variety'].radius, variety.radius) + 0.1
+                    sub_ring_radius = max(ring_plant['variety'].radius, variety.radius) + 0.001
 
                     # Place 2-3 plants around each first ring plant
                     # Offset angles to create a spiral pattern
@@ -158,7 +158,7 @@ class Gardener9(Gardener):
         if len(layer1_varieties) >= 1:
             for variety in layer1_varieties:
                 # Calculate tight ring radius for interaction with center
-                ring_radius = max(best_producer.radius, variety.radius) + 0.1
+                ring_radius = max(best_producer.radius, variety.radius) + 0.001
 
                 # (hexagonal pattern)
                 num_plants = 6
