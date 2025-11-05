@@ -1,0 +1,30 @@
+# Greedy Planting Algorithm Configuration
+
+simulation:
+  T: 100                    # Default turns for scoring simulation during placement
+                             # Can be overridden by test_runner.py --turns argument
+                             # Set to match expected simulation length (typically 100 for competition)
+  w_short: 0.2              # Weight for short-term growth (turns 1-5)
+  w_long: 1.0               # Weight for long-term growth (turns 6-T)
+
+placement:
+  epsilon: -0.5             # Improvement threshold for stopping (allow small decreases)
+  beta: 1.5                 # Weight for plant reward in selection
+  nutrient_bonus: 3.0       # Bonus for varieties that balance nutrients
+  diversity_penalty: 2.0    # Penalty for not interacting with 2+ species (from 3rd plant)
+  
+geometry:
+  grid_samples: 8           # Grid points per dimension for first plant (reduced for speed)
+  angle_samples: 12         # Tangency angles per existing plant (reduced for speed)
+  max_candidates: 50        # Max candidates to evaluate per iteration (reduced for speed)
+  tolerance: 0.5            # Spatial deduplication tolerance
+  max_anchor_pairs: 15      # Max pairs of anchors for CCI generation (reduced for speed)
+
+heuristic:
+  lambda_interact: 3.0      # Weight for interaction density in pre-ranking
+  lambda_gap: 0.5           # Weight for gap penalty in pre-ranking
+
+debug:
+  verbose: true             # Print debug information during placement (ENABLED for progress)
+  log_candidates: false     # Log candidate generation details
+

@@ -1,0 +1,312 @@
+TITLE: Planting Layout Optimization — Definitive Algorithm Spec (v1, TXT)
+
+GOAL
+Place P plants on a 2D rectangular domain to maximize the average growth over T simulator steps, with circle-based geometry (“cycles”), copy–paste tiling of an initial group, and a clear stop rule. All rules below are deterministic and unambiguous and correspond to the original description.
+
+-------------------------------------------------------------------------------
+0) PROJECT ALIGNMENT NOTES
+-------------------------------------------------------------------------------
+IMPORTANT: This specification uses terminology that may differ from the actual 
+flower_garden project implementation. Key differences to note:
+
+Project Reality:
+- Each PlantVariety has ONE radius r ∈ {1, 2, 3} that serves multiple purposes:
+  * Spacing constraint (min distance: max(r1, r2) for same variety)
+  * Interaction distance (plants interact if distance < r1 + r2, different species)
+  * Growth increment (plants grow by r units per turn)
+  * Reservoir capacity (10r per nutrient)
+- Position coordinates are floats, not integers
+- Each variety instance can only be placed once (enforced by object id)
+- Simulation uses the Engine class: produce → exchange → grow phases
+
+This spec uses abstract notation (A(s) for footprint, R(s) for interaction) but
+implementations should map these to the project's single radius parameter.
+
+Original Algorithm Phases:
+(1) First group & last group — plant one at a time with stop criterion
+(2) In-between groups — Copy & Paste tiling of first group pattern
+(3) Plant — Use varieties based on species requirements
+(4) Location — Circle geometry (tangency, distances) for candidate generation
+(5) Search — Greedy selection maximizing score
+(6) Stop criteria — Improvement threshold ε
+(7) Score — Average growth over T turns, weighted short/long term
+
+-------------------------------------------------------------------------------
+1) COORDINATES, DOMAIN, SPECIES
+-------------------------------------------------------------------------------
+1.1 Domain
+- The planting area D is a closed axis-aligned rectangle [0, W] × [0, H], with W>0, H>0.
+  * Project default: W=16.0, H=10.0
+- A plant is a tuple p = (x, y, v), where (x,y) is the center (FLOAT coordinates), 
+  v is the PlantVariety.
+- NOTE: Position class uses float type for coordinates (not int)
+
+1.2 Variety parameters (per PlantVariety v)
+- r(v): radius ∈ {1, 2, 3}. This SINGLE parameter controls:
+  * Spacing constraint: min_distance = max(r1, r2) for same-variety plants
+  * Interaction distance: plants interact if distance < r1 + r2 (different species)
+  * Growth increment: plant grows by r units per successful growth
+  * Reservoir capacity: 10r per micronutrient
+  * Max size: 100r²
+- species(v): RHODODENDRON | GERANIUM | BEGONIA
+- nutrient_coefficients(v): dict[Micronutrient, float] for R, G, B
+  * Production/consumption rates (positive = produce, negative = consume)
+  * Each in range [-2r, 2r]
+  * Net positive: R + G + B > 0
+  
+NOTE: Unlike the abstract spec notation A(s) and R(s), the project uses ONE radius.
+Implementations should use r for both spacing and interaction calculations.
+
+1.3 Variety set and selection
+- Let V be the set of available PlantVariety objects from the nursery.
+- IMPORTANT: Each variety instance can only be placed ONCE (enforced by object id tracking).
+- Variety selection strategy: For each candidate position, evaluate ALL remaining 
+  varieties and choose the one that maximizes the garden score.
+  This allows dynamic selection based on:
+  * Current nutrient balance in the garden
+  * Interaction potential with existing plants
+  * Individual variety growth characteristics
+- NOTE: Original spec's "lowest (R,G,B)" rule does not apply directly since each 
+  variety has different coefficients regardless of species.
+
+1.4 Overlap & boundary rules (exact)
+- Boundary rule: The center (x,y) of every plant must satisfy: 0 ≤ x ≤ W and 0 ≤ y ≤ H.
+  The plant's root circle (radius r) is allowed to extend outside D.
+- Plant–plant spacing rule (project implementation):
+  * For same variety: distance ≥ max(r_i, r_j) (enforced by can_place_plant)
+  * No penetration allowed (circles can touch but not overlap)
+  * NOTE: Project uses max(r1, r2) as minimum distance, not r1 + r2
+- Interaction rule: Plants of DIFFERENT species interact when distance < r1 + r2
+  (root circles overlap)
+
+-------------------------------------------------------------------------------
+2) OBJECTIVE & SCORE (PROJECT ENGINE-BASED)
+-------------------------------------------------------------------------------
+2.1 Objective
+- Given a set S of planted plants, define the score F(S) = total_growth_after_T_turns / |S|
+  This is the average per-plant growth after T simulation turns.
+- We aim to maximize F(S) subject to constraints.
+
+2.2 Interaction graph & rules
+- Build graph G_int(S): nodes are plants in S; an edge (i,j) exists if:
+  * species(i) ≠ species(j) (different species only)
+  * dist(center_i, center_j) < r_i + r_j (root circles overlap)
+- Plants in the same connected component can exchange nutrients.
+- Global score F(S) is computed over ALL plants in S using the project's Engine.
+
+2.3 Project Engine Simulation (3-Phase Per Turn)
+The actual implementation uses the Engine class with this exact sequence:
+
+INITIAL STATE (t=0):
+- Each plant's inventory[nutrient] = 5r (half of capacity 10r)
+- Each plant's size = 0.0
+
+EACH TURN (t = 1..T):
+  Phase 1 — Daytime Production:
+    For each plant p:
+      if production_is_valid(p):  // no nutrient would go negative
+        for nutrient in [R, G, B]:
+          p.inventory[nutrient] += p.variety.nutrient_coefficients[nutrient]
+          p.inventory[nutrient] = min(p.inventory[nutrient], 10 * p.variety.radius)
+  
+  Phase 2 — Evening Exchange (between interacting plants):
+    Calculate offers:
+      For each plant p:
+        produced_nutrient = get_produced_nutrient(p.species)
+        offer_amount = p.inventory[produced_nutrient] / 4
+        offer_per_partner = offer_amount / num_interaction_partners(p)
+    
+    Execute exchanges:
+      For each interacting pair (p1, p2):
+        if should_exchange(p1, p2):  // both have surplus of what they offer
+          amount = min(offer_per_partner_1, offer_per_partner_2)
+          p1.inventory[p1.produced] -= amount
+          p1.inventory[p2.produced] += amount
+          p2.inventory[p2.produced] -= amount
+          p2.inventory[p1.produced] += amount
+  
+  Phase 3 — Overnight Growth:
+    For each plant p:
+      if can_grow(p):  // all nutrients ≥ 2r AND size < 100r²
+        for nutrient in [R, G, B]:
+          p.inventory[nutrient] -= p.variety.radius
+        p.size += p.variety.radius
+        growth_this_turn += p.variety.radius
+    
+    Record total_growth = sum of all plant sizes
+    growth_history.append(total_growth)
+
+NOTE: This is the ACTUAL simulation that runs in the project, not an abstract model.
+Use the Engine class directly for scoring.
+
+2.4 Short vs. long window weighting (explicit)
+- Let w_short, w_long ≥ 0 be user-specified weights. Default: w_short = w_long = 1.
+- Define the per-plant total growth:
+  G_i(S) = (w_short/5) * sum_{t=1..5} g_i(t) + (w_long/max(1, T-5)) * sum_{t=6..T} g_i(t).
+  If T≤5, omit the second term and divide by max(1,T) to avoid division by zero.
+- Score definition:
+  F(S) = (1/|S|) * sum_{i in S} G_i(S). If S is empty, define F(S)=0.
+
+2.5 Initial nutrient conditions (explicit)
+- If not externally specified, initialize each plant’s nutrients at time 0 to N_i(0) = (N0_R, N0_G, N0_B), constants shared across plants.
+- If a spatial nutrient field is required, it must be provided as a deterministic function that maps position to initial nutrients. This spec remains valid; the simulator simply queries that function.
+
+-------------------------------------------------------------------------------
+3) OUTPUT & PHASES
+-------------------------------------------------------------------------------
+3.1 Output
+- A final ordered list of plants S_out = [(x1,y1,s1), ... , (xP,yP,sP)], |S_out| = P, that maximizes F(S) under the constraints. Order is the sequence of placement.
+
+3.2 Phases
+- Phase A: Build the first group G1 using greedy placement (§5).
+- Phase B: Canonicalize G1 to a bounding rectangle anchored at (0,0) (§7.1).
+- Phase C: Tiling — repeatedly copy/paste G1 into domain using top-left fit (§7.2).
+- Phase D: Last group — place remaining plants (<|G1|) by the same greedy method as Phase A.
+
+3.3 Boundary-aware tiling guarantee
+- A stamped copy “fits” if: (i) all centers in the stamped group lie within D, and (ii) all stamped centers satisfy the plant–plant rule against both previously placed plants and within the stamp. Circles may extend outside D.
+
+-------------------------------------------------------------------------------
+4) GEOMETRY (CANDIDATE GENERATION)
+-------------------------------------------------------------------------------
+4.1 Purpose
+- From the current set S, produce a finite candidate set C of feasible centers for the next plant’s center. All candidates rigorously obey boundary and plant–plant rules.
+
+4.2 Building blocks
+- Circle–circle intersections (CCI):
+  (i) Adjacency-CCI: For two anchors i,k∈S and a candidate species s_new, compute intersection of circles centered at center_i and center_k with radii A(s_i)+A(s_new) and A(s_k)+A(s_new). These are tight-packing candidates.
+  (ii) Interaction-CCI: Intersections where radii are R(s_i) and R(s_k), seeking strong interaction zones.
+  (iii) Mixed-CCI: One radius A(s_i)+A(s_new) (tight to i) and one R(s_k) (interaction with k).
+
+- Single-anchor tangency samples:
+  For an anchor i and candidate species s_new, sample M_angle angles θ_j = 2π*j/M_angle on the circle radius A(s_i)+A(s_new) to generate tangency candidates.
+
+4.3 Candidate filtering (hard constraints)
+- Keep only candidates whose centers lie in D (boundary rule). Allow their circles to cross outside D.
+- Enforce plant–plant rule against all existing plants with tolerance δ.
+- Deduplicate candidates within a spatial tolerance ε_cand (e.g., 1e−9).
+
+4.4 Candidate reduction (per-pair best)
+- For each anchor pair (i,k) used in a CCI, keep at most the top B_pair candidates ranked by the geometric heuristic in §5.2 to prevent explosion.
+- Overall cap: |C| ≤ K_max per iteration; if exceeded, keep the top K_max by the heuristic rank before simulation calls.
+
+-------------------------------------------------------------------------------
+5) PLACEMENT (GREEDY), HEURISTICS, STOP RULE
+-------------------------------------------------------------------------------
+5.1 Species selection for the new plant
+- Use the rule in §1.3 (lowest component-wise demand). If the problem fixes the species for all plants, skip this step and use that fixed species.
+
+5.2 Geometric pre-rank (no simulation yet)
+- For each candidate center c, compute a pre-score H(c) to prioritize plausible high-interaction, low-gap placements:
+  H(c) = λ_int * I(c) − λ_gap * G(c),
+  where I(c) sums 1/dist_to_interaction_ring penalties for nearby anchors (favoring locations near their interaction radii), and G(c) measures free-gap area using nearest-neighbor distances minus required adjacencies. λ_int, λ_gap ≥ 0 are user parameters. This pre-rank is ONLY for pruning; the simulator score decides the final choice.
+
+5.3 Greedy selection step
+- Let S be the current set. Generate C via §4 and pre-rank per §5.2; keep top K′ ≤ K_max.
+- For each c ∈ C:
+    Δ(c) = F(S ∪ {c}) − F(S), evaluated by the simulator (§2). An implementation MAY do delta simulation limited to affected components, but the result must match full F difference.
+    Optionally, compute plant_reward(c|S) = β * (ProduceSum(c) / (|G_current|+1)), where ProduceSum(c) is the simulator-forecasted growth of the new plant over T (the same simulator), and β ≥ 0.
+  Define Total(c) = Δ(c) + plant_reward(c|S).
+- Choose c* = argmax_c Total(c).
+
+5.4 Stop rule (precise)
+- If Total(c*) > ε, accept c*: S ← S ∪ {c*}; else, terminate the group-building loop.
+- ε ≥ 0 prevents micro-gains; default ε = 0.
+
+-------------------------------------------------------------------------------
+6) SCORE WINDOWS & “PARTIAL LAST GROWTH” (FULL DETAIL)
+-------------------------------------------------------------------------------
+- At each step t, g_i(t) = α_i(t) * r(s_i), with α_i(t) defined by the minimum nutrient fraction among R,G,B (component-wise) using current nutrient levels (after interaction/replenishment as specified).
+- The final score is:
+  F(S) = (1/|S|) * sum_{i in S} [ (w_short/5) * sum_{t=1..min(5,T)} g_i(t) + (w_long/max(1,T-5)) * sum_{t=6..T} g_i(t) ].
+- This exactly implements “estimate the last growth (partial) by the lowest nutrient [...] partial growth (=ratio*r).”
+
+-------------------------------------------------------------------------------
+7) GROUP CANONICALIZATION & TILING
+-------------------------------------------------------------------------------
+7.1 First group canonicalization (“mini-rectangle” at (0,0))
+- Compute the tight bounding rectangle B of the first group G1 based on plant centers. Let its corners before translation be (x_min, y_min) (top-left) and (x_max, y_max) (bottom-right).
+- Canonicalization rule (faithful to text): top & left alignment uses the group centroid; bottom & right use the raw geometry (no extra padding beyond tight bounds).
+  Implementation detail: this affects only how B is recorded for stamping layout indices; plant coordinates themselves remain as placed.
+- Translate a copy of G1 so that B’s top-left corner maps to (0,0). Store this translated pattern as Stamp(G1).
+
+7.2 Tiling (“Copy & Paste”) with top-left fit and boundary
+- Define a scan order over D: iterate rows from top to bottom, and within each row, columns from left to right. For each scan anchor a=(x_a,y_a):
+  (i) Translate Stamp(G1) by vector v so that Stamp’s B top-left aligns to a.
+  (ii) Check fit: all centers of the translated stamp must lie in D (center-in-domain), and satisfy the plant–plant rule against existing plants. Circles in the stamp may extend outside D.
+  (iii) If fit: place the entire translated stamp (i.e., add all centers to S). Continue scanning from the right of this stamp. If not fit: move to next scan anchor.
+- Continue until no additional full stamp fits.
+- If remaining required plants < |G1|, proceed to Last Group (§7.3).
+
+7.3 Last group
+- Place the remaining plants (count < |G1|) using the same greedy method as in §5, starting from the next top-left available area, until reaching P plants or stop rule triggers.
+
+-------------------------------------------------------------------------------
+8) PSEUDOCODE (REFERENCE)
+-------------------------------------------------------------------------------
+function LAYOUT_OPTIMIZE(P, T, params):
+    S ← ∅
+    # Phase A: first group
+    G1 ← BUILD_GROUP_GREEDY(S, T, params)      # §5
+    S  ← S ∪ G1
+    if |S| ≥ P: return first P plants of S
+    
+    # Phase B: canonicalize
+    STAMP ← CANONICALIZE_TO_STAMP(G1)          # §7.1
+    
+    # Phase C: tiling
+    while |S| + |STAMP| ≤ P and EXISTS_FIT(STAMP, S, params):  # §7.2
+        S ← S ∪ PLACE_NEXT_STAMP_AT_TOPLEFT(STAMP, S, params)
+    if |S| ≥ P: return first P plants of S
+    
+    # Phase D: last group
+    while |S| < P:
+        G_last ← BUILD_GROUP_GREEDY(S, T, params)  # §5
+        if |G_last| = 0: break
+        S ← S ∪ G_last
+    return first P plants of S
+
+function BUILD_GROUP_GREEDY(S, T, params):
+    G ← ∅
+    while True:
+        C ← GENERATE_CANDIDATES(S, params)                 # §4
+        C ← PRERANK_AND_PRUNE(C, params)                   # §5.2
+        best_val ← -∞; best_c ← None
+        for c in C:
+            val ← (F(S ∪ {c}) − F(S)) + PLANT_REWARD(c,S)  # §5.3
+            if val > best_val: best_val ← val; best_c ← c
+        if best_val > ε:                                    # §5.4
+            S ← S ∪ {best_c}; G ← G ∪ {best_c}
+            if |S| reached P: break
+        else:
+            break
+    return G
+
+All helper functions (GENERATE_CANDIDATES, PRERANK_AND_PRUNE, CANONICALIZE_TO_STAMP, EXISTS_FIT, PLACE_NEXT_STAMP_AT_TOPLEFT) must implement the exact rules of §§4–7.
+
+-------------------------------------------------------------------------------
+9) PARAMETERS & DEFAULTS
+-------------------------------------------------------------------------------
+- δ (overlap tolerance): 1e−6
+- ε (stop threshold): 0
+- K_max (max candidates per step): 200
+- M_angle (angles per single-anchor circle): 16
+- M_pair (max anchor-pairs used in CCI per step): 50
+- B_pair (max candidates kept per pair after ranking): 2
+- λ_int = 1.0, λ_gap = 1.0 (pre-rank weights)
+- w_short = 1.0, w_long = 1.0
+- Initial nutrients N0_R, N0_G, N0_B must be specified by the environment; defaults are allowed but must be explicit in code.
+
+-------------------------------------------------------------------------------
+10) VALIDATION CHECKLIST (NO AMBIGUITY)
+-------------------------------------------------------------------------------
+- Centers inside domain; circles may cross boundary: YES.
+- Circle–circle penetration between plants disallowed beyond δ; touching allowed: YES.
+- “Cycle” equals circle; geometry uses CCI and tangency: YES.
+- Tiling uses top-left-first fit; scans rows then columns; stamp must fit centers-only: YES.
+- Score computed by deterministic simulator over T; “partial last growth” via limiting nutrient ratio; windows [1..5] and [6..T] weighted: YES.
+- Stop rule exactly: accept if (F(S∪{c}) − F(S) + plant_reward) > ε: YES.
+- “All plants in species group lowest (R,G,B)” implemented as component-wise minimal demand rule with tie-breakers: YES.
+- Equivalent interactions handled via per-pair candidate reduction and pruning; the simulator decides final merit: YES.
+
+END OF SPEC

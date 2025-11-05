@@ -1,0 +1,65 @@
+
+Goal:
+Place P plants on a rectangular field to maximize average growth over T time steps.
+Plants interact through circular "cycles," consume nutrients, and may overlap boundaries
+only at the edges. The algorithm builds one optimal group and tiles it across the field.
+
+-------------------------------------------------------------
+1) Overview
+-------------------------------------------------------------
+• Domain: 2D rectangle [0, W] × [0, H].
+• Each plant = (x, y, species) with footprint radius A and interaction radius R.
+• Circles may cross boundaries but centers must remain inside.
+• Objective: maximize average growth F(S) over time T using a simulator.
+
+-------------------------------------------------------------
+2) Algorithm Outline
+-------------------------------------------------------------
+Step 1 — Build First Group (Greedy Search)
+- Start empty.
+- Repeatedly add the best next plant:
+  - Generate candidate positions using circle–circle intersections (adjacency + interaction).
+  - Evaluate each candidate via the simulator (average growth).
+  - If the improvement ΔF + reward > ε, keep the plant; else stop.
+- This first group becomes the “stamp.”
+
+Step 2 — Canonicalize and Copy
+- Compute the bounding rectangle of the first group.
+- Move it so top-left = (0,0).
+- Copy the stamp into the domain, scanning top→bottom, left→right.
+- Each copy must fit (centers inside domain, circles can touch edges).
+- Continue until the field is nearly full.
+
+Step 3 — Last Group
+- Use the same greedy planting for any leftover plants.
+
+-------------------------------------------------------------
+3) Scoring and Simulation
+-------------------------------------------------------------
+• Each plant grows depending on available nutrients (R,G,B).
+• Growth per step = min(R_i/d_R, G_i/d_G, B_i/d_B) × base_rate.
+• Average growth = weighted sum of short-term (1–5) and long-term (6–T) performance.
+• Simulator deterministically updates nutrient levels each step.
+
+-------------------------------------------------------------
+4) Geometry and Constraints
+-------------------------------------------------------------
+• Candidate points come from circle intersections and tangency samples.
+• Circles may touch but not overlap beyond a tolerance δ.
+• Centers must lie inside the field even if circles cross boundaries.
+
+-------------------------------------------------------------
+5) Stop Rule
+-------------------------------------------------------------
+Stop when adding any new plant does not increase the total score
+by more than ε (typically 0).
+
+-------------------------------------------------------------
+6) Notes
+-------------------------------------------------------------
+• “Cycle” means circle (interaction area).
+• Species rule: choose plant with lowest nutrient demands (R,G,B).
+• Copy–paste fits rectangles automatically near edges.
+• Simulator can optimize locally to speed up evaluation.
+
+END OF SUMMARY
