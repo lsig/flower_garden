@@ -28,8 +28,18 @@ class Gardener3(Gardener):
     # Behavior flags
     PREVENT_INTERACTIONS = False
 
+    # Hexagonal placement
+    COUNT_PER_VARIETY_FOR_HEX_PLACEMENT = 8
+    COUNT_EPSILON_FOR_HEX_PLACEMENT = 2
+
     # Minimum varieties count to restrict garden size for hexagonal placement
-    MIN_TOTAL_VARIETIES_COUNT = 24
+    # MIN_TOTAL_VARIETIES_COUNT = 24
+
+    # Params for testing gap filling anchors
+    ANCHOR_GAP_REGEN_THRESHOLD = 100  # Regenerate when below this many gap anchors
+    ANCHOR_GAP_REGEN_N_ROUNDS = 3  # Regenerate after every N gap enriching rounds
+    ANCHOR_GAP_SAMPLE_COUNT = 200  # Sample point count per enrichment
+    ANCHOR_GAP_TOP_N = 100  # Top N gaps to add each time
 
     def __init__(self, garden: Garden, varieties: list[PlantVariety]):
         super().__init__(garden, varieties)
@@ -109,38 +119,80 @@ class Gardener3(Gardener):
             variety.radius == list(self.species_varieties.values())[0][0].radius
             for variety in self.varieties
         )
-        return exactly_three_varieties and equal_counts and equal_radii
+        enough_count = all(
+            count >= self.COUNT_PER_VARIETY_FOR_HEX_PLACEMENT
+            for count in self.variety_counts.values()
+        )
+        counts_almost_equal = all(
+            count
+            in range(
+                list(self.variety_counts.values())[0] - self.COUNT_EPSILON_FOR_HEX_PLACEMENT,
+                list(self.variety_counts.values())[0] + self.COUNT_EPSILON_FOR_HEX_PLACEMENT + 1,
+            )
+            for count in self.variety_counts.values()
+        )
+
+        return (
+            exactly_three_varieties
+            and equal_counts
+            and enough_count
+            and counts_almost_equal
+            and equal_radii
+        )
 
     ### Hexagonal Placement Methods ###
 
     def _get_hexagonal_placements(self) -> list:
-        """Generate placements in a hexagonal grid pattern."""
+        """Generate placements in a hexagonal grid pattern, assuming we have one variety per species and all varieties have the same radius and count."""
         placements = []
 
-        if len(self.varieties) <= self.MIN_TOTAL_VARIETIES_COUNT:
-            garden_width, garden_height = self.garden.width // 2, self.garden.height // 2
+        radius = self.varieties[0].radius
+
+        # Compute how many plants can fit in a hexagonal grid with given radius
+        even_row_plants = self.width // radius + 1
+        odd_row_plants = self.width // radius
+
+        even_row_count = (self.height + 1) // (radius * 2) + 1
+        odd_row_count = (
+            (self.height - radius + 1) // (radius * 2) + 1
+            if radius > 1
+            else (self.height - radius + 1) // (radius * 2)
+        )
+
+        total_plants = even_row_plants * even_row_count + odd_row_plants * odd_row_count
+        half_plants = total_plants // 2
+        # print(f'Hexagonal grid can fit up to {total_plants} plants. half: {half_plants}')
+
+        # Use half the garden if we have limited varieties
+        min_count_per_species_for_garden_reduction = half_plants // 3
+        if len(self.varieties) // 3 <= min_count_per_species_for_garden_reduction:
+            garden_width = self.garden.width // 2
+            garden_height = self.garden.height
         else:
             garden_width, garden_height = self.garden.width, self.garden.height
         garden_internal = Garden(garden_width, garden_height)
 
         n_species = len(self.species)
-        offsets = [0.0, 0.5]
-        step_size = 1
+
+        offsets = [0.0, radius / 2.0]
+        step_size = radius
+
         variety_indices = {s: 0 for s in self.species}
 
-        # which species to try next for each row
+        # which species to try next for each row (use row index as key since we use float stepping)
         current_species_by_row = defaultdict(int)
 
-        for y in range(0, self.height + 1, step_size):
-            offset = offsets[y % 2]
+        row_idx = 0
+        for y in self._frange(0.0, self.height + 0.1, step_size):
+            offset = offsets[row_idx % 2]
 
             for x in self._frange(offset, self.width + 0.1, step_size):
                 position = Position(x, y)
 
-                current_species_idx = current_species_by_row[y]
+                current_species_idx = current_species_by_row[row_idx]
                 species_index = (
                     (current_species_idx + 2) % n_species
-                    if y % 2 == 1
+                    if row_idx % 2 == 1
                     else current_species_idx % n_species
                 )
                 species_name = self.species[species_index]
@@ -148,19 +200,20 @@ class Gardener3(Gardener):
                 # skip if we've exhausted varieties for this species
                 if variety_indices[species_name] >= len(self.species_varieties[species_name]):
                     # advance the index because there's nothing left for this species
-                    current_species_by_row[y] = current_species_idx + 1
+                    current_species_by_row[row_idx] = current_species_idx + 1
                     continue
 
                 variety = self.species_varieties[species_name][variety_indices[species_name]]
 
                 if garden_internal.can_place_plant(variety, position):
-                    # print(f"Placing {variety.name} at {position}")
                     placements.append((variety, position))
                     garden_internal.add_plant(variety, position)
                     variety_indices[species_name] += 1
 
                     # advance the index for this row only on successful placement
-                    current_species_by_row[y] = current_species_idx + 1
+                    current_species_by_row[row_idx] = current_species_idx + 1
+
+            row_idx += 1
 
         return placements
 
@@ -278,7 +331,6 @@ class Gardener3(Gardener):
 
         # Filter to ensure each variety ID appears in only one triad
         unique_triads = self.filter_unique_clusters(all_triads)
-
         # Limit to reasonable number for performance
         top_triads = unique_triads[: self.MAX_TRIAD_PERMUTATIONS]
 
@@ -513,6 +565,8 @@ class Gardener3(Gardener):
         prevent_interactions: bool,
     ) -> None:
         placement_round = 0
+        # Track when last enriched garden with additional anchors in gaps
+        last_enrichment_round = 0
 
         while radius_groups and anchor_points:
             placement_round += 1
@@ -548,16 +602,57 @@ class Gardener3(Gardener):
                 anchor_points = self.remove_anchor_points(anchor_points, placed_plants)
                 print(f'Remaining anchor points: {len(anchor_points)}')
 
+                # Add gap anchors periodically
+                rounds_since_enrichment = placement_round - last_enrichment_round
+
+                # Trigger gap anchor enrichment if either N rounds have passed since last enrichment or anchors are very very low
+                should_enrich = (
+                    rounds_since_enrichment >= self.ANCHOR_GAP_REGEN_N_ROUNDS
+                    or len(anchor_points) < self.ANCHOR_GAP_REGEN_THRESHOLD
+                )
+                if should_enrich and placed_plants:
+                    print('Attempting to fill in major gaps with additional anchors')
+                    gap_anchors = self.locate_major_gaps(
+                        placed_plants, num_samples=self.ANCHOR_GAP_SAMPLE_COUNT
+                    )
+                    # Add top 50 gap anchors
+                    new_points = [(x, y) for x, y, _ in gap_anchors[: self.ANCHOR_GAP_TOP_N]]
+                    anchor_points.extend(new_points)
+                    last_enrichment_round = placement_round
+                    print(f'Added {len(gap_anchors)} potential gap filling anchors')
+
                 # Check if all varieties have been placed - early termination
                 if len(used_varieties) >= total_varieties:
                     print(f'All {total_varieties} varieties have been placed - terminating early')
                     break
             else:
-                # No valid placements for this radius pattern, remove entire radius group
-                print(
-                    f'Radius pattern {best_radius_signature} has no valid placements - removing entire pattern'
-                )
-                del radius_groups[best_radius_signature]
+                # before removing the radius pattern try regenerating anchors anyways
+                if len(anchor_points) < self.ANCHOR_GAP_REGEN_THRESHOLD and placed_plants:
+                    print('Retrying more aggressive gap filling anchors')
+                    # sample more aggressively
+                    gap_anchors = self.locate_major_gaps(
+                        placed_plants, num_samples=self.ANCHOR_GAP_SAMPLE_COUNT * 2
+                    )
+                    anchor_points.extend(
+                        [(x, y) for x, y, _ in gap_anchors[: self.ANCHOR_GAP_TOP_N * 2]]
+                    )
+                    placement_result = self.try_place_cluster(
+                        varieties,
+                        coordinates,
+                        score,
+                        anchor_points,
+                        placed_plants,
+                        used_varieties,
+                        total_varieties,
+                        prevent_interactions,
+                    )
+
+                if not placement_result:
+                    # No valid placements for this radius pattern, remove entire radius group
+                    print(
+                        f'Radius pattern {best_radius_signature} has no valid placements - removing entire pattern'
+                    )
+                    del radius_groups[best_radius_signature]
 
             # If no more anchor points, we're done
             if not anchor_points:
@@ -648,21 +743,56 @@ class Gardener3(Gardener):
 
         return None
 
+    def locate_major_gaps(
+        self, placed_plants: list[tuple[float, float, float, PlantVariety]], num_samples: int = 200
+    ) -> list[tuple[float, float, float]]:
+        """Finds and ranks how big gaps based on currently placed plants in the garden"""
+        if not placed_plants:
+            return self.generate_anchor_points()
+
+        gap_anchors = []
+        # Sample random points and evaluate distance to nearest plant(gap)
+        for _ in range(num_samples):
+            x = random.uniform(0, self.garden.width)
+            y = random.uniform(0, self.garden.height)
+
+            # Find distance to nearest plant
+            nearest = min(
+                math.sqrt((x - px) ** 2 + (y - py) ** 2) - pr for px, py, pr, _ in placed_plants
+            )
+
+            # Keep only points outside all plants(not overlapping with any plant)
+            if nearest > 0:
+                gap_anchors.append((x, y, nearest))
+
+        # Sort by priority (largest gaps first)
+        gap_anchors.sort(key=lambda p: p[2], reverse=True)
+
+        return gap_anchors
+
     def generate_anchor_points(self) -> list[tuple[float, float]]:
+        """Generates anchor points hexagonaly"""
+        # get smallest as they allow denser anchor grids for finer placement control
+        min_radius = min(v.radius for v in self.varieties)
+        # adaptive steps instead of fixed: use percentage of smallest radius, but at least 0.25
+        step = max(0.25, min_radius * 0.4)
+
         anchor_points = []
-        step = self.ANCHOR_POINT_STEP
+        y = 0.0
+        row = 0
+        # go top to bottom
+        while y <= self.garden.height:
+            # offset odd rows by half step to create hexagonal pattern
+            x_offset = (step / 2) if row % 2 == 1 else 0
+            x = x_offset
 
-        # Generate regular grid
-        x = 0.0
-        while x <= self.garden.width:
-            y = 0.0
-            while y <= self.garden.height:
+            while x <= self.garden.width:
                 anchor_points.append((x, y))
-                y += step
-            x += step
+                x += step
 
-        anchor_points = list(set(anchor_points))
-        anchor_points.sort()
+            # hexagonal vertical placing
+            y += step * math.sin(math.radians(60))
+            row += 1
 
         return anchor_points
 
