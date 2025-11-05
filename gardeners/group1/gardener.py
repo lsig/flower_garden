@@ -369,17 +369,16 @@ class Gardener1(Gardener):
                         min_required_distance = max(variety.radius, placed_variety.radius)
                         interaction_distance = variety.radius + placed_variety.radius
 
-                        # PACKING OPTIMIZATION: Bonus for tight packing (minimum distance)
-                        # This maximizes garden capacity
+                        # PACKING OPTIMIZATION: Bonus for perfect packing (exact minimum distance)
+                        # This maximizes garden capacity with 100% packing efficiency
                         if distance >= min_required_distance:
-                            # Bonus for placing at minimum distance (tight packing)
+                            # Bonus only for exact minimum distance (perfect packing)
                             distance_ratio = (
                                 distance / min_required_distance if min_required_distance > 0 else 0
                             )
-                            if 1.0 <= distance_ratio <= 1.1:  # Exactly at minimum or very close
-                                min_distance_bonus += 2.0  # Strong bonus for tight packing
-                            elif 1.1 < distance_ratio <= 1.3:
-                                min_distance_bonus += 1.0
+                            # Only reward exact minimum (1.0) for perfect packing
+                            if abs(distance_ratio - 1.0) < 0.01:  # Exactly at minimum (with small tolerance for floating point)
+                                min_distance_bonus += 3.0  # Maximum bonus for perfect packing
                             packing_only_score += min_distance_bonus
 
                         # Check if within interaction range for exchanges
@@ -466,18 +465,15 @@ class Gardener1(Gardener):
         - Tests multiple group sizes and selects best
         - Prioritizes high-value plants (larger radius, better production)
         """
-        # Calculate optimal grid spacing for better packing
-        # Key insight: Use minimum radius to maximize density
-        # Plants only need distance >= max(r1, r2), so we can pack tighter
+        # Calculate optimal grid spacing for perfect packing
+        # Key insight: Use exact minimum radius to maximize density
+        # Plants only need distance >= max(r1, r2), so we can pack at exact minimum
         if self.varieties:
             min_radius = min(v.radius for v in self.varieties)
 
-            # Use tight grid spacing based on minimum radius
-            # For radius 1: use 1.05 spacing (tight hexagonal packing)
-            # For radius 2: use 2.05 spacing
-            # For radius 3: use 3.05 spacing
-            # This allows plants to be placed at minimum distance
-            grid_spacing = min_radius + 0.05  # Very tight packing
+            # Use exact minimum radius for perfect 100% packing
+            # This allows plants to be placed at exactly minimum distance
+            grid_spacing = float(min_radius)  # Exact minimum for perfect packing
         else:
             grid_spacing = 1.0
 
@@ -490,7 +486,8 @@ class Gardener1(Gardener):
             max_radius = max(v.radius for v in self.varieties)
             if min_radius < max_radius and min_radius == 1:
                 # Add finer grid for radius 1 plants when mixed with larger ones
-                fine_grid = self._generate_polygonal_grid(1.05)
+                # Use exact minimum for perfect packing
+                fine_grid = self._generate_polygonal_grid(1.0)
                 # Combine grids (remove duplicates)
                 existing_positions = {(p.x, p.y) for p in grid_positions}
                 for pos in fine_grid:
