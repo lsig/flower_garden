@@ -382,6 +382,11 @@ class Gardener1(Gardener):
                             packing_only_score += min_distance_bonus
 
                         # Check if within interaction range for exchanges
+                        # Also check positions just outside that are very close to boundary
+                        optimal_ratio = (
+                            distance / interaction_distance if interaction_distance > 0 else 0
+                        )
+                        
                         if distance < interaction_distance:
                             interaction_count += 1
 
@@ -390,18 +395,10 @@ class Gardener1(Gardener):
                                 cross_species_count += 1
 
                                 # CRITICAL: Optimal distance for exchanges
-                                # Place at ~90% of max interaction distance for efficiency
-                                optimal_ratio = (
-                                    distance / interaction_distance
-                                    if interaction_distance > 0
-                                    else 0
-                                )
-                                if 0.85 <= optimal_ratio <= 0.95:
-                                    optimal_distance_bonus += 3.0  # Perfect positioning
-                                elif 0.75 <= optimal_ratio < 0.85:
-                                    optimal_distance_bonus += 1.5
-                                elif 0.7 <= optimal_ratio < 0.75:
-                                    optimal_distance_bonus += 0.5
+                                # Place at maximum interaction distance (ratio ≈ 1.0)
+                                # Reward positions closest to interaction boundary for maximum distance
+                                if optimal_ratio >= 0.99:  # Very close to maximum (99%+ of interaction distance)
+                                    optimal_distance_bonus += 3.0  # Perfect positioning for exchanges
 
                                 # Bonus for complementary exchanges
                                 nutrient1 = variety.nutrient_coefficients
