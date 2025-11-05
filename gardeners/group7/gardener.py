@@ -59,12 +59,6 @@ class Gardener7(Gardener):
         best_deficit = abs(min(R, G, B))
         return best_surplus / (best_deficit * pow(v.radius, 2))
 
-    # Possible metrics:
-    # what it's producing minus what it takes
-    # divided by r^2?
-    # Try multiple triangles
-    #
-
     # ---------- Low-level helpers ----------
     def _add_and_track(self, v, x, y):
         """Try to add plant and record placement locally if successful."""
@@ -119,7 +113,12 @@ class Gardener7(Gardener):
             pts = min(self._PTS_PER_RING_MAX, max(8, int(2 * math.pi * r / max(base_step, 0.2))))
             for i in range(pts):
                 ang = 2 * math.pi * i / pts
-                yield (cx + r * math.cos(ang), cy + r * math.sin(ang))
+                # >>> CHANGED: yield only in-bounds points
+                x = cx + r * math.cos(ang)
+                y = cy + r * math.sin(ang)
+                if 0.0 < x < self.garden.width and 0.0 < y < self.garden.height:
+                    yield (x, y)
+                # <<< END CHANGE
             r += base_step
 
     # ---------- Balanced queue to avoid species monopolizing early slots ----------
@@ -150,12 +149,24 @@ class Gardener7(Gardener):
                 placed = False
                 base_step = max(self._BASE_STEP_MIN, v.radius * 0.7)
 
+                # >>> CHANGED: choose a per-plant anchor near frontier (last cross-species)
+                ax, ay = cx, cy
+                if self._placed:
+                    # find most recent cross-species placement to bias toward interaction
+                    for p in reversed(self._placed):
+                        if p['v'].species != v.species:
+                            ax, ay = p['x'], p['y']
+                            break
+                # <<< END CHANGE
+
                 for _ in range(self._MAX_PHASES):
-                    for x, y in self._spiral_candidates(cx, cy, base_step):
+                    # >>> CHANGED: spiral around (ax, ay) instead of always (cx, cy)
+                    for x, y in self._spiral_candidates(ax, ay, base_step):
                         if self._safe_place(v, x, y):
                             placed = True
                             placed_any = True
                             break
+                    # <<< END CHANGE
                     if placed:
                         break
 
@@ -267,7 +278,7 @@ class Gardener7(Gardener):
     # ---------- Refinement using failed pool as bridges ----------
     def _refine_with_failed_pool(self, failed):
         if not failed:
-            print('[Refine] No failed plants available for bridging. Skipping.')
+            print('[Refine] No failed plants available for bridging. Skipping.]')
             return
 
         adj, degs = self._build_interaction_graph()
@@ -324,8 +335,6 @@ class Gardener7(Gardener):
                         placed_here += 1
                         break
 
-                # If failed to place, discard this candidate (no infinite requeue here)
-
             if placed_here > 0:
                 # Recompute to see if this node is now healthy
                 adj, degs = self._build_interaction_graph()
@@ -336,9 +345,41 @@ class Gardener7(Gardener):
     def cultivate_garden(self):
         self._placed = []  # reset local record for a fresh run
 
-        reds = [v for v in self.varieties if v.species == Species.RHODODENDRON]
-        greens = [v for v in self.varieties if v.species == Species.GERANIUM]
-        blues = [v for v in self.varieties if v.species == Species.BEGONIA]
+        # --- Select top ~50 per species + 1 best extra to cap at 151
+        reds_all = [v for v in self.varieties if v.species == Species.RHODODENDRON]
+        greens_all = [v for v in self.varieties if v.species == Species.GERANIUM]
+        blues_all = [v for v in self.varieties if v.species == Species.BEGONIA]
+
+        reds_all.sort(key=self._cooperation_score, reverse=True)
+        greens_all.sort(key=self._cooperation_score, reverse=True)
+        blues_all.sort(key=self._cooperation_score, reverse=True)
+
+        base_cap = 50
+        reds = reds_all[:base_cap]
+        greens = greens_all[:base_cap]
+        blues = blues_all[:base_cap]
+
+        # pick one extra (best next-available across species) to reach 187 if possible
+        extras = []
+        if len(reds_all) > base_cap:
+            extras.append(reds_all[base_cap])
+        if len(greens_all) > base_cap:
+            extras.append(greens_all[base_cap])
+        if len(blues_all) > base_cap:
+            extras.append(blues_all[base_cap])
+        if extras:
+            extras.sort(key=self._cooperation_score, reverse=True)
+            extra = extras[0]
+            if extra.species == Species.RHODODENDRON:
+                reds.append(extra)
+            elif extra.species == Species.GERANIUM:
+                greens.append(extra)
+            else:
+                blues.append(extra)
+
+        # merge selected set
+        self.varieties = reds + greens + blues
+        # --- end selection change ---  # <<< CHANGED >>>
 
         cx = self.garden.width / 2.0
         cy = self.garden.height / 2.0
@@ -353,7 +394,7 @@ class Gardener7(Gardener):
             self._print_graph_stats('After refinement (no-core)')
             return
 
-        # Sort each species by cooperation score (best exchangers first)
+        # Sort again for main process
         reds.sort(key=self._cooperation_score, reverse=True)
         greens.sort(key=self._cooperation_score, reverse=True)
         blues.sort(key=self._cooperation_score, reverse=True)
