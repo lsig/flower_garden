@@ -7,11 +7,14 @@ from core.micronutrients import Micronutrient
 from core.plants.plant_variety import PlantVariety
 from core.plants.species import Species
 from core.point import Position
+from gardeners.group9.utils import calculate_target_species_distribution
 
 
 class Gardener9(Gardener):
     def __init__(self, garden: Garden, varieties: list[PlantVariety]):
         super().__init__(garden, varieties)
+        self.target_distribution = calculate_target_species_distribution(varieties)
+        self.species_counts = {Species.RHODODENDRON: 0, Species.GERANIUM: 0, Species.BEGONIA: 0}
 
     def get_production_value(self, variety: PlantVariety) -> float:
         """Get the positive nutrient production value for a variety"""
@@ -111,11 +114,14 @@ class Gardener9(Gardener):
         if len(palnt_layer) > 0:
             for ring_plant in palnt_layer:
                 # Get complementary varieties (different from the ring plant)
-                complementary = self.complimentary_plants_for_plants(ring_plant)
+                # complementary = self.complimentary_plants_for_plants(ring_plant)
+                complementary = self.get_balanced_varieties(
+                    exclude_species=ring_plant['variety'].species
+                )
 
                 for variety in complementary:
                     # Calculate radius from first ring plant
-                    sub_ring_radius = max(ring_plant['variety'].radius, variety.radius) + 0.1
+                    sub_ring_radius = max(ring_plant['variety'].radius, variety.radius) + 0.001
 
                     # Place 2-3 plants around each first ring plant
                     # Offset angles to create a spiral pattern
@@ -132,9 +138,45 @@ class Gardener9(Gardener):
                         pos = Position(x, y)
 
                         if self.garden.can_place_plant(variety, pos):
-                            self.garden.add_plant(variety, pos)
-                            new_layer.append({'x': x, 'y': y, 'angle': angle, 'variety': variety})
+                            plant = self.garden.add_plant(variety, pos)
+                            if plant:
+                                self.species_counts[variety.species] += 1
+                                new_layer.append(
+                                    {'x': x, 'y': y, 'angle': angle, 'variety': variety}
+                                )
         return new_layer
+
+    def get_species_priority(self) -> Species:
+        """
+        Determine which species we're most behind on relative to target ratio.
+        """
+        total_placed = sum(self.species_counts.values())
+        if total_placed == 0:
+            return max(self.target_distribution, key=self.target_distribution.get)
+
+        deficits = {}
+        for species in Species:
+            actual_ratio = self.species_counts[species] / total_placed
+            target_ratio = self.target_distribution.get(species, 1 / 3)
+            deficits[species] = target_ratio - actual_ratio
+        return max(deficits, key=deficits.get)
+
+    def get_balanced_varieties(self, exclude_species: Species = None) -> list[PlantVariety]:
+        """
+        Get varieties sorted by priority species first, then by production value.
+        """
+        priority_species = self.get_species_priority()
+
+        available = (
+            [v for v in self.varieties if v.species != exclude_species]
+            if exclude_species
+            else self.varieties
+        )
+
+        sorted_vars = sorted(
+            available, key=lambda v: (v.species != priority_species, -self.get_production_value(v))
+        )
+        return sorted_vars
 
     def cultivate_garden(self) -> None:
         # Find the variety with highest production
@@ -148,9 +190,11 @@ class Gardener9(Gardener):
         # Place best producer in the center
         if self.garden.can_place_plant(best_producer, center_pos):
             self.garden.add_plant(best_producer, center_pos)
+            self.species_counts[best_producer.species] += 1
 
         # complementary varieties
-        layer1_varieties = self.complimentary_plants(best_producer)
+        # layer1_varieties = self.complimentary_plants(best_producer)
+        layer1_varieties = self.get_balanced_varieties(exclude_species=best_producer.species)
 
         # FIRST RING: Place plants around center
         palnt_layer = []  # Store positions for second ring
@@ -158,7 +202,7 @@ class Gardener9(Gardener):
         if len(layer1_varieties) >= 1:
             for variety in layer1_varieties:
                 # Calculate tight ring radius for interaction with center
-                ring_radius = max(best_producer.radius, variety.radius) + 0.1
+                ring_radius = max(best_producer.radius, variety.radius) + 0.001
 
                 # (hexagonal pattern)
                 num_plants = 6
@@ -174,6 +218,7 @@ class Gardener9(Gardener):
                         plant = self.garden.add_plant(variety, pos)
                         if plant:
                             # Store this position and angle for second ring
+                            self.species_counts[variety.species] += 1  # ADD THIS LINE
                             palnt_layer.append({'x': x, 'y': y, 'angle': angle, 'variety': variety})
 
         for _ in range(8):
@@ -213,7 +258,9 @@ class Gardener9(Gardener):
             while y < self.garden.height - small_variety.radius:
                 pos = Position(x, y)
                 if self.garden.can_place_plant(small_variety, pos):
-                    self.garden.add_plant(small_variety, pos)
+                    plant = self.garden.add_plant(small_variety, pos)
+                    if plant:
+                        self.species_counts[small_variety.species] += 1
                 y += spacing
             x += spacing
 
@@ -228,6 +275,8 @@ class Gardener9(Gardener):
                 while y < self.garden.height - variety.radius:
                     pos = Position(x, y)
                     if self.garden.can_place_plant(variety, pos):
-                        self.garden.add_plant(variety, pos)
+                        plant = self.garden.add_plant(variety, pos)
+                        if plant:
+                            self.species_counts[variety.species] += 1
                     y += step
                 x += step
