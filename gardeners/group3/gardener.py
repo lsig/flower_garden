@@ -35,6 +35,12 @@ class Gardener3(Gardener):
     # Minimum varieties count to restrict garden size for hexagonal placement
     # MIN_TOTAL_VARIETIES_COUNT = 24
 
+    # Params for testing gap filling anchors
+    ANCHOR_GAP_REGEN_THRESHOLD = 100    # Regenerate when below this many gap anchors
+    ANCHOR_GAP_REGEN_N_ROUNDS = 3  # Regenerate after every N gap enriching rounds
+    ANCHOR_GAP_SAMPLE_COUNT = 200  # Sample point count per enrichment
+    ANCHOR_GAP_TOP_N = 100  # Top N gaps to add each time
+
     def __init__(self, garden: Garden, varieties: list[PlantVariety]):
         super().__init__(garden, varieties)
         self.width = int(garden.width)
@@ -306,10 +312,9 @@ class Gardener3(Gardener):
 
         # Filter to ensure each variety ID appears in only one triad
         unique_triads = self.filter_unique_clusters(all_triads)
-
         # Limit to reasonable number for performance
         top_triads = unique_triads[: self.MAX_TRIAD_PERMUTATIONS]
-
+        
         print(f'\nFound {len(top_triads)} unique triads')
         if top_triads:
             print(
@@ -541,6 +546,8 @@ class Gardener3(Gardener):
         prevent_interactions: bool,
     ) -> None:
         placement_round = 0
+        # Track when last enriched garden with additional anchors in gaps
+        last_enrichment_round = 0
 
         while radius_groups and anchor_points:
             placement_round += 1
@@ -576,16 +583,51 @@ class Gardener3(Gardener):
                 anchor_points = self.remove_anchor_points(anchor_points, placed_plants)
                 print(f'Remaining anchor points: {len(anchor_points)}')
 
+                # Add gap anchors periodically
+                rounds_since_enrichment = placement_round - last_enrichment_round
+                
+                # Trigger gap anchor enrichment if either N rounds have passed since last enrichment or anchors are very very low
+                should_enrich = (
+                    rounds_since_enrichment >= self.ANCHOR_GAP_REGEN_N_ROUNDS or
+                    len(anchor_points) < self.ANCHOR_GAP_REGEN_THRESHOLD
+                )
+                if should_enrich and placed_plants:
+                    print('Attempting to fill in major gaps with additional anchors')
+                    gap_anchors = self.locate_major_gaps(placed_plants, num_samples=self.ANCHOR_GAP_SAMPLE_COUNT)
+                    # Add top 50 gap anchors
+                    new_points = [(x, y) for x, y, _ in gap_anchors[:self.ANCHOR_GAP_TOP_N]]
+                    anchor_points.extend(new_points)  
+                    last_enrichment_round = placement_round
+                    print(f'Added {len(gap_anchors)} potential gap filling anchors')
+
                 # Check if all varieties have been placed - early termination
                 if len(used_varieties) >= total_varieties:
                     print(f'All {total_varieties} varieties have been placed - terminating early')
                     break
             else:
-                # No valid placements for this radius pattern, remove entire radius group
-                print(
-                    f'Radius pattern {best_radius_signature} has no valid placements - removing entire pattern'
-                )
-                del radius_groups[best_radius_signature]
+                # before removing the radius pattern try regenerating anchors anyways
+                if len(anchor_points) < self.ANCHOR_GAP_REGEN_THRESHOLD and placed_plants:
+                    print('Retrying more aggressive gap filling anchors')
+                    # sample more aggressively
+                    gap_anchors = self.locate_major_gaps(placed_plants, num_samples=self.ANCHOR_GAP_SAMPLE_COUNT * 2)
+                    anchor_points.extend([(x, y) for x, y, _ in gap_anchors[:self.ANCHOR_GAP_TOP_N * 2]])
+                    placement_result = self.try_place_cluster(
+                        varieties,
+                        coordinates,
+                        score,
+                        anchor_points,
+                        placed_plants,
+                        used_varieties,
+                        total_varieties,
+                        prevent_interactions,
+                    )
+                
+                if not placement_result:
+                    # No valid placements for this radius pattern, remove entire radius group
+                    print(
+                        f'Radius pattern {best_radius_signature} has no valid placements - removing entire pattern'
+                    )
+                    del radius_groups[best_radius_signature]
 
             # If no more anchor points, we're done
             if not anchor_points:
@@ -675,23 +717,61 @@ class Gardener3(Gardener):
             return added_area_new
 
         return None
+    
+    def locate_major_gaps(
+        self,
+        placed_plants: list[tuple[float, float, float, PlantVariety]],
+        num_samples: int = 200
+    ) -> list[tuple[float, float, float]]:
+        """ Finds and ranks how big gaps based on currently placed plants in the garden """
+        if not placed_plants:
+            return self.generate_anchor_points()
+        
+        gap_anchors = []
+        # Sample random points and evaluate distance to nearest plant(gap)
+        for _ in range(num_samples):
+            x = random.uniform(0, self.garden.width)
+            y = random.uniform(0, self.garden.height)
+            
+            # Find distance to nearest plant
+            nearest = min(
+                math.sqrt((x - px)**2 + (y - py)**2) - pr
+                for px, py, pr, _ in placed_plants
+            )
+            
+            # Keep only points outside all plants(not overlapping with any plant)
+            if nearest > 0:
+                gap_anchors.append((x, y, nearest))
+
+        # Sort by priority (largest gaps first)
+        gap_anchors.sort(key=lambda p: p[2], reverse=True)
+        
+        return gap_anchors
 
     def generate_anchor_points(self) -> list[tuple[float, float]]:
+        """ Generates anchor points hexagonaly """
+        # get smallest as they allow denser anchor grids for finer placement control
+        min_radius = min(v.radius for v in self.varieties)
+        # adaptive steps instead of fixed: use percentage of smallest radius, but at least 0.25
+        step = max(0.25, min_radius * 0.4)
+        
         anchor_points = []
-        step = self.ANCHOR_POINT_STEP
-
-        # Generate regular grid
-        x = 0.0
-        while x <= self.garden.width:
-            y = 0.0
-            while y <= self.garden.height:
+        y = 0.0
+        row = 0
+        # go top to bottom
+        while y <= self.garden.height:
+            # offset odd rows by half step to create hexagonal pattern
+            x_offset = (step / 2) if row % 2 == 1 else 0
+            x = x_offset
+            
+            while x <= self.garden.width:
                 anchor_points.append((x, y))
-                y += step
-            x += step
-
-        anchor_points = list(set(anchor_points))
-        anchor_points.sort()
-
+                x += step
+            
+            # hexagonal vertical placing
+            y += step * math.sin(math.radians(60))
+            row += 1
+                
         return anchor_points
 
     def remove_anchor_points(
