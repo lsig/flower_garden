@@ -1,4 +1,5 @@
 import math
+from collections import deque
 
 from core.garden import Garden
 from core.gardener import Gardener
@@ -11,6 +12,8 @@ from core.point import Position
 class Gardener8(Gardener):
     def __init__(self, garden: Garden, varieties: list[PlantVariety]):
         super().__init__(garden, varieties)
+        # sliding window of recently added plants instead of scanning every plant in the garden
+        self.recent_anchors = deque(maxlen=25)
 
     def cultivate_garden(self) -> None:
         """Separate varieties by species, sort by quality, and place them in the garden."""
@@ -22,6 +25,10 @@ class Gardener8(Gardener):
         # sort each species by radius (smallest first), then by score (highest first)
         for species_list in [rhodos, geraniums, begonias]:
             species_list.sort(key=lambda v: (v.radius, -self.score_variety(v)))
+
+        # cache the variety scores
+        # base score is computed once and stored
+        self.variety_scores = {id(v): self.score_variety(v) for v in self.varieties}
 
         # place plants in interlocking triangular groups
         self.place_plants(rhodos, geraniums, begonias)
@@ -50,6 +57,56 @@ class Gardener8(Gardener):
         # score balances own production vs other consumption, penalized by radius
         return (own_production - other_consumption) / (variety.radius**2)
 
+    def local_exchange_score(self, variety: PlantVariety, pos: Position) -> float:
+        """Compute an approximate nutrient exchange score with neighbors at a given position."""
+
+        score = 0
+        var_r = variety.radius
+
+        for plant in self.garden.plants:
+            # check distance for interaction
+            dx = pos.x - plant.position.x
+            dy = pos.y - plant.position.y
+            dist_sq = dx * dx + dy * dy
+            r_sum = var_r + plant.variety.radius
+            if dist_sq >= r_sum * r_sum:
+                continue  # too far to interact
+
+            for nut in [Micronutrient.R, Micronutrient.G, Micronutrient.B]:
+                # inventory caps
+                our_capacity = 10 * var_r
+                neighbor_capacity = 10 * plant.variety.radius
+
+                # rough current inventory estimate (use 50% full as proxy, since not currently tracking)
+                our_inv = 0.5 * our_capacity
+                neighbor_inv = 0.5 * neighbor_capacity
+
+                # how much each produces (per tick) - could be nutrient_coefficients * rv
+                our_prod = max(0, variety.nutrient_coefficients.get(nut, 0))
+                neighbor_prod = max(0, plant.variety.nutrient_coefficients.get(nut, 0))
+
+                # how much they can offer (1/4 of current inventory)
+                our_offer = min(our_prod, 0.25 * our_inv)
+                neighbor_offer = min(neighbor_prod, 0.25 * neighbor_inv)
+
+                # actual exchange = min(what we offer, what neighbor offers)
+                exchange_amount = min(our_offer, neighbor_offer)
+
+                # compute a scarcity rating
+                # prefer adding plants that produce what is currently missing
+                total_abs = sum(
+                    abs(v.variety.nutrient_coefficients[nut]) for v in self.garden.plants
+                )
+                deficit_weight = 1 / max(1e-6, total_abs)
+
+                # only count if giving > receiving
+                if our_offer > neighbor_offer:
+                    score += exchange_amount * deficit_weight  # benefit to neighbor
+                if neighbor_offer > our_offer:
+                    score += exchange_amount * deficit_weight  # benefit to us
+        # normalizing the score
+        return score / max(1, len(self.garden.plants))
+
     def place_plants(self, rhodos, geraniums, begonias):
         """
         Place all plants starting from an initial triad.
@@ -58,15 +115,16 @@ class Gardener8(Gardener):
         Then iteratively places remaining plants by finding the best variety-position
         combination that maximizes score while maintaining 2+ different-species neighbors.
         """
-        # this initial placement can be played around with
-        # place initial triad in bottom-left quadrant
-        start_x = self.garden.width / 4
-        start_y = self.garden.height / 4
-
         r1, g1, b1 = rhodos[0], geraniums[0], begonias[0]
 
+        # Sort the initial triad by radius to find the largest
+        initial_plants = [r1, g1, b1]
+        initial_plants.sort(key=lambda x: x.radius, reverse=True)
+
+        plant1, plant2, plant3 = initial_plants
+
         # Pairwise plant combinations
-        pairs = [(r1, g1), (r1, b1), (g1, b1)]
+        pairs = [(plant1, plant2), (plant1, plant3), (plant2, plant3)]
 
         # Compute min/max distances for each pair
         # min_distance = largest radius (avoid one inside another)
@@ -88,14 +146,20 @@ class Gardener8(Gardener):
         # Compute height for equilateral layout
         height = side * math.sqrt(3) / 2
 
-        p_r = Position(start_x, start_y - height / 3)
-        p_g = Position(start_x - side / 2, start_y + 2 * height / 3)
-        p_b = Position(start_x + side / 2, start_y + 2 * height / 3)
+        # Place largest plant's center at (0, 0) - roots can extend outside garden
+        p1 = Position(0, 0)
+        # Place second plant to the right
+        p2 = Position(side, 0)
+        # Place third plant above to form equilateral triangle
+        p3 = Position(side / 2, height)
 
         # place the initial triad
-        self.garden.add_plant(r1, p_r)
-        self.garden.add_plant(g1, p_g)
-        self.garden.add_plant(b1, p_b)
+        self.garden.add_plant(plant1, p1)
+        self.recent_anchors.append(self.garden.plants[-1])
+        self.garden.add_plant(plant2, p2)
+        self.recent_anchors.append(self.garden.plants[-1])
+        self.garden.add_plant(plant3, p3)
+        self.recent_anchors.append(self.garden.plants[-1])
 
         indices = {'R': 1, 'G': 1, 'B': 1}
         species_data = {
@@ -129,7 +193,10 @@ class Gardener8(Gardener):
                     # Verify the position is valid and the plant can be placed there
                     if pos and self.garden.can_place_plant(variety, pos):
                         # Calculate how valuable this placement would be
-                        placement_score = self.score_variety(variety)
+                        local_weight = 0.05 + 0.05 * min(1, len(self.garden.plants) / 100)
+                        placement_score = self.variety_scores[
+                            id(variety)
+                        ] + local_weight * self.local_exchange_score(variety, pos)
 
                         # Keep track of the best placement found so far
                         if placement_score > best_score:
@@ -140,6 +207,7 @@ class Gardener8(Gardener):
             if best_placement:
                 species_type, variety, pos, variety_idx = best_placement
                 self.garden.add_plant(variety, pos)
+                self.recent_anchors.append(self.garden.plants[-1])
                 # Remove the placed variety from the list to avoid re-evaluating it
                 species_data[species_type][0].pop(variety_idx)
                 stuck_counter = 0
@@ -161,69 +229,70 @@ class Gardener8(Gardener):
 
         best_pos = None
         best_score = -1
-
         var_r = variety.radius
 
         # loop through anchors
-        for anchor in self.garden.plants:
+        anchors = self.recent_anchors or self.garden.plants
+        for anchor in anchors:
             if anchor.variety.species == variety.species:
                 continue
 
             anchor_x = anchor.position.x
             anchor_y = anchor.position.y
 
-            # test positions at different distances and angles
-            for distance_mult in [0.75, 0.85]:
-                dist = (variety.radius + anchor.variety.radius) * distance_mult
-                for angle in range(0, 360, 30):
-                    # compute candidate point
-                    x = anchor_x + dist * math.cos(math.radians(angle))
-                    y = anchor_y + dist * math.sin(math.radians(angle))
+            # Always place as compactly as possible
+            dist = max(variety.radius, anchor.variety.radius)
+            # experiment with the last parameter for the angle here
+            for angle in range(0, 360, 15):
+                x = anchor_x + dist * math.cos(math.radians(angle))
+                y = anchor_y + dist * math.sin(math.radians(angle))
 
-                    # quick bounds check
-                    if not (0 <= x <= self.garden.width and 0 <= y <= self.garden.height):
-                        continue
+                # quick bounds check
+                if not (0 <= x <= self.garden.width and 0 <= y <= self.garden.height):
+                    continue
 
-                    # pre-calc avoid sqrt
-                    neighbor_species = set()
-                    valid = True
+                # pre-calc avoid sqrt
+                neighbor_species = set()
+                valid = True
 
-                    # cheap screening first: same-species spacing
-                    for plant in self.garden.plants:
-                        dx = x - plant.position.x
-                        dy = y - plant.position.y
-                        dist_sq = dx * dx + dy * dy
+                # cheap screening first: same-species spacing
+                for plant in self.garden.plants:
+                    dx = x - plant.position.x
+                    dy = y - plant.position.y
+                    dist_sq = dx * dx + dy * dy
 
-                        # squared overlap check (cheap)
-                        r_limit = max(var_r, plant.variety.radius)
-                        if dist_sq < r_limit * r_limit:  # too close → invalid
+                    # squared overlap check (cheap)
+                    r_limit = max(var_r, plant.variety.radius)
+                    if dist_sq < r_limit * r_limit:  # too close → invalid
+                        valid = False
+                        break
+
+                if not valid:
+                    continue  # skip further checks
+
+                # now check interaction neighbors only if still valid
+                for plant in self.garden.plants:
+                    dx = x - plant.position.x
+                    dy = y - plant.position.y
+                    dist_sq = dx * dx + dy * dy
+                    r_sum = var_r + plant.variety.radius
+
+                    if dist_sq < r_sum * r_sum:
+                        # interacting neighbor
+                        if plant.variety.species == variety.species:
                             valid = False
                             break
+                        neighbor_species.add(plant.variety.species)
+                        if len(neighbor_species) >= 2:
+                            break
 
-                    if not valid:
-                        continue  # skip further checks
-
-                    # now check interaction neighbors only if still valid
-                    for plant in self.garden.plants:
-                        dx = x - plant.position.x
-                        dy = y - plant.position.y
-                        dist_sq = dx * dx + dy * dy
-                        r_sum = var_r + plant.variety.radius
-
-                        if dist_sq < r_sum * r_sum:
-                            # interacting neighbor
-                            if plant.variety.species == variety.species:
-                                valid = False
-                                break
-                            neighbor_species.add(plant.variety.species)
-                            if len(neighbor_species) >= 2:
-                                break
-
-                    # need 2+ other species neighbors for exchange
-                    if valid and len(neighbor_species) >= 2:
-                        score = len(neighbor_species) * 10 + (1.0 - distance_mult) * 5
-                        if score > best_score:
-                            best_score = score
-                            best_pos = Position(x, y)
+                # need 2+ other species neighbors for exchange
+                if valid and len(neighbor_species) >= 2:
+                    score = len(neighbor_species) + 0.1 * self.local_exchange_score(
+                        variety, Position(x, y)
+                    )
+                    if score > best_score:
+                        best_score = score
+                        best_pos = Position(x, y)
 
         return best_pos
