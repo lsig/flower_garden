@@ -1,7 +1,9 @@
 from core.garden import Garden
 from core.gardener import Gardener
 from core.plants.plant_variety import PlantVariety
-from gardeners.group10.adaptive_greedy_algorithm_1028.gardener import GreedyGardener
+
+# from gardeners.group10.adaptive_greedy_algorithm_1028.gardener import GreedyGardener
+from gardeners.group10.algorithm_1105.gardener import GreedyGardener as GreedyGardener
 
 
 class Gardener10(Gardener):

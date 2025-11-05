@@ -19,8 +19,8 @@
 cd "$(dirname "$0")/../.."
 
 # ========== CONFIGURATION ==========
-CONFIG="gardeners/group10/config/test.json"  # Options: test.json, easy.json
-TURNS=100                                     # Number of simulation turns
+CONFIG="gardeners/group10/config/easy.json"  # Options: test.json, easy.json
+TURNS=1000                                     # Number of simulation turns
 GUI_ON=true                                  # Set to true to enable GUI visualization
 
 # Available configs:
@@ -38,9 +38,16 @@ echo ""
 
 # Run test
 if [ "$GUI_ON" = true ]; then
+    # uv run python main.py \
+    #     --json_path "$CONFIG" \
+    #     --turns "$TURNS" \
+    #     --gardener g10 \
+    #     --gui
     uv run python main.py \
-        --json_path "$CONFIG" \
+        --random \
         --turns "$TURNS" \
+        --seed=179 \
+        --count=100 \
         --gardener g10 \
         --gui
 else
