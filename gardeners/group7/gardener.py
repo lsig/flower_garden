@@ -42,8 +42,8 @@ class Gardener7(Gardener):
     _REFINE_MAX_PLANTS = 10  # cap number of bridge attempts total
     _REFINE_MAX_PER_NODE = 2  # cap attempts per isolated node
 
-    def _init_(self, garden, varieties):
-        super()._init_(garden, varieties)
+    def __init__(self, garden, varieties):
+        super().__init__(garden, varieties)
         # Local record of placed plants as dicts: {"v": variety, "x": float, "y": float}
         self._placed = []
 
