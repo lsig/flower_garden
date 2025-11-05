@@ -1,4 +1,5 @@
 import math
+from collections import deque
 
 from core.garden import Garden
 from core.gardener import Gardener
@@ -6,7 +7,6 @@ from core.micronutrients import Micronutrient
 from core.plants.plant_variety import PlantVariety
 from core.plants.species import Species
 from core.point import Position
-from collections import deque 
 
 
 class Gardener8(Gardener):
@@ -59,15 +59,15 @@ class Gardener8(Gardener):
 
     def local_exchange_score(self, variety: PlantVariety, pos: Position) -> float:
         """Compute an approximate nutrient exchange score with neighbors at a given position."""
-        
+
         score = 0
         var_r = variety.radius
-        
+
         for plant in self.garden.plants:
             # check distance for interaction
             dx = pos.x - plant.position.x
             dy = pos.y - plant.position.y
-            dist_sq = dx*dx + dy*dy
+            dist_sq = dx * dx + dy * dy
             r_sum = var_r + plant.variety.radius
             if dist_sq >= r_sum * r_sum:
                 continue  # too far to interact
@@ -94,17 +94,18 @@ class Gardener8(Gardener):
 
                 # compute a scarcity rating
                 # prefer adding plants that produce what is currently missing
-                total_abs = sum(abs(v.variety.nutrient_coefficients[nut]) for v in self.garden.plants)
+                total_abs = sum(
+                    abs(v.variety.nutrient_coefficients[nut]) for v in self.garden.plants
+                )
                 deficit_weight = 1 / max(1e-6, total_abs)
 
                 # only count if giving > receiving
                 if our_offer > neighbor_offer:
                     score += exchange_amount * deficit_weight  # benefit to neighbor
                 if neighbor_offer > our_offer:
-                    score += exchange_amount * deficit_weight # benefit to us
+                    score += exchange_amount * deficit_weight  # benefit to us
         # normalizing the score
         return score / max(1, len(self.garden.plants))
-
 
     def place_plants(self, rhodos, geraniums, begonias):
         """
@@ -193,7 +194,9 @@ class Gardener8(Gardener):
                     if pos and self.garden.can_place_plant(variety, pos):
                         # Calculate how valuable this placement would be
                         local_weight = 0.05 + 0.05 * min(1, len(self.garden.plants) / 100)
-                        placement_score = self.variety_scores[id(variety)] + local_weight * self.local_exchange_score(variety, pos)
+                        placement_score = self.variety_scores[
+                            id(variety)
+                        ] + local_weight * self.local_exchange_score(variety, pos)
 
                         # Keep track of the best placement found so far
                         if placement_score > best_score:
@@ -285,7 +288,9 @@ class Gardener8(Gardener):
 
                 # need 2+ other species neighbors for exchange
                 if valid and len(neighbor_species) >= 2:
-                    score = len(neighbor_species) + 0.1 * self.local_exchange_score(variety, Position(x, y))
+                    score = len(neighbor_species) + 0.1 * self.local_exchange_score(
+                        variety, Position(x, y)
+                    )
                     if score > best_score:
                         best_score = score
                         best_pos = Position(x, y)
