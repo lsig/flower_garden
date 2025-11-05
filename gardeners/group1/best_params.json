@@ -1,0 +1,15 @@
+{
+  "min_sufficiency_weight": 15.0,
+  "species_bonus_weight": 5.0,
+  "cross_species_weight": 12.0,
+  "optimal_distance_weight": 2.5,
+  "growth_efficiency_weight": 2.0,
+  "base_score_weight": 1.0,
+  "exchange_potential_weight": 0.5,
+  "min_distance_weight": 1.5,
+  "radius_weight": 1.0,
+  "species_bonus_all": 20.0,
+  "species_bonus_two": 5.0,
+  "balance_penalty_multiplier": 2.0,
+  "partner_penalty_multiplier": 2.0
+}

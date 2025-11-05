@@ -9,8 +9,30 @@ from core.point import Position
 
 
 class Gardener1(Gardener):
-    def __init__(self, garden: Garden, varieties: list[PlantVariety]):
+    def __init__(self, garden: Garden, varieties: list[PlantVariety], params: dict | None = None):
         super().__init__(garden, varieties)
+        # Default parameters (can be overridden)
+        self.params = params or self._get_default_params()
+
+    def _get_default_params(self) -> dict:
+        """Default parameter values (empirically tuned for maximum growth)."""
+        return {
+            # Group evaluation weights (tuned on 25 config files)
+            'min_sufficiency_weight': 15.0,  # Growth sustainability (critical)
+            'species_bonus_weight': 5.0,  # Species diversity importance
+            'growth_efficiency_weight': 2.0,  # Growth efficiency multiplier
+            'base_score_weight': 1.0,  # Base production balance
+            'exchange_potential_weight': 0.5,  # Exchange compatibility
+            'species_bonus_all': 20.0,  # Bonus for having all 3 species
+            'species_bonus_two': 5.0,  # Bonus for having 2 species
+            'balance_penalty_multiplier': 2.0,  # Penalty for nutrient imbalance
+            # Placement weights (tuned on 25 config files)
+            'cross_species_weight': 12.0,  # Cross-species exchange importance
+            'optimal_distance_weight': 2.5,  # Optimal distance bonus (tuned: was 2.0)
+            'min_distance_weight': 1.5,  # Tight packing bonus
+            'radius_weight': 1.0,  # Larger plant bonus
+            'partner_penalty_multiplier': 2.0,  # Penalty for too many partners
+        }
 
     def _generate_polygonal_grid(self, grid_spacing: float = 1.0) -> list[Position]:
         """
@@ -101,14 +123,14 @@ class Gardener1(Gardener):
         balance_penalty = math.sqrt(variance)
 
         # Base score: positive net production with balanced nutrients
-        base_score = net_production - balance_penalty * 2.0  # Heavy penalty for imbalance
+        base_score = net_production - balance_penalty * self.params['balance_penalty_multiplier']
 
         # CRITICAL: Species diversity - MUST have all 3 species for exchanges
         species_set = {v.species for v in group}
         if len(species_set) == 3:
-            species_bonus = 20.0  # Massive bonus for having all species
+            species_bonus = self.params['species_bonus_all']
         elif len(species_set) == 2:
-            species_bonus = 5.0  # Moderate bonus
+            species_bonus = self.params['species_bonus_two']
         else:
             species_bonus = 0.0  # No exchanges possible
 
@@ -149,11 +171,11 @@ class Gardener1(Gardener):
 
         # Combined score prioritizing critical factors
         final_score = (
-            base_score * 1.0  # Base production balance
-            + species_bonus * 5.0  # CRITICAL: Species diversity
-            + growth_efficiency * 2.0  # Growth sustainability
-            + exchange_potential * 0.5  # Exchange compatibility
-            + min_sufficiency * 15.0  # CRITICAL: Can they grow?
+            base_score * self.params['base_score_weight']
+            + species_bonus * self.params['species_bonus_weight']
+            + growth_efficiency * self.params['growth_efficiency_weight']
+            + exchange_potential * self.params['exchange_potential_weight']
+            + min_sufficiency * self.params['min_sufficiency_weight']
         )
 
         return final_score
@@ -396,15 +418,19 @@ class Gardener1(Gardener):
                     # Score calculation: balance packing density with exchanges
                     # KEY INSIGHT: For large gardens, packing first is critical
                     partner_penalty = (
-                        max(0, (cross_species_count - 3) * 2.0) if cross_species_count > 3 else 0
+                        max(
+                            0, (cross_species_count - 3) * self.params['partner_penalty_multiplier']
+                        )
+                        if cross_species_count > 3
+                        else 0
                     )
 
                     # Combined score: prioritize exchanges when possible, but also reward packing
                     score = (
-                        cross_species_count * 12.0  # CRITICAL: Cross-species exchanges
-                        + optimal_distance_bonus * 2.0  # Optimal positioning for exchanges
-                        + min_distance_bonus * 1.5  # Tight packing bonus
-                        + (variety.radius * 1.0)  # Bonus for larger plants
+                        cross_species_count * self.params['cross_species_weight']
+                        + optimal_distance_bonus * self.params['optimal_distance_weight']
+                        + min_distance_bonus * self.params['min_distance_weight']
+                        + (variety.radius * self.params['radius_weight'])
                         - partner_penalty  # Penalty for too many partners
                     )
 
