@@ -28,8 +28,12 @@ class Gardener3(Gardener):
     # Behavior flags
     PREVENT_INTERACTIONS = False
 
+    # Hexagonal placement 
+    COUNT_PER_VARIETY_FOR_HEX_PLACEMENT = 8
+    COUNT_EPSILON_FOR_HEX_PLACEMENT = 2
+
     # Minimum varieties count to restrict garden size for hexagonal placement
-    MIN_TOTAL_VARIETIES_COUNT = 24
+    # MIN_TOTAL_VARIETIES_COUNT = 24
 
     def __init__(self, garden: Garden, varieties: list[PlantVariety]):
         super().__init__(garden, varieties)
@@ -109,61 +113,85 @@ class Gardener3(Gardener):
             variety.radius == list(self.species_varieties.values())[0][0].radius
             for variety in self.varieties
         )
-        return exactly_three_varieties and equal_counts and equal_radii
+        enough_count = all(
+            count >= self.COUNT_PER_VARIETY_FOR_HEX_PLACEMENT for count in self.variety_counts.values()
+        )
+        counts_almost_equal = all(count in range(list(self.variety_counts.values())[0]-self.COUNT_EPSILON_FOR_HEX_PLACEMENT, list(self.variety_counts.values())[0]+self.COUNT_EPSILON_FOR_HEX_PLACEMENT+1) 
+                                for count in self.variety_counts.values())
+
+        return exactly_three_varieties and equal_counts and enough_count and counts_almost_equal and equal_radii
 
     ### Hexagonal Placement Methods ###
 
     def _get_hexagonal_placements(self) -> list:
-        """Generate placements in a hexagonal grid pattern."""
+        """Generate placements in a hexagonal grid pattern, assuming we have one variety per species and all varieties have the same radius and count."""
         placements = []
 
-        if len(self.varieties) <= self.MIN_TOTAL_VARIETIES_COUNT:
-            garden_width, garden_height = self.garden.width // 2, self.garden.height // 2
+        radius = self.varieties[0].radius
+
+        # Compute how many plants can fit in a hexagonal grid with given radius
+        even_row_plants = self.width // radius + 1
+        odd_row_plants = self.width // radius
+
+        even_row_count = (self.height + 1) // (radius * 2) + 1
+        odd_row_count = (self.height - radius + 1) // (radius * 2) + 1 if radius > 1 else (self.height - radius + 1) // (radius * 2)
+
+        total_plants = even_row_plants * even_row_count + odd_row_plants * odd_row_count
+        half_plants = total_plants // 2
+        # print(f'Hexagonal grid can fit up to {total_plants} plants. half: {half_plants}')
+
+        # Use half the garden if we have limited varieties
+        min_count_per_species_for_garden_reduction = half_plants // 3
+        if len(self.varieties) // 3 <= min_count_per_species_for_garden_reduction:
+            garden_width = self.garden.width // 2
+            garden_height = self.garden.height
         else:
             garden_width, garden_height = self.garden.width, self.garden.height
         garden_internal = Garden(garden_width, garden_height)
 
         n_species = len(self.species)
-        offsets = [0.0, 0.5]
-        step_size = 1
+
+        offsets = [0.0, radius / 2.0]
+        step_size = radius
+
         variety_indices = {s: 0 for s in self.species}
 
-        # which species to try next for each row
+        # which species to try next for each row (use row index as key since we use float stepping)
         current_species_by_row = defaultdict(int)
 
-        for y in range(0, self.height + 1, step_size):
-            offset = offsets[y % 2]
+        row_idx = 0
+        for y in self._frange(0.0, self.height + 0.1, step_size):
+            offset = offsets[row_idx % 2]
 
             for x in self._frange(offset, self.width + 0.1, step_size):
                 position = Position(x, y)
 
-                current_species_idx = current_species_by_row[y]
+                current_species_idx = current_species_by_row[row_idx]
                 species_index = (
-                    (current_species_idx + 2) % n_species
-                    if y % 2 == 1
-                    else current_species_idx % n_species
+                    (current_species_idx + 2) % n_species if row_idx % 2 == 1 else current_species_idx % n_species
                 )
                 species_name = self.species[species_index]
 
                 # skip if we've exhausted varieties for this species
                 if variety_indices[species_name] >= len(self.species_varieties[species_name]):
                     # advance the index because there's nothing left for this species
-                    current_species_by_row[y] = current_species_idx + 1
+                    current_species_by_row[row_idx] = current_species_idx + 1
                     continue
 
                 variety = self.species_varieties[species_name][variety_indices[species_name]]
 
                 if garden_internal.can_place_plant(variety, position):
-                    # print(f"Placing {variety.name} at {position}")
                     placements.append((variety, position))
                     garden_internal.add_plant(variety, position)
                     variety_indices[species_name] += 1
 
                     # advance the index for this row only on successful placement
-                    current_species_by_row[y] = current_species_idx + 1
+                    current_species_by_row[row_idx] = current_species_idx + 1
+
+            row_idx += 1
 
         return placements
-
+    
     # Taken from random_gardener.py
     def _get_random_placements(self) -> list:
         """Use random placements as fallback strategy."""
