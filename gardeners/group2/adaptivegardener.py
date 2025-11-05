@@ -1,4 +1,3 @@
-
 import math
 import random
 from contextlib import suppress
@@ -12,7 +11,7 @@ from core.point import Position
 
 
 class Gardener2(Gardener):
-    """ implementing flexible clustering with hex/greedy fallback."""
+    """implementing flexible clustering with hex/greedy fallback."""
 
     # Step size used for greedy fallback grid
     STEP = 0.1
@@ -20,15 +19,13 @@ class Gardener2(Gardener):
     def __init__(self, garden: Garden, varieties: list[PlantVariety]):
         super().__init__(garden, varieties)
         # Precompute smallest plant radius to parameterise hex fill grid
-        self.min_radius = (
-            min((v.radius for v in varieties), default=1.0) if varieties else 1.0
-        )
+        self.min_radius = min((v.radius for v in varieties), default=1.0) if varieties else 1.0
 
     def cultivate_garden(self) -> None:
         """Main entry point for gardener: build clusters then run fallback."""
         available = list(self.varieties)
         # Stage 1: flexible clustering
-        print("Starting flexible cluster placement")
+        print('Starting flexible cluster placement')
         self._grid_cluster_placement(available)
         # Update internal list to remaining varieties
         self.varieties = available
@@ -41,12 +38,11 @@ class Gardener2(Gardener):
         avg_radius = sum(remaining_radii) / len(remaining_radii)
         # Use hex fill when many small varieties remain, otherwise greedy
         if len(self.varieties) > 1000 or avg_radius < 0.15:
-            print("Using hexagonal fill fallback")
+            print('Using hexagonal fill fallback')
             self._hex_fill_fallback()
         else:
-            print("Using greedy fallback")
+            print('Using greedy fallback')
             self._greedy_fallback()
-
 
     # cluster placement
     def _grid_cluster_placement(self, available: list[PlantVariety]) -> None:
@@ -78,10 +74,10 @@ class Gardener2(Gardener):
             cy = row * dy
             if cy == self.garden.height:
                 break
-           
+
             col = 0
             while True:
-                cx = col * dx 
+                cx = col * dx
                 if cx == self.garden.width:
                     break
                 positions.append((cx, cy))
@@ -146,13 +142,19 @@ class Gardener2(Gardener):
         total_consumption = 0.0
         if variety.species == Species.RHODODENDRON:
             production = coeffs.get(Micronutrient.R, 0.0)
-            total_consumption = abs(coeffs.get(Micronutrient.G, 0.0)) + abs(coeffs.get(Micronutrient.B, 0.0))
+            total_consumption = abs(coeffs.get(Micronutrient.G, 0.0)) + abs(
+                coeffs.get(Micronutrient.B, 0.0)
+            )
         elif variety.species == Species.GERANIUM:
             production = coeffs.get(Micronutrient.G, 0.0)
-            total_consumption = abs(coeffs.get(Micronutrient.R, 0.0)) + abs(coeffs.get(Micronutrient.B, 0.0))
+            total_consumption = abs(coeffs.get(Micronutrient.R, 0.0)) + abs(
+                coeffs.get(Micronutrient.B, 0.0)
+            )
         elif variety.species == Species.BEGONIA:
             production = coeffs.get(Micronutrient.B, 0.0)
-            total_consumption = abs(coeffs.get(Micronutrient.R, 0.0)) + abs(coeffs.get(Micronutrient.G, 0.0))
+            total_consumption = abs(coeffs.get(Micronutrient.R, 0.0)) + abs(
+                coeffs.get(Micronutrient.G, 0.0)
+            )
         else:
             return 0.0
         if total_consumption <= 0:
@@ -209,7 +211,16 @@ class Gardener2(Gardener):
             # Plant and remove the variety from lists
             if self.garden.add_plant(chosen_variety, pos) is not None:
                 with suppress(ValueError):
-                    species_lists[target_species].remove(next((item for item in species_lists[target_species] if item[1] is chosen_variety), None))
+                    species_lists[target_species].remove(
+                        next(
+                            (
+                                item
+                                for item in species_lists[target_species]
+                                if item[1] is chosen_variety
+                            ),
+                            None,
+                        )
+                    )
                 with suppress(ValueError):
                     self.varieties.remove(chosen_variety)
 
@@ -246,7 +257,9 @@ class Gardener2(Gardener):
                 for pos in candidate_positions:
                     if not self.garden.can_place_plant(best_variety, pos):
                         continue
-                    interactions = self._count_potential_interactions_strict_balanced(best_variety, pos)
+                    interactions = self._count_potential_interactions_strict_balanced(
+                        best_variety, pos
+                    )
                     if interactions > max_interactions:
                         max_interactions = interactions
                         best_position = pos
@@ -265,14 +278,13 @@ class Gardener2(Gardener):
             else:
                 break
 
-
     # Helpers for greedy
     def _generate_hex_grid_positions(self) -> list[Position]:
         """Generate positions on a hexagonal (triangular) grid."""
         positions: list[Position] = []
         R = self.min_radius
-        dx =  R
-        dy =  R
+        dx = R
+        dy = R
         row = 0
         while True:
             y = row * dy
@@ -296,13 +308,19 @@ class Gardener2(Gardener):
         total_consumption = 0.0
         if variety.species == Species.RHODODENDRON:
             production = coeffs.get(Micronutrient.R, 0.0)
-            total_consumption = abs(coeffs.get(Micronutrient.G, 0.0)) + abs(coeffs.get(Micronutrient.B, 0.0))
+            total_consumption = abs(coeffs.get(Micronutrient.G, 0.0)) + abs(
+                coeffs.get(Micronutrient.B, 0.0)
+            )
         elif variety.species == Species.GERANIUM:
             production = coeffs.get(Micronutrient.G, 0.0)
-            total_consumption = abs(coeffs.get(Micronutrient.R, 0.0)) + abs(coeffs.get(Micronutrient.B, 0.0))
+            total_consumption = abs(coeffs.get(Micronutrient.R, 0.0)) + abs(
+                coeffs.get(Micronutrient.B, 0.0)
+            )
         elif variety.species == Species.BEGONIA:
             production = coeffs.get(Micronutrient.B, 0.0)
-            total_consumption = abs(coeffs.get(Micronutrient.R, 0.0)) + abs(coeffs.get(Micronutrient.G, 0.0))
+            total_consumption = abs(coeffs.get(Micronutrient.R, 0.0)) + abs(
+                coeffs.get(Micronutrient.G, 0.0)
+            )
         else:
             return 0.0
         if total_consumption <= 0:
@@ -346,7 +364,9 @@ class Gardener2(Gardener):
     # Alias for greedy fallbacks
     _get_underrepresented_species = _get_species_for_most_deficient_nutrient
 
-    def _find_best_variety_to_plant(self, scored_varieties: list[tuple[float, PlantVariety]], underrepresented_species: set[str]) -> tuple[float, PlantVariety] | None:
+    def _find_best_variety_to_plant(
+        self, scored_varieties: list[tuple[float, PlantVariety]], underrepresented_species: set[str]
+    ) -> tuple[float, PlantVariety] | None:
         """Find the highest scoring variety belonging to the underrepresented species."""
         if not scored_varieties or not underrepresented_species:
             return None
@@ -369,7 +389,9 @@ class Gardener2(Gardener):
             y += step
         return positions
 
-    def _count_potential_interactions_strict_balanced(self, variety: PlantVariety, position: Position) -> int:
+    def _count_potential_interactions_strict_balanced(
+        self, variety: PlantVariety, position: Position
+    ) -> int:
         """
         Count the number of complementary species this plant could interact with if planted.
 
