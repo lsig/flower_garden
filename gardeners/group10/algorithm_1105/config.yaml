@@ -1,0 +1,38 @@
+# Greedy Planting Algorithm Configuration
+
+simulation:
+  T: 100                    # Default turns for scoring simulation during placement
+                             # Can be overridden by test_runner.py --turns argument
+                             # Set to match expected simulation length (typically 100 for competition)
+  w_short: 0.2              # Weight for short-term growth (turns 1-5)
+  w_long: 1.0               # Weight for long-term growth (turns 6-T)
+  adaptive_T_min: 40        # Minimum T for adaptive simulation (late-stage plants)
+  adaptive_T_alpha: 0.7     # Decay shape parameter (0.7 = slower decay early, faster later)
+  area_power: 1.5           # Power for area calculation: circle_area = π × r^area_power (default 2.0 = quadratic)
+
+
+candidate_filtering:
+  max_candidates: 50        # Max candidates to evaluate per iteration
+  tolerance: 0.5            # Spatial deduplication tolerance for filter_candidates
+
+heuristic:
+  lambda_interact: 3.0      # Weight for interaction density in pre-ranking
+  lambda_gap: 0.5           # Weight for gap penalty in pre-ranking
+
+debug:
+  verbose: true             # Print debug information during placement (ENABLED for progress)
+  log_candidates: false     # Log candidate generation details
+
+performance:
+  parallel: true            # Enable parallel simulation (multiprocessing)
+  num_workers: 4            # Number of parallel workers (CPU cores)
+  parallel_threshold: 8     # Minimum evaluations to use parallel (overhead consideration)
+  heuristic_top_k: 32       # Number of top candidates to evaluate after cheap heuristic (0 = use percentage)
+  heuristic_top_percent: 0.3  # If top_k=0, use this percentage (0.3 = 30%)
+  finegrained_search: true  # Enable two-stage finegrained search
+  finegrained_top_k: 4      # Top K candidates to re-evaluate with deeper simulation
+  finegrained_T: 500        # Deeper simulation turns for top K (typically 2x of adaptive T)
+
+placement:
+  epsilon: -10             # Improvement threshold for stopping (allow small decreases)
+  
