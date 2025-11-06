@@ -3,12 +3,12 @@ import random
 from collections import defaultdict
 from dataclasses import dataclass
 
+from core.engine import Engine
 from core.garden import Garden
 from core.gardener import Gardener
 from core.plants.plant_variety import PlantVariety
 from core.point import Position
-from gardeners.group4 import smaller_configs
-from gardeners.group4 import rectangular
+from gardeners.group4 import rectangular, smaller_configs
 
 
 @dataclass
@@ -18,6 +18,7 @@ class Placed:
     r: int
     species: object
     inter_count: dict[str, int]
+    plant: PlantVariety
 
     def __repr__(self):
         return f'<{self.species.name} ({self.x},{self.y}) r={self.r}>'
@@ -129,7 +130,7 @@ class Gardener4(Gardener):
         return x, y
 
     def _place_from(
-        self, anchor: Placed, inv: dict[str, list[PlantVariety]], placed: list[Placed]
+        self, anchor: Placed, inv: dict[str, list[PlantVariety]], placed: list[Placed], angle_steps: int
     ) -> Placed | None:
         # Gather all candidate (dir, r) positions + per-species options (only if inventory has that radius)
         options: list[tuple[int, float, int, str, int, int]] = []
@@ -137,7 +138,7 @@ class Gardener4(Gardener):
 
         for r in self.RADS:
             # choose points around the anchor
-            angle_steps = 1440
+            # angle_steps = 1440
 
             d = max(anchor.r, r)
 
@@ -178,7 +179,7 @@ class Gardener4(Gardener):
                 inv[sk].insert(0, var)  # undo
                 continue
 
-            node = Placed(x=x, y=y, r=r, species=var.species, inter_count=defaultdict(int))
+            node = Placed(x=x, y=y, r=r, species=var.species, inter_count=defaultdict(int), plant=var)
             self._update_interactions(placed, node)
             placed.append(node)
 
@@ -231,7 +232,7 @@ class Gardener4(Gardener):
             smaller_gardener = smaller_configs.Gardener4(self.garden, self.varieties)
             smaller_gardener.cultivate_garden()
             return
-        
+
         radii = {int(v.radius) for v in self.varieties}
         coeff_patterns = [tuple(v.nutrient_coefficients.values()) for v in self.varieties]
         diff = sum(coeff_patterns[0])
@@ -240,64 +241,96 @@ class Gardener4(Gardener):
             if abs(sum(c) != diff) > 1e-5:
                 all_same_magnitude = False
                 break
-        if len(radii) ==1 and all_same_magnitude:
+        if len(radii) == 1 and all_same_magnitude:
             rectagular_gardener = rectangular.Gardener4(self.garden, self.varieties)
             rectagular_gardener.cultivate_garden()
-            return   
+            return
 
         # intialize largest at (w/2,h/2). In the future when plant varieties are imbalanced,
         # preplacing lacking varieties spread out around the middle might be helpful
-
         self.varieties.sort(key=lambda v: v.radius)
         self.sort_plants_score()
-        inv = self._split_by_species(self.varieties[1:])
-        seed = self.varieties[0]
-        if self.garden.add_plant(seed, Position(self.W / 2, self.H / 2)) is not None:
-            seed_node = Placed(
-                self.W / 2, self.H / 2, int(seed.radius), seed.species, defaultdict(int)
-            )
 
-        placed = [seed_node]
-        placeable = [seed_node]
+        placed_best = []
+        max_score = 0
 
-        while placeable and len(placed) < len(self.varieties):
+        for angle_steps in range(715, 726):
 
-            def missing_species_count(node: Placed) -> int:
-                """Return how many required species this node is still missing."""
-                required = {'RHODODENDRON', 'GERANIUM', 'BEGONIA'} - {node.species.name}
-                missing = sum(1 for s in required if node.inter_count.get(s, 0) == 0)
-                return missing
-
-            def remaining_for_species(sk: str) -> int:
-                # total remaining varieties for this species across all radii
-                arr = inv.get(sk, [])
-                return len(arr)
-
-            # prioritize nodes missing the most species, then those with fewest interactions
-            placeable.sort(
-                key=lambda n: (
-                    missing_species_count(n),
-                    -remaining_for_species(n.species.name),
-                    sum(n.inter_count.values()),
+            inv = self._split_by_species(self.varieties[1:])
+            seed = self.varieties[0]
+            if self.garden.add_plant(seed, Position(self.W / 2, self.H / 2)) is not None:
+                seed_node = Placed(
+                    self.W / 2, self.H / 2, int(seed.radius), seed.species, defaultdict(int), seed
                 )
+
+            placed = [seed_node]
+            placeable = [seed_node]
+
+            while placeable and len(placed) < len(self.varieties):
+
+                def missing_species_count(node: Placed) -> int:
+                    """Return how many required species this node is still missing."""
+                    required = {'RHODODENDRON', 'GERANIUM', 'BEGONIA'} - {node.species.name}
+                    missing = sum(1 for s in required if node.inter_count.get(s, 0) == 0)
+                    return missing
+
+                def remaining_for_species(sk: str) -> int:
+                    # total remaining varieties for this species across all radii
+                    arr = inv.get(sk, [])
+                    return len(arr)
+
+                # prioritize nodes missing the most species, then those with fewest interactions
+                placeable.sort(
+                    key=lambda n: (
+                        missing_species_count(n),
+                        -remaining_for_species(n.species.name),
+                        sum(n.inter_count.values()),
+                    )
+                )
+
+                anchor = placeable[0]
+                new_node = self._place_from(anchor, inv, placed, angle_steps)
+                if new_node is None:
+                    placeable.pop(0)
+                    continue
+                placeable.append(new_node)
+
+            species_counts = defaultdict(int)
+            for p in placed:
+                species_counts[p.species.name] += 1
+
+            print(
+                f'Current totals — '
+                f'Rhododendron: {species_counts["RHODODENDRON"]}, '
+                f'Geranium: {species_counts["GERANIUM"]}, '
+                f'Begonia: {species_counts["BEGONIA"]}, '
+                f'Total: {len(placed)}'
             )
+            print('-' * 60)
 
-            anchor = placeable[0]
-            new_node = self._place_from(anchor, inv, placed)
-            if new_node is None:
-                placeable.pop(0)
-                continue
-            placeable.append(new_node)
+            # tested with 5000 (random and configA.json), the same result
+            turns = 1000
+            score = self.simulate_total_score(turns)
+            print(score)
+            print(angle_steps)
+            if score > max_score:
+                max_score = score
+                placed_best = placed
 
-        species_counts = defaultdict(int)
-        for p in placed:
-            species_counts[p.species.name] += 1
+            self.empty_garden()
+        
+        for p in placed_best:
+            pos = Position(p.x, p.y)
+            self.garden.add_plant(p.plant, pos)
 
-        print(
-            f'Current totals — '
-            f'Rhododendron: {species_counts["RHODODENDRON"]}, '
-            f'Geranium: {species_counts["GERANIUM"]}, '
-            f'Begonia: {species_counts["BEGONIA"]}, '
-            f'Total: {len(placed)}'
-        )
-        print('-' * 60)
+        
+    def simulate_total_score(self, turns: int) -> float:
+        engine = Engine(self.garden)
+        growth_history = engine.run_simulation(turns)
+        #print(growth_history[-1])
+        return growth_history[-1]
+    
+    def empty_garden(self):
+        self.garden.plants = []
+        self.garden._used_varieties = set()
+
