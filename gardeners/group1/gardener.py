@@ -93,24 +93,44 @@ class Gardener1(Gardener):
         total_g = sum(v.nutrient_coefficients[Micronutrient.G] for v in group)
         total_b = sum(v.nutrient_coefficients[Micronutrient.B] for v in group)
 
-        # CRITICAL: Growth requires 2*radius of EACH nutrient
-        # Calculate total growth requirement per turn
-        total_growth_req_r = sum(2 * v.radius for v in group)
-        total_growth_req_g = sum(2 * v.radius for v in group)
-        total_growth_req_b = sum(2 * v.radius for v in group)
-
-        # Calculate net production per turn
+        # CRITICAL: Growth requires 2*radius of EACH nutrient PER PLANT
+        # Each plant needs 2*radius of R, 2*radius of G, AND 2*radius of B
+        # Production varies per nutrient (e.g., R=10, G=5, B=3), so we must check optimally
+        
+        # Calculate per-plant requirements: each plant needs 2*radius of each nutrient
+        plant_requirements = [2 * v.radius for v in group]
+        max_requirement_per_plant = max(plant_requirements) if plant_requirements else 0
+        total_requirement_all_plants = sum(plant_requirements)
+        
+        # KEY INSIGHT: Each nutrient is independent - a plant needs ALL three to grow
+        # So we check if EACH nutrient can support EACH plant's requirement
+        # Since production varies (R might be high, B might be low), we need per-nutrient checks
+        
+        # Check if each nutrient can support the most demanding plant
+        # This ensures at least one plant can potentially get all its nutrients
+        r_suff_per_plant = total_r / max_requirement_per_plant if max_requirement_per_plant > 0 else 0
+        g_suff_per_plant = total_g / max_requirement_per_plant if max_requirement_per_plant > 0 else 0
+        b_suff_per_plant = total_b / max_requirement_per_plant if max_requirement_per_plant > 0 else 0
+        
+        # Check if each nutrient can support all plants growing simultaneously
+        # This ensures all plants can potentially get all their nutrients
+        r_suff_all = total_r / total_requirement_all_plants if total_requirement_all_plants > 0 else 0
+        g_suff_all = total_g / total_requirement_all_plants if total_requirement_all_plants > 0 else 0
+        b_suff_all = total_b / total_requirement_all_plants if total_requirement_all_plants > 0 else 0
+        
+        # CRITICAL: The bottleneck is the minimum across ALL nutrients
+        # This is the limiting factor - if one nutrient is insufficient, plants can't grow
+        # We check both per-plant and total, taking the more conservative
+        min_per_plant_sufficiency = min(r_suff_per_plant, g_suff_per_plant, b_suff_per_plant)
+        min_total_sufficiency = min(r_suff_all, g_suff_all, b_suff_all)
+        
+        # Use the more conservative metric
+        # This ensures: (1) each plant can get nutrients, AND (2) all can grow together
+        # The minimum across nutrients ensures balance across R, G, B
+        min_sufficiency = min(min_per_plant_sufficiency, min_total_sufficiency)
+        
+        # Calculate net production per turn from the group
         net_production = total_r + total_g + total_b
-
-        # CRITICAL METRIC: Can this group sustain growth?
-        # We need production to exceed or match growth requirements
-        # But we need BALANCED production (each nutrient must be sufficient)
-        r_sufficiency = total_r / total_growth_req_r if total_growth_req_r > 0 else 0
-        g_sufficiency = total_g / total_growth_req_g if total_growth_req_g > 0 else 0
-        b_sufficiency = total_b / total_growth_req_b if total_growth_req_b > 0 else 0
-
-        # Minimum sufficiency (bottleneck) - this is the limiting factor
-        min_sufficiency = min(r_sufficiency, g_sufficiency, b_sufficiency)
 
         # Balance score: reward balanced production
         # Penalize imbalance more heavily (variance from mean)
