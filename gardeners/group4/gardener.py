@@ -249,7 +249,7 @@ class Gardener4(Gardener):
         # preplacing lacking varieties spread out around the middle might be helpful
 
         self.varieties.sort(key=lambda v: v.radius)
-        # self.sort_plants_score()
+        self.sort_plants_score()
         inv = self._split_by_species(self.varieties[1:])
         seed = self.varieties[0]
         if self.garden.add_plant(seed, Position(self.W / 2, self.H / 2)) is not None:
