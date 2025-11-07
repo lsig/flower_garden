@@ -15,20 +15,20 @@ class Gardener1(Gardener):
         self.params = params or self._get_default_params()
 
     def _get_default_params(self) -> dict:
-        """Default parameter values (empirically tuned for maximum growth)."""
+        """Default parameter values (tuned from comprehensive parameter sweep)."""
         return {
-            # Group evaluation weights (tuned on 25 config files)
-            'min_sufficiency_weight': 15.0,  # Growth sustainability (critical)
-            'species_bonus_weight': 5.0,  # Species diversity importance
+            # Group evaluation weights (tuned from comprehensive sweep on all config files)
+            'min_sufficiency_weight': 10.0,  # Growth sustainability (critical)
+            'species_bonus_weight': 12.0,  # Species diversity importance
             'growth_efficiency_weight': 2.0,  # Growth efficiency multiplier
             'base_score_weight': 1.0,  # Base production balance
             'exchange_potential_weight': 0.5,  # Exchange compatibility
             'species_bonus_all': 20.0,  # Bonus for having all 3 species
             'species_bonus_two': 5.0,  # Bonus for having 2 species
             'balance_penalty_multiplier': 2.0,  # Penalty for nutrient imbalance
-            # Placement weights (tuned on 25 config files)
+            # Placement weights (tuned from comprehensive sweep on all config files)
             'cross_species_weight': 12.0,  # Cross-species exchange importance
-            'optimal_distance_weight': 2.5,  # Optimal distance bonus (tuned: was 2.0)
+            'optimal_distance_weight': 1.5,  # Optimal distance bonus
             'min_distance_weight': 1.5,  # Tight packing bonus
             'radius_weight': 1.0,  # Larger plant bonus
             'partner_penalty_multiplier': 2.0,  # Penalty for too many partners
