@@ -124,7 +124,9 @@ class Gardener8(Gardener):
                     pos = self.find_position_with_diverse_neighbors(variety)
 
                     if pos and self.garden.can_place_plant(variety, pos):
-                        placement_score = self.variety_scores[id(variety)] + self.local_exchange_score(variety, pos)
+                        placement_score = self.variety_scores[
+                            id(variety)
+                        ] + self.local_exchange_score(variety, pos)
 
                         if placement_score > best_score:
                             best_score = placement_score
