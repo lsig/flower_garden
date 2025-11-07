@@ -26,23 +26,16 @@ class Gardener2(Gardener):
         available = list(self.varieties)
         # Stage 1: flexible clustering
         print('Starting flexible cluster placement')
-        self._grid_cluster_placement(available)
+        # self._grid_cluster_placement(available)
         # Update internal list to remaining varieties
         self.varieties = available
         # Stage 2: choose fallback based on remaining radii and counts
         if not self.varieties:
             return
-        remaining_radii = [v.radius for v in self.varieties]
-        if not remaining_radii:
-            return
-        avg_radius = sum(remaining_radii) / len(remaining_radii)
-        # Use hex fill when many small varieties remain, otherwise greedy
-        if len(self.varieties) > 1000 or avg_radius < 0.15:
-            print('Using hexagonal fill fallback')
-            self._hex_fill_fallback()
-        else:
-            print('Using greedy fallback')
-            self._greedy_fallback()
+
+        self._greedy_fallback()
+        self._hex_fill_fallback()
+        # ------------------------------------
 
     # cluster placement
     def _grid_cluster_placement(self, available: list[PlantVariety]) -> None:
@@ -170,59 +163,44 @@ class Gardener2(Gardener):
         choose the variety that produces the most deficient nutrient, falling
         back to secondary species if no variety of the target species fits.
         """
-        # Build species lists keyed by score
-        species_lists: dict[Species, list[tuple[float, PlantVariety]]] = {
-            Species.RHODODENDRON: [],
-            Species.GERANIUM: [],
-            Species.BEGONIA: [],
-        }
-        for v in self.varieties:
-            score = self._calculate_net_production_score(v)
-            species_lists[v.species].append((score, v))
-        for sp in species_lists:
-            species_lists[sp].sort(key=lambda x: x[0], reverse=True)
-        # Generate hex grid positions
-        positions = self._generate_hex_grid_positions()
-        for pos in positions:
-            # Determine which species is most deficient
-            underrepresented = self._get_species_for_most_deficient_nutrient()
-            if not underrepresented:
+        plantable_varieties = self._get_sorted_varieties()
+        candidate_positions = self._generate_hex_grid_positions()
+        while plantable_varieties:
+            underrepresented_species = self._get_underrepresented_species()
+            if not underrepresented_species:
                 break
-            target_value = next(iter(underrepresented))
-            target_species = Species(target_value)
-            chosen_variety = None
-            # Try to pick a variety of the target species that fits at this position
-            for score, variety in list(species_lists[target_species]):  # noqa: B007
-                if self.garden.can_place_plant(variety, pos):
-                    chosen_variety = variety
-                    break
-            # If none fits, try alternate species
-            if chosen_variety is None:
-                for alt_species in [Species.RHODODENDRON, Species.GERANIUM, Species.BEGONIA]:
-                    for score, variety in list(species_lists[alt_species]):  # noqa: B007
-                        if self.garden.can_place_plant(variety, pos):
-                            chosen_variety = variety
-                            target_species = alt_species
-                            break
-                    if chosen_variety:
-                        break
-            if chosen_variety is None:
-                continue
-            # Plant and remove the variety from lists
-            if self.garden.add_plant(chosen_variety, pos) is not None:
-                with suppress(ValueError):
-                    species_lists[target_species].remove(
-                        next(
-                            (
-                                item
-                                for item in species_lists[target_species]
-                                if item[1] is chosen_variety
-                            ),
-                            None,
-                        )
+            best_variety_tuple = self._find_best_variety_to_plant(
+                plantable_varieties, underrepresented_species
+            )
+            if best_variety_tuple is None:
+                break
+            _, best_variety = best_variety_tuple
+            best_position: Position | None = None
+            max_interactions = -1
+            if best_position is None:
+                for pos in candidate_positions:
+                    if not self.garden.can_place_plant(best_variety, pos):
+                        continue
+                    interactions = self._count_potential_interactions_strict_balanced(
+                        best_variety, pos
                     )
+                    if interactions > max_interactions:
+                        max_interactions = interactions
+                        best_position = pos
+            if best_position is None:
+                break
+            plant = self.garden.add_plant(best_variety, best_position)
+            if plant is not None:
+                # Remove the planted variety from list
+                for i, (_score, variety) in enumerate(plantable_varieties):
+                    if id(variety) == id(best_variety):
+                        plantable_varieties.pop(i)
+                        break
+                # Remove the used position to prevent reuse
                 with suppress(ValueError):
-                    self.varieties.remove(chosen_variety)
+                    candidate_positions.remove(best_position)
+            else:
+                break
 
     # Greedy fallback
 
