@@ -10,7 +10,7 @@
         "G": -0.7,
         "B": -0.5
       },
-      "count": 4
+      "count": 60
     },
     {
       "name": "Snow GERANIUM",
@@ -21,7 +21,7 @@
         "G": 1.8,
         "B": -0.5
       },
-      "count": 3
+      "count": 60
     },
     {
       "name": "Glacier BEGONIA",
@@ -32,7 +32,7 @@
         "G": -0.3,
         "B": 1.2
       },
-      "count": 5
+      "count": 60
     }
   ]
 }

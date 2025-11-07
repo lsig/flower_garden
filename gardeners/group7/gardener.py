@@ -184,37 +184,14 @@ class Gardener7(Gardener):
         failed.extend(queue)
         return failed
 
-    # ---------- Core RGB triangle ----------
-    def _place_core_triangle(self, r, g, b, cx, cy):
+    # ---------- Singular core placement ----------
+    def _place_core_single(self, r, g, b, cx, cy):
+        # Pick the best (largest or most dominant) plant
         core = sorted([r, g, b], key=lambda v: v.radius, reverse=True)
-        A, B, C = core
-        self._add_and_track(A, cx, cy)
+        best = core[0]
 
-        eps = self._EPS
-        AB = A.radius + B.radius - eps
-        AC = A.radius + C.radius - eps
-
-        # Place B on +x from center
-        self._add_and_track(B, cx + max(AB, self._TINY), cy)
-
-        # Place C roughly above-left using a safe distance
-        xC, yC = self._circle_intersection(
-            cx,
-            cy,
-            max(AC, self._TINY),
-            cx + max(AB, self._TINY),
-            cy,
-            B.radius + C.radius - eps,
-            choose_upper=True,
-        )
-
-        # gentle pull toward both A and B to tighten but not violate
-        def pull(xa, ya, xb, yb, f):
-            return xa + (xb - xa) * f, ya + (yb - ya) * f
-
-        xC, yC = pull(xC, yC, cx, cy, 0.25)
-        xC, yC = pull(xC, yC, cx + max(AB, self._TINY), cy, 0.25)
-        self._safe_place(C, xC, yC)
+        # Place only the best one at the center
+        self._add_and_track(best, cx, cy)
 
     # ---------- Interaction graph ----------
     def _distance(self, i, j):
@@ -399,9 +376,9 @@ class Gardener7(Gardener):
         greens.sort(key=self._cooperation_score, reverse=True)
         blues.sort(key=self._cooperation_score, reverse=True)
 
-        # 1) Core triangle
+        # 1) Core single
         r, g, b = reds.pop(0), greens.pop(0), blues.pop(0)
-        self._place_core_triangle(r, g, b, cx, cy)
+        self._place_core_single(r, g, b, cx, cy)
 
         # 2) Balanced queue for remaining plants, largest first inside each species
         for group in (reds, greens, blues):
