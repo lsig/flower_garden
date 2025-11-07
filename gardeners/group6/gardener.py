@@ -79,7 +79,7 @@ class Gardener6(Gardener):
         # spatial hash for already placed
         self.shash = SpatialHash(cell=self.min_r)
 
-        self._placed = set() 
+        self._placed = set()
 
     # ---------------- Main ----------------
 
@@ -273,7 +273,7 @@ class Gardener6(Gardener):
             if s != my_s:
                 continue
             dx, dy = x - px, y - py
-            if dx * dx + dy * dy < (0.95 * (r + pr)) ** 2:  
+            if dx * dx + dy * dy < (0.95 * (r + pr)) ** 2:
                 return False
         return True
 
@@ -298,7 +298,7 @@ class Gardener6(Gardener):
         if ok or ok is None:
             s = self._species_code(v)
             self.shash.insert(s, x, y, r)
-            self._placed.add(id(v))   
+            self._placed.add(id(v))
             return True
         return False
 
@@ -318,9 +318,10 @@ class Gardener6(Gardener):
                 x += dx
             y += dy
             row += 1
+
         def weighted_key(p: Position) -> float:
-            d = abs(p.x - self.W/2.0) + abs(p.y - self.H/2.0)
-            jitter = random.uniform(-0.25, 0.25) * d  
+            d = abs(p.x - self.W / 2.0) + abs(p.y - self.H / 2.0)
+            jitter = random.uniform(-0.25, 0.25) * d
             return d + jitter
 
         positions.sort(key=weighted_key)
@@ -352,7 +353,7 @@ class Gardener6(Gardener):
     def _greedy_triads(self) -> list[list[PlantVariety]]:
         """Form R/G/B-balanced groups quickly using signs of coefficients."""
         by_s: dict[str, list[PlantVariety]] = {'R': [], 'G': [], 'B': []}
-        
+
         for i, v in enumerate(self.varieties):
             code = self._species_code(v, i)
             by_s[code].append(v)
@@ -411,7 +412,7 @@ class Gardener6(Gardener):
 
     def _in_garden(self, v: PlantVariety) -> bool:
         # If you track placements per-variety elsewhere, wire it; we keep simple here.
-         return id(v) in self._placed
+        return id(v) in self._placed
 
     def _time_up(self, t0: float) -> bool:
         return (time.time() - t0) >= self.GLOBAL_TIME_BUDGET_S
