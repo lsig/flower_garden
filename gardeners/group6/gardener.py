@@ -79,6 +79,8 @@ class Gardener6(Gardener):
         # spatial hash for already placed
         self.shash = SpatialHash(cell=self.min_r)
 
+        self._placed = set()
+
     # ---------------- Main ----------------
 
     def cultivate_garden(self) -> None:
@@ -271,7 +273,7 @@ class Gardener6(Gardener):
             if s != my_s:
                 continue
             dx, dy = x - px, y - py
-            if dx * dx + dy * dy < (r + pr) ** 2:
+            if dx * dx + dy * dy < (0.95 * (r + pr)) ** 2:
                 return False
         return True
 
@@ -292,9 +294,11 @@ class Gardener6(Gardener):
             ok = self.garden.add_plant(v, Position(x, y))
         except Exception:
             ok = False
+
         if ok or ok is None:
             s = self._species_code(v)
             self.shash.insert(s, x, y, r)
+            self._placed.add(id(v))
             return True
         return False
 
@@ -304,7 +308,6 @@ class Gardener6(Gardener):
         positions: list[Position] = []
         dx = spacing
         dy = spacing * math.sqrt(3) / 2.0
-        # center-out order
         y = self.margin
         row = 0
         while y <= self.H - self.margin:
@@ -315,7 +318,13 @@ class Gardener6(Gardener):
                 x += dx
             y += dy
             row += 1
-        positions.sort(key=lambda p: abs(p.x - self.W / 2.0) + abs(p.y - self.H / 2.0))
+
+        def weighted_key(p: Position) -> float:
+            d = abs(p.x - self.W / 2.0) + abs(p.y - self.H / 2.0)
+            jitter = random.uniform(-0.25, 0.25) * d
+            return d + jitter
+
+        positions.sort(key=weighted_key)
         return positions
 
     def _hex_grid_multiphase(self, spacing: float) -> list[list[Position]]:
@@ -344,30 +353,30 @@ class Gardener6(Gardener):
     def _greedy_triads(self) -> list[list[PlantVariety]]:
         """Form R/G/B-balanced groups quickly using signs of coefficients."""
         by_s: dict[str, list[PlantVariety]] = {'R': [], 'G': [], 'B': []}
-        for v in self.varieties:
-            by_s[self._species_code(v)].append(v)
+
+        for i, v in enumerate(self.varieties):
+            code = self._species_code(v, i)
+            by_s[code].append(v)
 
         # small→big so we can pack more
         for s in by_s:
             by_s[s].sort(key=lambda v: getattr(v, 'radius', 1.0))
 
         groups: list[list[PlantVariety]] = []
-        # exact triads first
         while all(by_s[s] for s in ('R', 'G', 'B')):
             groups.append([by_s['R'].pop(0), by_s['G'].pop(0), by_s['B'].pop(0)])
 
         # make pairs or singles with what’s left (still helpful)
         leftovers = by_s['R'] + by_s['G'] + by_s['B']
         leftovers.sort(key=lambda v: getattr(v, 'radius', 1.0))
-        i = 0
-        while i < len(leftovers):
-            groups.append([leftovers[i]])
-            i += 1
+        for v in leftovers:
+            groups.append([v])
+
         return groups
 
     # ---------------- Helpers ----------------
 
-    def _species_code(self, v: PlantVariety) -> str:
+    def _species_code(self, v: PlantVariety, idx: int = 0) -> str:
         """Classify by nutrient coefficient signs; fall back to name prefix."""
         try:
             R = float(v.nutrient_coefficients[Micronutrient.R])
@@ -382,6 +391,8 @@ class Gardener6(Gardener):
                 return 'B'
         except Exception:
             pass
+
+        choices = ['R', 'G', 'B']
         name = str(getattr(v, 'species', '') or getattr(v, 'name', '')).lower()
         if name.startswith('r'):
             return 'R'
@@ -389,7 +400,9 @@ class Gardener6(Gardener):
             return 'G'
         if name.startswith('b'):
             return 'B'
-        return random.choice(['R', 'G', 'B'])  # never collapse to one bucket
+
+        # Use the index mod 3 to spread colors across the grid more evenly
+        return choices[idx % 3]
 
     def _placed_count(self) -> int:
         try:
@@ -399,7 +412,7 @@ class Gardener6(Gardener):
 
     def _in_garden(self, v: PlantVariety) -> bool:
         # If you track placements per-variety elsewhere, wire it; we keep simple here.
-        return False
+        return id(v) in self._placed
 
     def _time_up(self, t0: float) -> bool:
         return (time.time() - t0) >= self.GLOBAL_TIME_BUDGET_S
