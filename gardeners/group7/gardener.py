@@ -216,6 +216,15 @@ class Gardener7(Gardener):
         xC, yC = pull(xC, yC, cx + max(AB, self._TINY), cy, 0.25)
         self._safe_place(C, xC, yC)
 
+    # ---------- Singular core placement ----------
+    def _place_core_single(self, r, g, b, cx, cy):
+        # Pick the best (largest or most dominant) plant
+        core = sorted([r, g, b], key=lambda v: v.radius, reverse=True)
+        best = core[0]
+
+        # Place only the best one at the center
+        self._add_and_track(best, cx, cy)
+
     # ---------- Interaction graph ----------
     def _distance(self, i, j):
         pi, pj = self._placed[i], self._placed[j]
