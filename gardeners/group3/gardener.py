@@ -77,6 +77,12 @@ class Gardener3(Gardener):
 
             print(f'Total varieties available: {len(self.varieties)}')
 
+            # bottleneck detection
+            bottleneck_analysis = self.detect_bottlenecks(species_varieties)
+            print('\nChecking for any inherent bottlenecks...')
+            print(f'Potential Limiting Nutrient: {bottleneck_analysis["limiting_nutrient"]}')
+            print(f'Potential Bottleneck species: {bottleneck_analysis["bottleneck_species"]}')
+
             # Get ranked list of triads
             ranked_triads = self.find_best_triad_permutations(species_varieties)
 
@@ -109,6 +115,117 @@ class Gardener3(Gardener):
                 self.tile_cluster_across_garden_with_prefiltering(
                     top_clusters, prevent_interactions=self.PREVENT_INTERACTIONS
                 )
+
+    def detect_bottlenecks(self, species_varieties: dict[Species, list[PlantVariety]]) -> dict:
+        """Checks for any bottlenecks from the JSON being run"""
+        nutrients = [Micronutrient.R, Micronutrient.G, Micronutrient.B]
+        nutrient_names = ['R', 'G', 'B']
+
+        # Flatten all varieties into a list with their data
+        all_varieties = []
+        for _, varieties in species_varieties.items():
+            all_varieties.extend(varieties)
+
+        if not all_varieties:
+            return {
+                'limiting_nutrient': None,
+                'nutrient_balance': {},
+                'ranked_varieties': [],
+                'bottleneck_species': None,
+            }
+
+        # Use magnitude of nutrient coefficients to measure impact of this plant on rest of nutrients
+        variety_data = []
+        for v in all_varieties:
+            rgb_coefficients = [v.nutrient_coefficients[n] for n in nutrients]
+            # R, G, B
+            coeff_array = [rgb_coefficients[0], rgb_coefficients[1], rgb_coefficients[2]]
+            magnitude = math.sqrt(sum(c**2 for c in coeff_array))
+
+            variety_data.append(
+                {
+                    'variety': v,
+                    'name': v.name,
+                    'species': v.species.name,
+                    'coeff_vec': coeff_array,
+                    'magnitude': magnitude,
+                }
+            )
+
+        # Calculate net total nutrient balance(R, G, B)
+        total_net_nutrients = [0.0, 0.0, 0.0]
+        for vd in variety_data:
+            for i in range(3):
+                total_net_nutrients[i] += vd['coeff_vec'][i]
+        # Get lowest nutrient - limiting bottleneck
+        limiting_idx = total_net_nutrients.index(min(total_net_nutrients))
+        limiting_nutrient = nutrient_names[limiting_idx]
+
+        # Calculate how rare each nutrient vector(production/consumption type rates) is
+        for vd in variety_data:
+            # Measures how similar this plant’s nutrient production/consumption is with other existing plants
+            overlaps = [
+                self.cosine_similarity(vd['coeff_vec'], other_variety['coeff_vec'])
+                for other_variety in variety_data
+                if other_variety is not vd
+            ]
+            # High average = plant behaves similarly to many others; low = valuable esp. if produces limiting nutrient
+            avg_overlap = sum(overlaps) / len(overlaps) if overlaps else 0.0
+            vd['avg_overlap'] = avg_overlap
+
+        # Compute bottleneck scores: low overlap + high demand for limiting nutrient = higher bottleneck score
+        # NOTE: play around with values later if have time
+        for vd in variety_data:
+            coeff = vd['coeff_vec']
+            score = (
+                0.5 * vd['magnitude']  # overall measure of how hungry/production heavy plant is
+                + 1.0
+                * abs(
+                    coeff[limiting_idx]
+                )  # demand/production on limiting nutrient - most important so weight highest
+                + 0.5 * (1 - vd['avg_overlap'])  # uniqueness (less overlap = higher bottleneck)
+            )
+            vd['bottleneck_score'] = score
+
+        # Bottleneck scores for each species
+        species_bottleneck_scores = defaultdict(list)
+        for vd in variety_data:
+            species_bottleneck_scores[vd['species']].append(vd['bottleneck_score'])
+        # Average bottleneck score per species
+        species_avg_bottleneck = {
+            species: sum(scores) / len(scores)
+            for species, scores in species_bottleneck_scores.items()
+        }
+
+        # Bottleneck = highest score
+        # currently 0.5, 1, 0.5 weights
+        bottleneck_species = max(species_avg_bottleneck.items(), key=lambda x: x[1])[0]
+
+        # Sort descending
+        bottleneck_scores_desc = sorted(
+            variety_data, key=lambda x: x['bottleneck_score'], reverse=True
+        )
+
+        return {
+            'limiting_nutrient': limiting_nutrient,
+            'nutrient_balance': dict(zip(nutrient_names, total_net_nutrients, strict=False)),
+            'ranked_varieties': [
+                (vd['name'], vd['species'], vd['bottleneck_score']) for vd in bottleneck_scores_desc
+            ],
+            'bottleneck_species': bottleneck_species,
+            'species_bottleneck_scores': species_avg_bottleneck,
+            'variety_data': variety_data,
+        }
+
+    def cosine_similarity(self, a, b):
+        """Used to measure how similar a plant's nutrient production/consumption is to other plants"""
+        dot_product = sum(a[i] * b[i] for i in range(len(a)))
+        magnitude_a = math.sqrt(sum(x**2 for x in a))
+        magnitude_b = math.sqrt(sum(x**2 for x in b))
+        if magnitude_a == 0 or magnitude_b == 0:
+            return 0.0
+
+        return dot_product / (magnitude_a * magnitude_b)
 
     def _check_hexagonal_condition(self) -> bool:
         exactly_three_varieties = len(self.variety_counts) == 3
@@ -253,7 +370,10 @@ class Gardener3(Gardener):
         return species_varieties
 
     def calculate_cluster_score(
-        self, plant_varieties: list[PlantVariety], coordinates: list[Position]
+        self,
+        plant_varieties: list[PlantVariety],
+        coordinates: list[Position],
+        bottleneck_analysis: dict = None,
     ) -> float:
         # Calculate the net production for each nutrient for all plants in cluster
         delta_r_net = sum(plant.nutrient_coefficients[Micronutrient.R] for plant in plant_varieties)
@@ -262,6 +382,22 @@ class Gardener3(Gardener):
 
         # Find the bottleneck
         growth_potential = min(delta_r_net, delta_g_net, delta_b_net)
+
+        # Boost score if cluster produces the limiting nutrient well
+        if bottleneck_analysis:
+            limiting_nutrient = bottleneck_analysis['limiting_nutrient']
+
+            # Boost with bonus based on our bottleneck analysis as we need more
+            if limiting_nutrient == 'R':
+                limiting_production = delta_r_net
+            elif limiting_nutrient == 'G':
+                limiting_production = delta_g_net
+            else:
+                limiting_production = delta_b_net
+
+            # If the plant helps with the limiting nutrient  - encourage growth potential by bonus factor
+            if limiting_production > 0:
+                growth_potential *= 1.0 + 0.5 * limiting_production
 
         # Calculate the Area
         x_min = min(
@@ -290,8 +426,9 @@ class Gardener3(Gardener):
         return growth_potential / area
 
     def find_best_triad_permutations(
-        self, species_varieties: dict[Species, list[PlantVariety]]
+        self, species_varieties: dict[Species, list[PlantVariety]], bottleneck_analysis: dict = None
     ) -> list[ClusterData]:
+        """Finds the best triad clusters to form based on all possible combinations and any bottleneck factors"""
         species_list = list(species_varieties.keys())
         if len(species_list) < 3:
             print('Not enough species to form a triad')
@@ -320,8 +457,10 @@ class Gardener3(Gardener):
                 triad_coordinates = self.find_triad_coordinates(triad_varieties, Position(0, 0))
                 coordinates = [pos for variety, pos in triad_coordinates]
 
-                # Calculate the score for this triad
-                score = self.calculate_cluster_score(triad_varieties, coordinates)
+                # Calculate the score for this triad - including based on any bottleneck factors
+                score = self.calculate_cluster_score(
+                    triad_varieties, coordinates, bottleneck_analysis
+                )
 
                 # Include all triads (including those with negative scores)
                 all_triads.append((triad_varieties, triad_coordinates, score))
