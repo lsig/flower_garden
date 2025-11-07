@@ -1,5 +1,7 @@
 import math
+import time
 
+from core.engine import Engine
 from core.garden import Garden
 from core.gardener import Gardener
 from core.micronutrients import Micronutrient
@@ -9,56 +11,54 @@ from core.point import Position
 
 
 class Gardener1(Gardener):
+    """
+    HYBRID strategy: Fixed-k baseline + post-optimization.
+
+    Two-phase strategy:
+    1. Find and place optimal k-groups (k in [2,8]) using DP for sustainability
+    2. Greedily place remaining plants by extending clusters or creating new ones
+    """
+
     def __init__(self, garden: Garden, varieties: list[PlantVariety], params: dict | None = None):
         super().__init__(garden, varieties)
-        # Default parameters (can be overridden)
         self.params = params or self._get_default_params()
-
-    def _get_default_params(self) -> dict:
-        """Default parameter values (tuned from comprehensive parameter sweep)."""
-        return {
-            # Group evaluation weights (tuned from comprehensive sweep on all config files)
-            'min_sufficiency_weight': 10.0,  # Growth sustainability (critical)
-            'species_bonus_weight': 12.0,  # Species diversity importance
-            'growth_efficiency_weight': 2.0,  # Growth efficiency multiplier
-            'base_score_weight': 1.0,  # Base production balance
-            'exchange_potential_weight': 0.5,  # Exchange compatibility
-            'species_bonus_all': 20.0,  # Bonus for having all 3 species
-            'species_bonus_two': 5.0,  # Bonus for having 2 species
-            'balance_penalty_multiplier': 2.0,  # Penalty for nutrient imbalance
-            # Placement weights (tuned from comprehensive sweep on all config files)
-            'cross_species_weight': 12.0,  # Cross-species exchange importance
-            'optimal_distance_weight': 1.5,  # Optimal distance bonus
-            'min_distance_weight': 1.5,  # Tight packing bonus
-            'radius_weight': 1.0,  # Larger plant bonus
-            'partner_penalty_multiplier': 2.0,  # Penalty for too many partners
+        self._species_nutrient_map = {
+            Species.RHODODENDRON: Micronutrient.R,
+            Species.GERANIUM: Micronutrient.G,
+            Species.BEGONIA: Micronutrient.B,
         }
 
-    def _generate_polygonal_grid(self, grid_spacing: float = 1.0) -> list[Position]:
-        """
-        Generate a polygonal (hexagonal-like) grid of candidate positions.
-        Hexagonal packing is more efficient than square grids for circular plants.
+    def _get_default_params(self) -> dict:
+        return {
+            'min_sufficiency_weight': 15.0,  # Increased - sustainability is critical
+            'species_bonus_weight': 12.0,
+            'growth_efficiency_weight': 3.0,
+            'base_score_weight': 1.0,
+            'exchange_potential_weight': 1.0,
+            'species_bonus_all': 25.0,  # Higher bonus for all 3 species
+            'species_bonus_two': 8.0,
+            'balance_penalty_multiplier': 2.0,
+            'cross_species_weight': 15.0,  # Higher - interactions are key
+            'optimal_distance_weight': 2.0,
+            'min_distance_weight': 1.0,
+            'radius_weight': 2.0,  # Higher - larger plants = more growth
+            'partner_penalty_multiplier': 1.5,
+        }
 
-        Args:
-            grid_spacing: Distance between grid points
-
-        Returns:
-            List of Position objects forming a hexagonal grid
-        """
+    def _generate_hexagonal_grid(
+        self, grid_spacing: float, max_positions: int = 500
+    ) -> list[Position]:
+        """Generate hexagonal grid for efficient packing."""
         positions = []
-
-        # Hexagonal grid uses offset rows
-        # sqrt(3)/2 is around 0.866 is the vertical spacing factor for hex grids
         hex_height = grid_spacing * math.sqrt(3) / 2
 
         y = 0
         row = 0
-        while y <= self.garden.height:
-            # Alternate row offset for hexagonal packing
+        while y <= self.garden.height and len(positions) < max_positions:
             x_offset = (grid_spacing / 2) if row % 2 == 1 else 0
             x = x_offset
 
-            while x <= self.garden.width:
+            while x <= self.garden.width and len(positions) < max_positions:
                 pos = Position(x, y)
                 if self.garden.within_bounds(pos):
                     positions.append(pos)
@@ -69,200 +69,290 @@ class Gardener1(Gardener):
 
         return positions
 
-    def _evaluate_group_balance(self, group: list[PlantVariety]) -> float:
+    def _generate_square_grid(
+        self, grid_spacing: float, max_positions: int = 500
+    ) -> list[Position]:
+        """Generate square grid for alternative packing pattern."""
+        positions = []
+
+        y = 0
+        while y <= self.garden.height and len(positions) < max_positions:
+            x = 0
+            while x <= self.garden.width and len(positions) < max_positions:
+                pos = Position(x, y)
+                if self.garden.within_bounds(pos):
+                    positions.append(pos)
+                x += grid_spacing
+            y += grid_spacing
+
+        return positions
+
+    def _evaluate_group_sustainability(self, group: list[PlantVariety]) -> float:
         """
-        Optimized evaluation based on project requirements.
+        Evaluate how sustainable and growth-capable a group is.
 
-        Key insights from problem statement:
-        - Plants need 2*radius of EACH nutrient to grow (critical bottleneck)
-        - Exchange offers are split among partners (fewer partners = larger exchanges)
-        - Only different species can exchange (must have all 3 species)
-        - Net production must be positive but balanced across nutrients
-
-        Args:
-            group: List of plant varieties
-
-        Returns:
-            Score representing group quality (higher is better)
+        Key factors from problem statement:
+        - Growth requires 2*radius of EACH nutrient per plant
+        - Must have all 3 species for exchanges
+        - Net production must exceed consumption
+        - Balanced production across R, G, B
         """
         if not group:
             return 0.0
 
-        # Sum up all nutrient coefficients
+        # Calculate total nutrient production
         total_r = sum(v.nutrient_coefficients[Micronutrient.R] for v in group)
         total_g = sum(v.nutrient_coefficients[Micronutrient.G] for v in group)
         total_b = sum(v.nutrient_coefficients[Micronutrient.B] for v in group)
 
-        # CRITICAL: Growth requires 2*radius of EACH nutrient PER PLANT
-        # Each plant needs 2*radius of R, 2*radius of G, AND 2*radius of B
-        # Production varies per nutrient (e.g., R=10, G=5, B=3), so we must check optimally
-        
-        # Calculate per-plant requirements: each plant needs 2*radius of each nutrient
-        plant_requirements = [2 * v.radius for v in group]
-        max_requirement_per_plant = max(plant_requirements) if plant_requirements else 0
-        total_requirement_all_plants = sum(plant_requirements)
-        
-        # KEY INSIGHT: Each nutrient is independent - a plant needs ALL three to grow
-        # So we check if EACH nutrient can support EACH plant's requirement
-        # Since production varies (R might be high, B might be low), we need per-nutrient checks
-        
-        # Check if each nutrient can support the most demanding plant
-        # This ensures at least one plant can potentially get all its nutrients
-        r_suff_per_plant = total_r / max_requirement_per_plant if max_requirement_per_plant > 0 else 0
-        g_suff_per_plant = total_g / max_requirement_per_plant if max_requirement_per_plant > 0 else 0
-        b_suff_per_plant = total_b / max_requirement_per_plant if max_requirement_per_plant > 0 else 0
-        
-        # Check if each nutrient can support all plants growing simultaneously
-        # This ensures all plants can potentially get all their nutrients
-        r_suff_all = total_r / total_requirement_all_plants if total_requirement_all_plants > 0 else 0
-        g_suff_all = total_g / total_requirement_all_plants if total_requirement_all_plants > 0 else 0
-        b_suff_all = total_b / total_requirement_all_plants if total_requirement_all_plants > 0 else 0
-        
-        # CRITICAL: The bottleneck is the minimum across ALL nutrients
-        # This is the limiting factor - if one nutrient is insufficient, plants can't grow
-        # We check both per-plant and total, taking the more conservative
-        min_per_plant_sufficiency = min(r_suff_per_plant, g_suff_per_plant, b_suff_per_plant)
-        min_total_sufficiency = min(r_suff_all, g_suff_all, b_suff_all)
-        
-        # Use the more conservative metric
-        # This ensures: (1) each plant can get nutrients, AND (2) all can grow together
-        # The minimum across nutrients ensures balance across R, G, B
-        min_sufficiency = min(min_per_plant_sufficiency, min_total_sufficiency)
-        
-        # Calculate net production per turn from the group
-        net_production = total_r + total_g + total_b
+        # Calculate growth requirements: each plant needs 2*radius of each nutrient
+        total_requirement = sum(2 * v.radius for v in group)
 
-        # Balance score: reward balanced production
-        # Penalize imbalance more heavily (variance from mean)
-        mean_production = net_production / 3
-        variance = (
-            (total_r - mean_production) ** 2
-            + (total_g - mean_production) ** 2
-            + (total_b - mean_production) ** 2
-        ) / 3
-        balance_penalty = math.sqrt(variance)
+        # SUSTAINABILITY CHECK: Can production sustain continuous growth?
+        if total_requirement > 0:
+            r_sufficiency = total_r / total_requirement
+            g_sufficiency = total_g / total_requirement
+            b_sufficiency = total_b / total_requirement
+            # Bottleneck is the minimum
+            min_sufficiency = min(r_sufficiency, g_sufficiency, b_sufficiency)
+        else:
+            min_sufficiency = 0.0
 
-        # Base score: positive net production with balanced nutrients
-        base_score = net_production - balance_penalty * self.params['balance_penalty_multiplier']
-
-        # CRITICAL: Species diversity - MUST have all 3 species for exchanges
+        # SPECIES DIVERSITY: Must have all 3 for exchanges
         species_set = {v.species for v in group}
         if len(species_set) == 3:
             species_bonus = self.params['species_bonus_all']
         elif len(species_set) == 2:
             species_bonus = self.params['species_bonus_two']
         else:
-            species_bonus = 0.0  # No exchanges possible
+            species_bonus = 0.0  # Can't exchange effectively
 
-        # Growth efficiency: how well production matches growth needs
-        # Reward groups where production can sustain continuous growth
-        growth_efficiency = min_sufficiency * 10.0  # Scale up for visibility
+        # NET PRODUCTION: Higher is better
+        net_production = total_r + total_g + total_b
 
-        # Exchange potential: calculate how well plants can exchange
-        # Ideal: Each plant pairs with complementary species
-        exchange_potential = 0.0
-        for i, v1 in enumerate(group):
-            for v2 in group[i + 1 :]:
-                if v1.species != v2.species:
-                    # Calculate exchange compatibility
-                    # One produces what the other needs
-                    # Manual species->nutrient mapping
-                    if v1.species == Species.RHODODENDRON:
-                        prod1 = Micronutrient.R
-                    elif v1.species == Species.GERANIUM:
-                        prod1 = Micronutrient.G
-                    else:  # BEGONIA
-                        prod1 = Micronutrient.B
+        # BALANCE: Penalize imbalance (one nutrient too low blocks growth)
+        mean = net_production / 3
+        variance = ((total_r - mean) ** 2 + (total_g - mean) ** 2 + (total_b - mean) ** 2) / 3
+        balance_penalty = math.sqrt(variance) * self.params['balance_penalty_multiplier']
 
-                    if v2.species == Species.RHODODENDRON:
-                        prod2 = Micronutrient.R
-                    elif v2.species == Species.GERANIUM:
-                        prod2 = Micronutrient.G
-                    else:
-                        prod2 = Micronutrient.B
+        # GROWTH POTENTIAL: Sum of max sizes (100*r^2 for each plant)
+        max_growth_potential = sum(100 * v.radius**2 for v in group)
 
-                    # Reward if they produce different nutrients (can exchange)
-                    if prod1 != prod2:
-                        # Calculate how much they can exchange
-                        # Based on production coefficients
-                        coef1 = v1.nutrient_coefficients[prod1]
-                        coef2 = v2.nutrient_coefficients[prod2]
-                        exchange_potential += coef1 * coef2  # Reward high production pairs
-
-        # Combined score prioritizing critical factors
-        final_score = (
-            base_score * self.params['base_score_weight']
-            + species_bonus * self.params['species_bonus_weight']
-            + growth_efficiency * self.params['growth_efficiency_weight']
-            + exchange_potential * self.params['exchange_potential_weight']
-            + min_sufficiency * self.params['min_sufficiency_weight']
+        # EXCHANGE COMPATIBILITY: Different species can exchange
+        exchange_pairs = sum(
+            1 for i, v1 in enumerate(group) for v2 in group[i + 1 :] if v1.species != v2.species
         )
 
-        return final_score
+        # COMBINED SCORE
+        score = (
+            min_sufficiency * self.params['min_sufficiency_weight']  # Sustainability (critical!)
+            + species_bonus * self.params['species_bonus_weight']  # Diversity
+            + (net_production - balance_penalty) * self.params['base_score_weight']  # Production
+            + max_growth_potential * 0.01  # Growth potential
+            + exchange_pairs * self.params['exchange_potential_weight']  # Exchange potential
+        )
 
-    def _find_optimal_groups_dp(self, k: int) -> list[list[PlantVariety]]:
+        return score
+
+    def _find_best_k_groups_fixed(self) -> tuple[int, list[list[PlantVariety]]]:
         """
-        Find optimal groups using greedy approach for scalability.
+        Find optimal k (in [2,8]) and corresponding groups using FIXED-K approach.
+        All groups have the same size k. This is the proven baseline.
 
-        For large numbers of varieties (100+), uses fast greedy clustering.
-        For smaller sets (< 50), uses limited combinatorial search.
-
-        Args:
-            k: Size of each group
-
-        Returns:
-            List of optimal plant variety groups
+        Returns: (best_k, best_groups)
         """
         n = len(self.varieties)
 
-        if n <= k:
-            return [self.varieties]
+        if n <= 2:
+            return (n, [self.varieties])
 
-        # For large sets, use fast greedy approach
-        if n > 50:
-            return self._greedy_grouping(k)
+        best_k = 3  # Default
+        best_groups = []
+        best_score = float('-inf')
 
-        # For smaller sets, use limited combinatorial search
-        return self._limited_search_grouping(k)
+        # Test each k in [2, 8]
+        for k in range(2, min(9, n + 1)):
+            groups = self._greedy_grouping_fast(k)
 
-    def _greedy_grouping(self, k: int) -> list[list[PlantVariety]]:
-        """Fast greedy grouping for large numbers of varieties."""
+            # Evaluate this grouping
+            total_score = sum(self._evaluate_group_sustainability(g) for g in groups)
+
+            # Bonus for using more plants (less waste)
+            plants_used = sum(len(g) for g in groups)
+            coverage = plants_used / n
+            total_score *= coverage
+
+            # Bonus for having all species represented
+            all_species = set()
+            for g in groups:
+                for v in g:
+                    all_species.add(v.species)
+            if len(all_species) == 3:
+                total_score += 20.0
+
+            if total_score > best_score:
+                best_score = total_score
+                best_k = k
+                best_groups = groups
+
+        return (best_k, best_groups)
+
+    def _try_merge_groups(
+        self, group1: list[PlantVariety], group2: list[PlantVariety]
+    ) -> tuple[list[PlantVariety], float]:
+        """Try merging two groups and return the merged group + score."""
+        merged = group1 + group2
+        score = self._evaluate_group_sustainability(merged)
+        return (merged, score)
+
+    def _try_split_group(self, group: list[PlantVariety]) -> tuple[list[list[PlantVariety]], float]:
+        """
+        Try splitting a group into two smaller groups.
+        Returns best split and combined score.
+        """
+        if len(group) <= 3:
+            # Too small to split meaningfully
+            return ([group], self._evaluate_group_sustainability(group))
+
+        best_split = None
+        best_score = float('-inf')
+
+        # Try different split sizes
+        for split_size in range(2, len(group) - 1):
+            # Try to maintain species diversity in both parts
+            group1 = group[:split_size]
+            group2 = group[split_size:]
+
+            score1 = self._evaluate_group_sustainability(group1)
+            score2 = self._evaluate_group_sustainability(group2)
+            total_score = score1 + score2
+
+            if total_score > best_score:
+                best_score = total_score
+                best_split = [group1, group2]
+
+        return (best_split or [group], best_score)
+
+    def _hybrid_group_optimization(
+        self, baseline_groups: list[list[PlantVariety]]
+    ) -> list[list[PlantVariety]]:
+        """
+        Post-optimize groups by trying merges and splits.
+        Only keep changes that improve total sustainability.
+        """
+        groups = [g[:] for g in baseline_groups]  # Deep copy
+        baseline_score = sum(self._evaluate_group_sustainability(g) for g in groups)
+        improved = True
+
+        # Iterative improvement (max 3 rounds to avoid time waste)
+        for _ in range(3):
+            if not improved:
+                break
+            improved = False
+
+            # Try merging adjacent groups
+            for i in range(len(groups) - 1):
+                for j in range(i + 1, len(groups)):
+                    orig_score = self._evaluate_group_sustainability(
+                        groups[i]
+                    ) + self._evaluate_group_sustainability(groups[j])
+
+                    merged, merged_score = self._try_merge_groups(groups[i], groups[j])
+
+                    if merged_score > orig_score * 1.05:  # 5% improvement threshold
+                        # Apply merge
+                        new_groups = [g for k, g in enumerate(groups) if k not in {i, j}]
+                        new_groups.append(merged)
+                        groups = new_groups
+                        improved = True
+                        break
+                if improved:
+                    break
+
+            if improved:
+                continue
+
+            # Try splitting large groups
+            for i in range(len(groups)):
+                if len(groups[i]) >= 6:  # Only split large groups
+                    orig_score = self._evaluate_group_sustainability(groups[i])
+                    split_groups, split_score = self._try_split_group(groups[i])
+
+                    if split_score > orig_score * 1.05:  # 5% improvement threshold
+                        # Apply split
+                        new_groups = [g for k, g in enumerate(groups) if k != i]
+                        new_groups.extend(split_groups)
+                        groups = new_groups
+                        improved = True
+                        break
+
+        final_score = sum(self._evaluate_group_sustainability(g) for g in groups)
+
+        # Only return optimized version if it's better
+        if final_score > baseline_score:
+            return groups
+        else:
+            return baseline_groups
+
+    def _find_best_k_groups_dp(self) -> tuple[int, list[list[PlantVariety]]]:
+        """
+        HYBRID approach: Fixed-k baseline + post-optimization.
+
+        1. Run fixed-k to get proven baseline
+        2. Try merging/splitting groups to improve
+        3. Return optimized groups
+
+        Returns: (average_k, best_groups)
+        """
+        # Phase 1: Get fixed-k baseline
+        baseline_k, baseline_groups = self._find_best_k_groups_fixed()
+
+        # Phase 2: Post-optimize
+        optimized_groups = self._hybrid_group_optimization(baseline_groups)
+
+        # Calculate average k
+        avg_k = (
+            sum(len(g) for g in optimized_groups) / len(optimized_groups)
+            if optimized_groups
+            else baseline_k
+        )
+
+        return (int(avg_k), optimized_groups)
+
+    def _greedy_grouping_fast(self, k: int) -> list[list[PlantVariety]]:
+        """
+        Fast greedy grouping (CRITICAL: avoid exponential search!).
+        Always ensures species diversity.
+        """
         groups = []
         remaining = self.varieties.copy()
 
-        # Group varieties by species for better diversity
-        species_groups = {Species.RHODODENDRON: [], Species.GERANIUM: [], Species.BEGONIA: []}
+        # Pre-sort by species
+        species_lists = {Species.RHODODENDRON: [], Species.GERANIUM: [], Species.BEGONIA: []}
         for v in remaining:
-            species_groups[v.species].append(v)
+            species_lists[v.species].append(v)
 
         while remaining:
             group = []
 
-            # Try to ensure species diversity: take one from each species if available
+            # Priority: get all 3 species first
             for species in [Species.RHODODENDRON, Species.GERANIUM, Species.BEGONIA]:
-                if species_groups[species] and len(group) < k:
-                    group.append(species_groups[species].pop(0))
-                    remaining.remove(group[-1])
+                if species_lists[species] and len(group) < k:
+                    plant = species_lists[species].pop(0)
+                    group.append(plant)
+                    remaining.remove(plant)
 
-            # Fill remaining slots with best matches
+            # Fill remaining slots
             while len(group) < k and remaining:
-                best_v = None
-                best_score = float('-inf')
-
-                for v in remaining[: min(50, len(remaining))]:  # Limit search for speed
-                    test_group = group + [v]
-                    score = self._evaluate_group_balance(test_group)
-                    if score > best_score:
-                        best_score = score
-                        best_v = v
-
-                if best_v:
-                    group.append(best_v)
-                    remaining.remove(best_v)
-                    if best_v in species_groups[best_v.species]:
-                        species_groups[best_v.species].remove(best_v)
-                else:
-                    break
+                # Prefer larger radius plants (more growth potential)
+                best_plant = max(
+                    remaining[: min(20, len(remaining))],
+                    key=lambda v: (v.radius, sum(v.nutrient_coefficients.values())),
+                )
+                group.append(best_plant)
+                remaining.remove(best_plant)
+                if best_plant in species_lists[best_plant.species]:
+                    species_lists[best_plant.species].remove(best_plant)
 
             if group:
                 groups.append(group)
@@ -271,297 +361,266 @@ class Gardener1(Gardener):
 
         return groups
 
-    def _limited_search_grouping(self, k: int) -> list[list[PlantVariety]]:
-        """Limited combinatorial search for smaller sets."""
-        groups = []
-        used = set()
-
-        while len(used) < len(self.varieties):
-            remaining = [v for i, v in enumerate(self.varieties) if i not in used]
-
-            if not remaining:
-                break
-
-            group_size = min(k, len(remaining))
-
-            # Limit search space: only try combinations from first 30 remaining
-            search_space = remaining[: min(30, len(remaining))]
-
-            best_score = float('-inf')
-            best_group = None
-
-            def find_group(
-                idx: int, count: int, current: list[int], space=search_space, size=group_size
-            ) -> None:
-                nonlocal best_score, best_group
-
-                if count == size:
-                    group = [space[i] for i in current]
-                    score = self._evaluate_group_balance(group)
-                    if score > best_score:
-                        best_score = score
-                        best_group = current[:]
-                    return
-
-                if idx >= len(space):
-                    return
-
-                # Take current
-                current.append(idx)
-                find_group(idx + 1, count + 1, current, space, size)
-                current.pop()
-
-                # Skip current
-                find_group(idx + 1, count, current, space, size)
-
-            find_group(0, 0, [])
-
-            if best_group:
-                group = [search_space[i] for i in best_group]
-                groups.append(group)
-                # Mark as used
-                for variety in group:
-                    for i, v in enumerate(self.varieties):
-                        if v is variety:
-                            used.add(i)
-                            break
-            else:
-                # Fallback: take first k remaining
-                if remaining:
-                    groups.append(remaining[:group_size])
-                break
-
-        return groups
-
-    def _place_group_on_grid(
-        self, group: list[PlantVariety], grid_positions: list[Position], test_garden: Garden
-    ) -> list[tuple[PlantVariety, Position]]:
+    def _run_phases_on_test_garden(
+        self, grid_positions: list[Position]
+    ) -> tuple[list[tuple[PlantVariety, Position]], set[int]]:
         """
-        Enhanced placement strategy that maximizes exchange opportunities.
-
-        Improvements:
-        - Prioritizes high-radius plants (more growth potential)
-        - Creates optimal interaction distances for exchanges
-        - Prefers positions that enable multiple cross-species interactions
-        - Considers exchange network value (hub creation)
-
-        Args:
-            group: List of plant varieties to place
-            grid_positions: Available grid positions
-            test_garden: Garden instance for testing placement
-
-        Returns:
-            List of (variety, position) tuples for successful placements
+        Run Phase 1 and Phase 2 on a temporary test garden.
+        Returns placements and used variety IDs.
         """
-        placements = []
+        # Create temporary test garden
+        test_garden = Garden(width=self.garden.width, height=self.garden.height)
 
-        # Sort plants by radius (larger first) for better packing and growth potential
-        # Also prioritize by production coefficient (more productive first)
-        sorted_group = sorted(
-            group,
-            key=lambda v: (
-                v.radius,  # Primary: larger radius = more growth
-                max(v.nutrient_coefficients.values()),  # Secondary: higher production
-            ),
-            reverse=True,
+        # Phase 1: Find optimal k and place initial groups
+        best_k, initial_groups = self._find_best_k_groups_dp()
+        placements, used_ids = self._place_initial_groups_on_garden(
+            initial_groups, grid_positions, test_garden
         )
 
-        for variety in sorted_group:
-            best_position = None
+        # Phase 2: Greedy cluster extension for remaining plants
+        remaining_varieties = [v for v in self.varieties if id(v) not in used_ids]
+        if remaining_varieties:
+            self._greedy_cluster_extension_on_garden(
+                remaining_varieties, placements, grid_positions, test_garden
+            )
+
+        return (placements, used_ids)
+
+    def _place_initial_groups_on_garden(
+        self, groups: list[list[PlantVariety]], grid_positions: list[Position], garden: Garden
+    ) -> tuple[list[tuple[PlantVariety, Position]], set[int]]:
+        """Place initial k-groups on specified garden."""
+        all_placements = []
+        used_ids = set()
+
+        for group in groups:
+            sorted_group = sorted(group, key=lambda v: v.radius, reverse=True)
+
+            for variety in sorted_group:
+                best_pos = None
+                best_score = -1
+
+                for pos in grid_positions[: min(200, len(grid_positions))]:
+                    if garden.can_place_plant(variety, pos):
+                        score = 0.0
+                        cross_species = 0
+
+                        recent = (
+                            all_placements[-20:] if len(all_placements) > 20 else all_placements
+                        )
+                        for placed_var, placed_pos in recent:
+                            dx = pos.x - placed_pos.x
+                            dy = pos.y - placed_pos.y
+                            dist = math.sqrt(dx * dx + dy * dy)
+                            interaction_dist = variety.radius + placed_var.radius
+
+                            if dist < interaction_dist and variety.species != placed_var.species:
+                                cross_species += 1
+                                score += 15.0
+
+                        score += variety.radius * 3.0
+
+                        if score > best_score:
+                            best_score = score
+                            best_pos = pos
+
+                            if cross_species >= 2:
+                                break
+
+                if best_pos:
+                    garden.add_plant(variety, best_pos)
+                    all_placements.append((variety, best_pos))
+                    used_ids.add(id(variety))
+
+        return (all_placements, used_ids)
+
+    def _greedy_cluster_extension_on_garden(
+        self,
+        remaining: list[PlantVariety],
+        existing_placements: list[tuple[PlantVariety, Position]],
+        grid_positions: list[Position],
+        garden: Garden,
+    ) -> None:
+        """Greedy cluster extension on specified garden."""
+        while remaining:
+            best_variety = None
+            best_pos = None
             best_score = -1
-            packing_score = -1  # Track best packing-only score as fallback
 
-            # Try each grid position
-            for pos in grid_positions:
-                if test_garden.can_place_plant(variety, pos):
-                    score = 0.0
-                    packing_only_score = 0.0
+            for variety in remaining[: min(30, len(remaining))]:
+                for pos in grid_positions[: min(150, len(grid_positions))]:
+                    if garden.can_place_plant(variety, pos):
+                        score = 0.0
+                        interactions = 0
+
+                        recent = existing_placements[-15:]
+                        for placed_var, placed_pos in recent:
+                            dx = pos.x - placed_pos.x
+                            dy = pos.y - placed_pos.y
+                            dist = math.sqrt(dx * dx + dy * dy)
+                            interaction_dist = variety.radius + placed_var.radius
+
+                            if dist < interaction_dist and variety.species != placed_var.species:
+                                interactions += 1
+                                score += 20.0
+
+                        score += variety.radius * 2.0
+
+                        if score > best_score:
+                            best_score = score
+                            best_variety = variety
+                            best_pos = pos
+
+            if len(remaining) >= 3:
+                test_group = remaining[:3]
+                cluster_score = self._evaluate_group_sustainability(test_group)
+
+                if cluster_score > best_score * 0.8:
+                    for pos in grid_positions[:50]:
+                        if garden.can_place_plant(test_group[0], pos):
+                            best_variety = test_group[0]
+                            best_pos = pos
+                            best_score = cluster_score
+                            break
+
+            if best_variety and best_pos:
+                garden.add_plant(best_variety, best_pos)
+                existing_placements.append((best_variety, best_pos))
+                remaining.remove(best_variety)
+            else:
+                break
+
+    def _simulate_and_score(self, test_garden: Garden, turns: int = 100) -> float:
+        """Run simulation on test garden and return final growth."""
+        engine = Engine(test_garden)
+        engine.run_simulation(turns)
+        return test_garden.total_growth()
+
+    def _gap_fill_with_interactions(
+        self,
+        remaining: list[PlantVariety],
+        grid_positions: list[Position],
+        time_budget: float = 20.0,
+    ) -> None:
+        """
+        Phase 4: Gap-fill by maximizing cross-species interactions.
+        Continues placing plants until time budget exhausted.
+        """
+        start_time = time.time()
+
+        while remaining and (time.time() - start_time < time_budget):
+            best_variety = None
+            best_pos = None
+            best_score = -1
+
+            # Try ALL remaining plants, find the one with best position
+            for variety in remaining:
+                if time.time() - start_time >= time_budget:
+                    break
+
+                # Find best position for this specific plant
+                for pos in grid_positions:
+                    if not self.garden.can_place_plant(variety, pos):
+                        continue
+
+                    # Score based on cross-species interactions
                     interaction_count = 0
-                    cross_species_count = 0
-                    optimal_distance_bonus = 0.0
-                    min_distance_bonus = 0.0  # Bonus for tight packing
+                    for existing_plant in self.garden.plants:
+                        if variety.species == existing_plant.variety.species:
+                            continue  # Same species don't interact
 
-                    # Evaluate interactions with already placed plants
-                    for placed_variety, placed_pos in placements:
-                        distance = math.sqrt(
-                            (pos.x - placed_pos.x) ** 2 + (pos.y - placed_pos.y) ** 2
-                        )
-                        min_required_distance = max(variety.radius, placed_variety.radius)
-                        interaction_distance = variety.radius + placed_variety.radius
+                        dx = pos.x - existing_plant.position.x
+                        dy = pos.y - existing_plant.position.y
+                        distance = math.sqrt(dx * dx + dy * dy)
+                        interaction_distance = variety.radius + existing_plant.variety.radius
 
-                        # PACKING OPTIMIZATION: Bonus for perfect packing (exact minimum distance)
-                        # This maximizes garden capacity with 100% packing efficiency
-                        if distance >= min_required_distance:
-                            # Bonus only for exact minimum distance (perfect packing)
-                            distance_ratio = (
-                                distance / min_required_distance if min_required_distance > 0 else 0
-                            )
-                            # Only reward exact minimum (1.0) for perfect packing
-                            if abs(distance_ratio - 1.0) < 0.01:  # Exactly at minimum (with small tolerance for floating point)
-                                min_distance_bonus += 3.0  # Maximum bonus for perfect packing
-                            packing_only_score += min_distance_bonus
-
-                        # Check if within interaction range for exchanges
-                        # Also check positions just outside that are very close to boundary
-                        optimal_ratio = (
-                            distance / interaction_distance if interaction_distance > 0 else 0
-                        )
-                        
                         if distance < interaction_distance:
                             interaction_count += 1
 
-                            # Cross-species interactions are more valuable
-                            if variety.species != placed_variety.species:
-                                cross_species_count += 1
+                    # Score = interactions * 10 + radius
+                    score = interaction_count * 10.0 + variety.radius * 1.0
 
-                                # CRITICAL: Optimal distance for exchanges
-                                # Place at maximum interaction distance (ratio ≈ 1.0)
-                                # Reward positions closest to interaction boundary for maximum distance
-                                if optimal_ratio >= 0.99:  # Very close to maximum (99%+ of interaction distance)
-                                    optimal_distance_bonus += 3.0  # Perfect positioning for exchanges
+                    if score > best_score:
+                        best_score = score
+                        best_variety = variety
+                        best_pos = pos
 
-                                # Bonus for complementary exchanges
-                                nutrient1 = variety.nutrient_coefficients
-                                nutrient2 = placed_variety.nutrient_coefficients
-
-                                # Reward if one produces what the other needs
-                                for nut in Micronutrient:
-                                    if (nutrient1[nut] > 0 and nutrient2[nut] < 0) or (
-                                        nutrient1[nut] < 0 and nutrient2[nut] > 0
-                                    ):
-                                        optimal_distance_bonus += 1.0
-
-                    # Score calculation: balance packing density with exchanges
-                    # KEY INSIGHT: For large gardens, packing first is critical
-                    partner_penalty = (
-                        max(
-                            0, (cross_species_count - 3) * self.params['partner_penalty_multiplier']
-                        )
-                        if cross_species_count > 3
-                        else 0
-                    )
-
-                    # Combined score: prioritize exchanges when possible, but also reward packing
-                    score = (
-                        cross_species_count * self.params['cross_species_weight']
-                        + optimal_distance_bonus * self.params['optimal_distance_weight']
-                        + min_distance_bonus * self.params['min_distance_weight']
-                        + (variety.radius * self.params['radius_weight'])
-                        - partner_penalty  # Penalty for too many partners
-                    )
-
-                    # Packing-only score (for when no exchanges available)
-                    packing_only_score = min_distance_bonus + interaction_count * 0.5
-
-                    # Always consider both scores, but prioritize exchanges when available
-                    if cross_species_count > 0:
-                        # We have exchanges - use combined score
-                        if score > best_score:
-                            best_score = score
-                            best_position = pos
-                    else:
-                        # No exchanges - prioritize tight packing
-                        if packing_only_score > packing_score:
-                            packing_score = packing_only_score
-                            best_position = pos
-                            best_score = packing_only_score  # Use packing score as main score
-
-            if best_position:
-                placements.append((variety, best_position))
-                # Simulate placement in test garden
-                test_garden.add_plant(variety, best_position)
-
-        return placements
+            # Place best plant found this iteration
+            if best_variety and best_pos:
+                self.garden.add_plant(best_variety, best_pos)
+                remaining.remove(best_variety)
+            else:
+                # No valid position for any remaining plant
+                break
 
     def cultivate_garden(self) -> None:
         """
-        Enhanced cultivation strategy that maximizes growth.
-
-        Improvements:
-        - Dynamic grid spacing based on plant radii
-        - Tests multiple group sizes and selects best
-        - Prioritizes high-value plants (larger radius, better production)
+        Four-phase cultivation:
+        1. Find and place optimal k-groups
+        2. Greedily extend clusters or create new ones
+        3. Multi-grid testing (square vs hexagonal) with actual simulation
+        4. Gap-fill remaining plants maximizing interactions
         """
-        # Calculate optimal grid spacing for perfect packing
-        # Key insight: Use exact minimum radius to maximize density
-        # Plants only need distance >= max(r1, r2), so we can pack at exact minimum
-        if self.varieties:
-            min_radius = min(v.radius for v in self.varieties)
+        if not self.varieties:
+            return
 
-            # Use exact minimum radius for perfect 100% packing
-            # This allows plants to be placed at exactly minimum distance
-            grid_spacing = float(min_radius)  # Exact minimum for perfect packing
+        # Calculate grid spacing
+        min_radius = min(v.radius for v in self.varieties)
+        grid_spacing = float(min_radius)
+
+        # PHASE 3: Multi-Grid Selection (Square vs Hexagonal)
+        # Test both grids and pick the one with better actual growth
+
+        # Generate Square Grid + fine grid
+        square_grid = self._generate_square_grid(grid_spacing, max_positions=400)
+        if min_radius == 1 and max(v.radius for v in self.varieties) > 1:
+            fine_grid_square = self._generate_square_grid(1.0, max_positions=300)
+            existing_square = {(p.x, p.y) for p in square_grid}
+            for pos in fine_grid_square:
+                if (pos.x, pos.y) not in existing_square:
+                    square_grid.append(pos)
+
+        # Generate Hexagonal Grid + fine grid
+        hex_grid = self._generate_hexagonal_grid(grid_spacing, max_positions=400)
+        if min_radius == 1 and max(v.radius for v in self.varieties) > 1:
+            fine_grid_hex = self._generate_hexagonal_grid(1.0, max_positions=300)
+            existing_hex = {(p.x, p.y) for p in hex_grid}
+            for pos in fine_grid_hex:
+                if (pos.x, pos.y) not in existing_hex:
+                    hex_grid.append(pos)
+
+        # Test Square Grid
+        test_garden_square = Garden(width=self.garden.width, height=self.garden.height)
+        placements_square, used_ids_square = self._run_phases_on_test_garden(square_grid)
+        # Apply placements to test garden for simulation
+        for variety, pos in placements_square:
+            test_garden_square.add_plant(variety, pos)
+        score_square = self._simulate_and_score(test_garden_square, turns=365)
+
+        # Test Hexagonal Grid
+        test_garden_hex = Garden(width=self.garden.width, height=self.garden.height)
+        placements_hex, used_ids_hex = self._run_phases_on_test_garden(hex_grid)
+        # Apply placements to test garden for simulation
+        for variety, pos in placements_hex:
+            test_garden_hex.add_plant(variety, pos)
+        score_hex = self._simulate_and_score(test_garden_hex, turns=365)
+
+        # Pick winner and apply to actual garden
+        if score_square > score_hex:
+            winning_placements = placements_square
+            winning_used_ids = used_ids_square
+            winning_grid = square_grid
         else:
-            grid_spacing = 1.0
+            winning_placements = placements_hex
+            winning_used_ids = used_ids_hex
+            winning_grid = hex_grid
 
-        # Generate primary grid
-        grid_positions = self._generate_polygonal_grid(grid_spacing)
+        # Apply winning placements to actual garden
+        for variety, pos in winning_placements:
+            self.garden.add_plant(variety, pos)
 
-        # For mixed radii, add a finer secondary grid for small plants
-        if self.varieties:
-            min_radius = min(v.radius for v in self.varieties)
-            max_radius = max(v.radius for v in self.varieties)
-            if min_radius < max_radius and min_radius == 1:
-                # Add finer grid for radius 1 plants when mixed with larger ones
-                # Use exact minimum for perfect packing
-                fine_grid = self._generate_polygonal_grid(1.0)
-                # Combine grids (remove duplicates)
-                existing_positions = {(p.x, p.y) for p in grid_positions}
-                for pos in fine_grid:
-                    if (pos.x, pos.y) not in existing_positions:
-                        grid_positions.append(pos)
+        # PHASE 4: Gap-Fill with Interaction Maximization
+        remaining_varieties = [v for v in self.varieties if id(v) not in winning_used_ids]
 
-        # Try multiple group sizes and select the best configuration
-        # Group sizes to try: 3 (all species), 4-6 (more exchanges), and larger if needed
-        n_varieties = len(self.varieties)
-
-        # For large sets, limit group size testing to avoid timeout
-        if n_varieties > 100:
-            candidate_group_sizes = [3, 4]  # Only test essential sizes
-        elif n_varieties > 50:
-            candidate_group_sizes = [3, 4, 5]
-        else:
-            candidate_group_sizes = [3, 4, 5, 6]
-            if n_varieties > 12:
-                candidate_group_sizes.extend([7, 8])
-
-        best_groups = None
-        best_total_score = float('-inf')
-
-        # Evaluate each group size
-        for k in candidate_group_sizes:
-            if k > len(self.varieties):
-                continue
-
-            groups = self._find_optimal_groups_dp(k)
-
-            # Evaluate the grouping quality
-            total_score = sum(self._evaluate_group_balance(group) for group in groups)
-
-            # Bonus for having all 3 species represented across groups
-            all_species = set()
-            for group in groups:
-                for v in group:
-                    all_species.add(v.species)
-
-            if len(all_species) == 3:
-                total_score += 10.0  # Bonus for having all species
-
-            # Prefer configurations that use more plants (less waste)
-            coverage_ratio = sum(len(g) for g in groups) / len(self.varieties)
-            total_score *= coverage_ratio
-
-            if total_score > best_total_score:
-                best_total_score = total_score
-                best_groups = groups
-
-        # Fallback if no groups found
-        if not best_groups:
-            # Try with minimum group size
-            best_groups = (
-                self._find_optimal_groups_dp(3) if len(self.varieties) >= 3 else [self.varieties]
-            )
-
-        # Place each group
-        for group in best_groups:
-            self._place_group_on_grid(group, grid_positions, self.garden)
+        if remaining_varieties:
+            self._gap_fill_with_interactions(remaining_varieties, winning_grid, time_budget=20.0)

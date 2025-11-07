@@ -16,7 +16,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from core.engine import Engine
 from core.garden import Garden
 from core.nursery import Nursery
-from gardeners.group1.gardener import Gardener1
+from gardeners.group1.gardener_multi import Gardener1
 
 # Find all config files
 CONFIG_DIRS = [
@@ -113,17 +113,14 @@ def grid_search_parameters(config_files, max_combinations=200, turns=100, max_co
         'growth_efficiency_weight': [1.0, 1.5, 2.0, 2.5, 3.0],  # 5 values
         'base_score_weight': [0.5, 1.0, 1.5, 2.0],  # 4 values
         'exchange_potential_weight': [0.3, 0.5, 0.7, 1.0],  # 4 values
-        
         # Species diversity bonuses
         'species_bonus_all': [15.0, 20.0, 25.0, 30.0, 35.0],  # 5 values
         'species_bonus_two': [3.0, 5.0, 7.0, 10.0],  # 4 values
-        
         # Placement parameters
         'cross_species_weight': [8.0, 12.0, 16.0, 20.0, 24.0],  # 5 values
         'optimal_distance_weight': [1.5, 2.0, 2.5, 3.0, 3.5],  # 5 values
         'min_distance_weight': [1.0, 1.5, 2.0, 2.5],  # 4 values
         'radius_weight': [0.5, 1.0, 1.5, 2.0],  # 4 values
-        
         # Penalty parameters
         'balance_penalty_multiplier': [1.0, 1.5, 2.0, 2.5, 3.0],  # 5 values
         'partner_penalty_multiplier': [1.0, 1.5, 2.0, 2.5, 3.0],  # 5 values
@@ -140,7 +137,7 @@ def grid_search_parameters(config_files, max_combinations=200, turns=100, max_co
     combinations = list(itertools.product(*param_values))
     total_combos = len(combinations)
     print(f'Total possible combinations: {total_combos}')
-    
+
     # If too many, use random sampling
     if total_combos > max_combinations:
         print(f'Randomly sampling {max_combinations} combinations from {total_combos} total\n')
@@ -174,7 +171,7 @@ def grid_search_parameters(config_files, max_combinations=200, turns=100, max_co
             best_score = score
             best_params = params.copy()
             print(f'  *** NEW BEST! Score: {score:.2f} ***')
-            
+
             # Save incrementally to file
             output_file = Path(__file__).parent / 'best_params.json'
             incremental_data = {
@@ -184,7 +181,7 @@ def grid_search_parameters(config_files, max_combinations=200, turns=100, max_co
                 'avg_plants': avg_plants,
                 'avg_time': avg_time,
                 'combination_number': i + 1,
-                'search_type': 'grid_search'
+                'search_type': 'grid_search',
             }
             with open(output_file, 'w') as f:
                 json.dump(incremental_data, f, indent=2)
@@ -255,7 +252,7 @@ def random_search_parameters(config_files, n_iterations=200, turns=100, max_conf
             best_score = score
             best_params = params.copy()
             print(f'  *** NEW BEST! Score: {score:.2f} ***')
-            
+
             # Save incrementally to file
             output_file = Path(__file__).parent / 'best_params.json'
             incremental_data = {
@@ -265,7 +262,7 @@ def random_search_parameters(config_files, n_iterations=200, turns=100, max_conf
                 'avg_plants': avg_plants,
                 'avg_time': avg_time,
                 'iteration_number': i + 1,
-                'search_type': 'random_search'
+                'search_type': 'random_search',
             }
             with open(output_file, 'w') as f:
                 json.dump(incremental_data, f, indent=2)
@@ -301,9 +298,11 @@ if __name__ == '__main__':
     estimated_seconds = total_configs * total_combinations * 3  # ~3 sec per config per combination
     estimated_hours = estimated_seconds / 3600
     estimated_minutes = (estimated_seconds % 3600) / 60
-    
+
     print(f'Estimated runtime: ~{estimated_hours:.1f} hours ({estimated_minutes:.0f} minutes)')
-    print(f'This is based on testing {total_combinations} combinations on {total_configs} config files')
+    print(
+        f'This is based on testing {total_combinations} combinations on {total_configs} config files'
+    )
     print('Note: Actual time may vary based on config complexity')
     print('Starting full parameter sweep...\n')
 
@@ -312,7 +311,10 @@ if __name__ == '__main__':
     print('COMPREHENSIVE GRID SEARCH (All Configs)')
     print('=' * 70)
     best_params_grid, grid_results = grid_search_parameters(
-        config_files, max_combinations=200, turns=100, max_configs=None  # None = all configs
+        config_files,
+        max_combinations=200,
+        turns=100,
+        max_configs=None,  # None = all configs
     )
 
     print('\n' + '=' * 70)
@@ -325,31 +327,36 @@ if __name__ == '__main__':
     print('RANDOM SEARCH (Additional Exploration - All Configs)')
     print('=' * 70)
     best_params_random, random_results = random_search_parameters(
-        config_files, n_iterations=200, turns=100, max_configs=None  # None = all configs
+        config_files,
+        n_iterations=200,
+        turns=100,
+        max_configs=None,  # None = all configs
     )
 
     # Combine results from both searches
     all_results = grid_results + random_results
     all_results.sort(key=lambda x: x[1], reverse=True)  # Sort by score
-    
+
     # Get top 5 parameter sets
     top_n = 5
     top_params = []
     for i, (params, score, runs, plants, time_taken) in enumerate(all_results[:top_n]):
-        top_params.append({
-            'rank': i + 1,
-            'score': score,
-            'runs': runs,
-            'avg_plants': plants,
-            'avg_time': time_taken,
-            'parameters': params
-        })
-    
+        top_params.append(
+            {
+                'rank': i + 1,
+                'score': score,
+                'runs': runs,
+                'avg_plants': plants,
+                'avg_time': time_taken,
+                'parameters': params,
+            }
+        )
+
     # Compare and pick absolute best
     if best_params_random and best_params_grid:
         grid_score = max([r[1] for r in grid_results]) if grid_results else 0
         random_score = max([r[1] for r in random_results]) if random_results else 0
-        
+
         if random_score > grid_score:
             best_params = best_params_random
             best_score = random_score
@@ -366,21 +373,23 @@ if __name__ == '__main__':
     output_data = {
         'best_parameters': best_params,
         'best_score': all_results[0][1] if all_results else 0,
-        'top_parameter_sets': top_params
+        'top_parameter_sets': top_params,
     }
-    
+
     with open(output_file, 'w') as f:
         json.dump(output_data, f, indent=2)
     print(f'\nTop {top_n} parameter sets saved to: {output_file}')
-    
+
     print('\n' + '=' * 70)
     print('FINAL BEST PARAMETERS:')
     print('=' * 70)
     print(json.dumps(best_params, indent=2))
-    
+
     print('\n' + '=' * 70)
     print(f'TOP {top_n} PARAMETER SETS:')
     print('=' * 70)
-    for i, entry in enumerate(top_params[:top_n]):
-        print(f'\nRank {entry["rank"]}: Score={entry["score"]:.2f} (Runs={entry["runs"]}, Plants={entry["avg_plants"]:.1f})')
-        print(json.dumps(entry["parameters"], indent=2))
+    for _, entry in enumerate(top_params[:top_n]):
+        print(
+            f'\nRank {entry["rank"]}: Score={entry["score"]:.2f} (Runs={entry["runs"]}, Plants={entry["avg_plants"]:.1f})'
+        )
+        print(json.dumps(entry['parameters'], indent=2))
