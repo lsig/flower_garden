@@ -16,7 +16,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from core.engine import Engine
 from core.garden import Garden
 from core.nursery import Nursery
-from gardeners.group1.gardener_multi import Gardener1
+from gardeners.group1.gardener import Gardener1
 
 # Find all config files
 CONFIG_DIRS = [
