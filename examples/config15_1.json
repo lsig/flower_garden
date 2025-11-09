@@ -1,0 +1,225 @@
+{
+  "seed": 7890,
+  "varieties": [
+    {
+      "name": "Elite Red Dominator",
+      "radius": 2,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 3.8,
+        "G": -0.3,
+        "B": -3.2
+      },
+      "count": 50
+    },
+    {
+      "name": "Elite Green Dominator",
+      "radius": 2,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -3.2,
+        "G": 3.8,
+        "B": -0.3
+      },
+      "count": 50
+    },
+    {
+      "name": "Elite Blue Dominator",
+      "radius": 2,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.3,
+        "G": -3.2,
+        "B": 3.8
+      },
+      "count": 50
+    },
+    {
+      "name": "Elite Balanced Superstar",
+      "radius": 1,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 1.9,
+        "G": -0.5,
+        "B": -0.5
+      },
+      "count": 50
+    },
+    {
+      "name": "Mediocre Red Producer",
+      "radius": 1,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 0.8,
+        "G": -0.3,
+        "B": -0.3
+      },
+      "count": 50
+    },
+    {
+      "name": "Mediocre Red Supplier",
+      "radius": 2,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 1.6,
+        "G": -0.6,
+        "B": -0.6
+      },
+      "count": 50
+    },
+    {
+      "name": "Mediocre Red Helper",
+      "radius": 3,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 2.4,
+        "G": -0.9,
+        "B": -0.9
+      },
+      "count": 50
+    },
+    {
+      "name": "Mediocre Green Producer",
+      "radius": 1,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.3,
+        "G": 0.8,
+        "B": -0.3
+      },
+      "count": 50
+    },
+    {
+      "name": "Mediocre Green Supplier",
+      "radius": 2,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.6,
+        "G": 1.6,
+        "B": -0.6
+      },
+      "count": 50
+    },
+    {
+      "name": "Mediocre Green Helper",
+      "radius": 3,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.9,
+        "G": 2.4,
+        "B": -0.9
+      },
+      "count": 50
+    },
+    {
+      "name": "Mediocre Blue Producer",
+      "radius": 1,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.3,
+        "G": -0.3,
+        "B": 0.8
+      },
+      "count": 50
+    },
+    {
+      "name": "Mediocre Blue Supplier",
+      "radius": 2,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.6,
+        "G": -0.6,
+        "B": 1.6
+      },
+      "count": 50
+    },
+    {
+      "name": "Mediocre Blue Helper",
+      "radius": 3,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.9,
+        "G": -0.9,
+        "B": 2.4
+      },
+      "count": 50
+    },
+    {
+      "name": "Diversity Enabler Red-Green",
+      "radius": 1,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 1.2,
+        "G": -0.8,
+        "B": -0.3
+      },
+      "count": 50
+    },
+    {
+      "name": "Diversity Enabler Red-Blue",
+      "radius": 1,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 1.2,
+        "G": -0.3,
+        "B": -0.8
+      },
+      "count": 50
+    },
+    {
+      "name": "Diversity Enabler Green-Red",
+      "radius": 1,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.8,
+        "G": 1.2,
+        "B": -0.3
+      },
+      "count": 50
+    },
+    {
+      "name": "Diversity Enabler Green-Blue",
+      "radius": 1,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.3,
+        "G": 1.2,
+        "B": -0.8
+      },
+      "count": 50
+    },
+    {
+      "name": "Diversity Enabler Blue-Red",
+      "radius": 1,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.8,
+        "G": -0.3,
+        "B": 1.2
+      },
+      "count": 50
+    },
+    {
+      "name": "Diversity Enabler Blue-Green",
+      "radius": 1,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.3,
+        "G": -0.8,
+        "B": 1.2
+      },
+      "count": 50
+    },
+    {
+      "name": "Universal Connector",
+      "radius": 2,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 2.0,
+        "G": -0.8,
+        "B": -0.8
+      },
+      "count": 50
+    }
+  ]
+}

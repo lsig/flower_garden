@@ -1,0 +1,225 @@
+{
+  "seed": 3333,
+  "varieties": [
+    {
+      "name": "Red Kingdom Giant 1",
+      "radius": 3,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 5.8,
+        "G": -5.5,
+        "B": -0.2
+      },
+      "count": 20
+    },
+    {
+      "name": "Red Kingdom Giant 2",
+      "radius": 3,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 5.9,
+        "G": -5.6,
+        "B": -0.2
+      },
+      "count": 20
+    },
+    {
+      "name": "Red Kingdom Giant 3",
+      "radius": 3,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 5.7,
+        "G": -5.4,
+        "B": -0.2
+      },
+      "count": 20
+    },
+    {
+      "name": "Red Kingdom Giant 4",
+      "radius": 3,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 5.85,
+        "G": -5.55,
+        "B": -0.15
+      },
+      "count": 20
+    },
+    {
+      "name": "Red Kingdom Giant 5",
+      "radius": 3,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 5.75,
+        "G": -5.45,
+        "B": -0.25
+      },
+      "count": 20
+    },
+    {
+      "name": "Red Kingdom Giant 6",
+      "radius": 3,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 5.95,
+        "G": -5.65,
+        "B": -0.2
+      },
+      "count": 20
+    },
+    {
+      "name": "Red Kingdom Giant 7",
+      "radius": 3,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 5.6,
+        "G": -5.3,
+        "B": -0.2
+      },
+      "count": 20
+    },
+    {
+      "name": "Green Kingdom Tiny 1",
+      "radius": 1,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.1,
+        "G": 1.95,
+        "B": -1.8
+      },
+      "count": 20
+    },
+    {
+      "name": "Green Kingdom Tiny 2",
+      "radius": 1,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.1,
+        "G": 1.9,
+        "B": -1.75
+      },
+      "count": 20
+    },
+    {
+      "name": "Green Kingdom Tiny 3",
+      "radius": 1,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.15,
+        "G": 1.98,
+        "B": -1.78
+      },
+      "count": 20
+    },
+    {
+      "name": "Green Kingdom Tiny 4",
+      "radius": 1,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.12,
+        "G": 1.92,
+        "B": -1.76
+      },
+      "count": 20
+    },
+    {
+      "name": "Green Kingdom Tiny 5",
+      "radius": 1,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.08,
+        "G": 1.88,
+        "B": -1.74
+      },
+      "count": 20
+    },
+    {
+      "name": "Green Kingdom Tiny 6",
+      "radius": 1,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.11,
+        "G": 1.93,
+        "B": -1.77
+      },
+      "count": 20
+    },
+    {
+      "name": "Blue Kingdom Medium 1",
+      "radius": 2,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -3.6,
+        "G": -0.2,
+        "B": 3.9
+      },
+      "count": 20
+    },
+    {
+      "name": "Blue Kingdom Medium 2",
+      "radius": 2,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -3.5,
+        "G": -0.2,
+        "B": 3.8
+      },
+      "count": 20
+    },
+    {
+      "name": "Blue Kingdom Medium 3",
+      "radius": 2,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -3.65,
+        "G": -0.15,
+        "B": 3.9
+      },
+      "count": 20
+    },
+    {
+      "name": "Blue Kingdom Medium 4",
+      "radius": 2,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -3.55,
+        "G": -0.25,
+        "B": 3.9
+      },
+      "count": 20
+    },
+    {
+      "name": "Blue Kingdom Medium 5",
+      "radius": 2,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -3.7,
+        "G": -0.2,
+        "B": 4.0
+      },
+      "count": 20
+    },
+    {
+      "name": "Blue Kingdom Medium 6",
+      "radius": 2,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -3.58,
+        "G": -0.18,
+        "B": 3.86
+      },
+      "count": 20
+    },
+    {
+      "name": "Blue Kingdom Medium 7",
+      "radius": 2,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -3.62,
+        "G": -0.22,
+        "B": 3.94
+      },
+      "count": 20
+    }
+  ]
+}

@@ -1,0 +1,225 @@
+{
+  "seed": 6655,
+  "varieties": [
+    {
+      "name": "Boom Red Sprinter",
+      "radius": 1,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 1.95,
+        "G": -1.8,
+        "B": -0.05
+      },
+      "count": 20
+    },
+    {
+      "name": "Boom Red Burster",
+      "radius": 2,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 3.9,
+        "G": -3.6,
+        "B": -0.1
+      },
+      "count": 20
+    },
+    {
+      "name": "Boom Red Exploder",
+      "radius": 3,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 5.85,
+        "G": -5.4,
+        "B": -0.15
+      },
+      "count": 20
+    },
+    {
+      "name": "Recovery Red Stabilizer",
+      "radius": 1,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 0.5,
+        "G": -0.2,
+        "B": -0.2
+      },
+      "count": 20
+    },
+    {
+      "name": "Recovery Red Healer",
+      "radius": 2,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 1.0,
+        "G": -0.4,
+        "B": -0.4
+      },
+      "count": 20
+    },
+    {
+      "name": "Boom Green Sprinter",
+      "radius": 1,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.05,
+        "G": 1.95,
+        "B": -1.8
+      },
+      "count": 20
+    },
+    {
+      "name": "Boom Green Burster",
+      "radius": 2,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.1,
+        "G": 3.9,
+        "B": -3.6
+      },
+      "count": 20
+    },
+    {
+      "name": "Boom Green Exploder",
+      "radius": 3,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.15,
+        "G": 5.85,
+        "B": -5.4
+      },
+      "count": 20
+    },
+    {
+      "name": "Recovery Green Stabilizer",
+      "radius": 1,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.2,
+        "G": 0.5,
+        "B": -0.2
+      },
+      "count": 20
+    },
+    {
+      "name": "Recovery Green Healer",
+      "radius": 2,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.4,
+        "G": 1.0,
+        "B": -0.4
+      },
+      "count": 20
+    },
+    {
+      "name": "Boom Blue Sprinter",
+      "radius": 1,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -1.8,
+        "G": -0.05,
+        "B": 1.95
+      },
+      "count": 20
+    },
+    {
+      "name": "Boom Blue Burster",
+      "radius": 2,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -3.6,
+        "G": -0.1,
+        "B": 3.9
+      },
+      "count": 20
+    },
+    {
+      "name": "Boom Blue Exploder",
+      "radius": 3,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -5.4,
+        "G": -0.15,
+        "B": 5.85
+      },
+      "count": 20
+    },
+    {
+      "name": "Recovery Blue Stabilizer",
+      "radius": 1,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.2,
+        "G": -0.2,
+        "B": 0.5
+      },
+      "count": 20
+    },
+    {
+      "name": "Recovery Blue Healer",
+      "radius": 2,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.4,
+        "G": -0.4,
+        "B": 1.0
+      },
+      "count": 20
+    },
+    {
+      "name": "Cycle Balancer Red",
+      "radius": 2,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 2.0,
+        "G": -1.8,
+        "B": -0.1
+      },
+      "count": 20
+    },
+    {
+      "name": "Cycle Balancer Green",
+      "radius": 2,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.1,
+        "G": 2.0,
+        "B": -1.8
+      },
+      "count": 20
+    },
+    {
+      "name": "Cycle Balancer Blue",
+      "radius": 2,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -1.8,
+        "G": -0.1,
+        "B": 2.0
+      },
+      "count": 20
+    },
+    {
+      "name": "Emergency Red Supply",
+      "radius": 1,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 1.2,
+        "G": -1.0,
+        "B": -0.1
+      },
+      "count": 20
+    },
+    {
+      "name": "Emergency Green Supply",
+      "radius": 1,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.1,
+        "G": 1.2,
+        "B": -1.0
+      },
+      "count": 20
+    }
+  ]
+}

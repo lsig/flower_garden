@@ -1,0 +1,82 @@
+{
+  "seed": 71,
+  "varieties": [
+    {
+      "name": "Fire Rhodo",
+      "radius": 1,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": { "R": 1.8, "G": -0.9, "B": -0.4 },
+      "count": 100
+    },
+    {
+      "name": "Sunburst Rhodo",
+      "radius": 2,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": { "R": 1.5, "G": -0.6, "B": -0.5 },
+      "count": 50
+    },
+    {
+      "name": "Deepwood Rhodo",
+      "radius": 3,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": { "R": 2.0, "G": -1.2, "B": -0.7 },
+      "count": 20
+    },
+    {
+      "name": "Spring Geranium",
+      "radius": 1,
+      "species": "GERANIUM",
+      "nutrient_coefficients": { "G": 1.3, "R": -0.4, "B": -0.3 },
+      "count": 120
+    },
+    {
+      "name": "Ironleaf Geranium",
+      "radius": 2,
+      "species": "GERANIUM",
+      "nutrient_coefficients": { "G": 1.8, "R": -0.9, "B": -0.5 },
+      "count": 40
+    },
+    {
+      "name": "Velvet Geranium",
+      "radius": 3,
+      "species": "GERANIUM",
+      "nutrient_coefficients": { "G": 2.0, "R": -1.0, "B": -1.0 },
+      "count": 2
+    },
+    {
+      "name": "Ocean Begonia",
+      "radius": 1,
+      "species": "BEGONIA",
+      "nutrient_coefficients": { "B": 0.8, "R": -0.3, "G": -0.2 },
+      "count": 80
+    },
+    {
+      "name": "Storm Begonia",
+      "radius": 2,
+      "species": "BEGONIA",
+      "nutrient_coefficients": { "B": 2.0, "R": -0.8, "G": -0.5 },
+      "count": 50
+    },
+    {
+      "name": "Shadow Begonia",
+      "radius": 3,
+      "species": "BEGONIA",
+      "nutrient_coefficients": { "B": 3.0, "R": -1.5, "G": -1.0 },
+      "count": 20
+    },
+    {
+      "name": "Hybrid Star",
+      "radius": 2,
+      "species": "GERANIUM",
+      "nutrient_coefficients": { "G": 1.0, "R": -0.4, "B": -0.4 },
+      "count": 30
+    },
+    {
+      "name": "Crimson Tide",
+      "radius": 2,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": { "R": 1.2, "G": -0.3, "B": -0.3 },
+      "count": 30
+    }
+  ]
+}

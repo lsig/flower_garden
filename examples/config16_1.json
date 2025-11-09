@@ -1,0 +1,225 @@
+{
+  "seed": 1111,
+  "varieties": [
+    {
+      "name": "Selfish Red Champion 1",
+      "radius": 1,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 1.9,
+        "G": -0.4,
+        "B": -0.4
+      },
+      "count": 50
+    },
+    {
+      "name": "Selfish Red Champion 2",
+      "radius": 2,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 3.8,
+        "G": -0.8,
+        "B": -0.8
+      },
+      "count": 50
+    },
+    {
+      "name": "Selfish Red Champion 3",
+      "radius": 3,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 5.7,
+        "G": -1.2,
+        "B": -1.2
+      },
+      "count": 50
+    },
+    {
+      "name": "Selfish Red Champion 4",
+      "radius": 1,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 1.95,
+        "G": -0.45,
+        "B": -0.45
+      },
+      "count": 50
+    },
+    {
+      "name": "Selfish Red Champion 5",
+      "radius": 2,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 3.9,
+        "G": -0.9,
+        "B": -0.9
+      },
+      "count": 50
+    },
+    {
+      "name": "Selfish Green Champion 1",
+      "radius": 1,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.4,
+        "G": 1.9,
+        "B": -0.4
+      },
+      "count": 50
+    },
+    {
+      "name": "Selfish Green Champion 2",
+      "radius": 2,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.8,
+        "G": 3.8,
+        "B": -0.8
+      },
+      "count": 50
+    },
+    {
+      "name": "Selfish Green Champion 3",
+      "radius": 3,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -1.2,
+        "G": 5.7,
+        "B": -1.2
+      },
+      "count": 50
+    },
+    {
+      "name": "Selfish Green Champion 4",
+      "radius": 1,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.45,
+        "G": 1.95,
+        "B": -0.45
+      },
+      "count": 50
+    },
+    {
+      "name": "Selfish Blue Champion 1",
+      "radius": 1,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.4,
+        "G": -0.4,
+        "B": 1.9
+      },
+      "count": 50
+    },
+    {
+      "name": "Selfish Blue Champion 2",
+      "radius": 2,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.8,
+        "G": -0.8,
+        "B": 3.8
+      },
+      "count": 50
+    },
+    {
+      "name": "Selfish Blue Champion 3",
+      "radius": 3,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -1.2,
+        "G": -1.2,
+        "B": 5.7
+      },
+      "count": 50
+    },
+    {
+      "name": "Cooperative Red Altruist",
+      "radius": 1,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 0.8,
+        "G": -0.3,
+        "B": -0.3
+      },
+      "count": 50
+    },
+    {
+      "name": "Cooperative Red Provider",
+      "radius": 2,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 1.6,
+        "G": -0.6,
+        "B": -0.6
+      },
+      "count": 50
+    },
+    {
+      "name": "Cooperative Green Altruist",
+      "radius": 1,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.3,
+        "G": 0.8,
+        "B": -0.3
+      },
+      "count": 50
+    },
+    {
+      "name": "Cooperative Green Provider",
+      "radius": 2,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.6,
+        "G": 1.6,
+        "B": -0.6
+      },
+      "count": 50
+    },
+    {
+      "name": "Cooperative Blue Altruist",
+      "radius": 1,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.3,
+        "G": -0.3,
+        "B": 0.8
+      },
+      "count": 50
+    },
+    {
+      "name": "Cooperative Blue Provider",
+      "radius": 2,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.6,
+        "G": -0.6,
+        "B": 1.6
+      },
+      "count": 50
+    },
+    {
+      "name": "Defector Exploiter Red",
+      "radius": 2,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 3.0,
+        "G": -0.5,
+        "B": -0.5
+      },
+      "count": 50
+    },
+    {
+      "name": "Defector Exploiter Green",
+      "radius": 2,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.5,
+        "G": 3.0,
+        "B": -0.5
+      },
+      "count": 50
+    }
+  ]
+}

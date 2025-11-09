@@ -1,0 +1,115 @@
+{
+  "seed": 12345,
+  "varieties": [
+    {
+      "name": "GERANIUM_1",
+      "radius": 3,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "G": 0.36,
+        "R": -0.15,
+        "B": -0.1
+      },
+      "count": 10
+    },
+    {
+      "name": "GERANIUM_2",
+      "radius": 1,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "G": 0.76,
+        "R": -0.3,
+        "B": -0.2
+      },
+      "count": 10
+    },
+    {
+      "name": "GERANIUM_3",
+      "radius": 2,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "G": 2.38,
+        "R": -0.46,
+        "B": -1.05
+      },
+      "count": 10
+    },
+    {
+      "name": "GERANIUM_4",
+      "radius": 3,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "G": 5.76,
+        "R": -0.6,
+        "B": -4.95
+      },
+      "count": 10
+    },
+    {
+      "name": "GERANIUM_5",
+      "radius": 3,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "G": 3.17,
+        "R": -0.53,
+        "B": -1.85
+      },
+      "count": 10
+    },
+    {
+      "name": "RHODODENDRON_6",
+      "radius": 2,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 1.49,
+        "G": -0.65,
+        "B": -0.12
+      },
+      "count": 10
+    },
+    {
+      "name": "BEGONIA_7",
+      "radius": 3,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "B": 4.54,
+        "R": -0.11,
+        "G": -4.08
+      },
+      "count": 10
+    },
+    {
+      "name": "RHODODENDRON_8",
+      "radius": 3,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 1.32,
+        "G": -0.2,
+        "B": -0.48
+      },
+      "count": 10
+    },
+    {
+      "name": "BEGONIA_9",
+      "radius": 3,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "B": 1.34,
+        "R": -0.49,
+        "G": -0.72
+      },
+      "count": 10
+    },
+    {
+      "name": "BEGONIA_10",
+      "radius": 3,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "B": 5.5,
+        "R": -1.82,
+        "G": -0.24
+      },
+      "count": 10
+    }
+  ]
+}

@@ -1,0 +1,225 @@
+{
+  "seed": 5555,
+  "varieties": [
+    {
+      "name": "Ancient Red Titan",
+      "radius": 3,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 0.4,
+        "G": -0.15,
+        "B": -0.15
+      },
+      "count": 10
+    },
+    {
+      "name": "Ancient Red Colossus",
+      "radius": 3,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 0.35,
+        "G": -0.12,
+        "B": -0.13
+      },
+      "count": 10
+    },
+    {
+      "name": "Ancient Green Behemoth",
+      "radius": 3,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.15,
+        "G": 0.4,
+        "B": -0.15
+      },
+      "count": 10
+    },
+    {
+      "name": "Ancient Green Leviathan",
+      "radius": 3,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.13,
+        "G": 0.35,
+        "B": -0.12
+      },
+      "count": 10
+    },
+    {
+      "name": "Ancient Blue Mammoth",
+      "radius": 3,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.15,
+        "G": -0.15,
+        "B": 0.4
+      },
+      "count": 10
+    },
+    {
+      "name": "Ancient Blue Goliath",
+      "radius": 3,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.12,
+        "G": -0.13,
+        "B": 0.35
+      },
+      "count": 10
+    },
+    {
+      "name": "Adapted Red Survivor",
+      "radius": 2,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 1.5,
+        "G": -0.5,
+        "B": -0.5
+      },
+      "count": 10
+    },
+    {
+      "name": "Adapted Red Stalwart",
+      "radius": 2,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 1.6,
+        "G": -0.55,
+        "B": -0.55
+      },
+      "count": 10
+    },
+    {
+      "name": "Adapted Green Endurer",
+      "radius": 2,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.5,
+        "G": 1.5,
+        "B": -0.5
+      },
+      "count": 10
+    },
+    {
+      "name": "Adapted Green Hardy",
+      "radius": 2,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.55,
+        "G": 1.6,
+        "B": -0.55
+      },
+      "count": 10
+    },
+    {
+      "name": "Adapted Blue Resilient",
+      "radius": 2,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.5,
+        "G": -0.5,
+        "B": 1.5
+      },
+      "count": 10
+    },
+    {
+      "name": "Adapted Blue Robust",
+      "radius": 2,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.55,
+        "G": -0.55,
+        "B": 1.6
+      },
+      "count": 10
+    },
+    {
+      "name": "Modern Red Elite",
+      "radius": 1,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 1.95,
+        "G": -0.05,
+        "B": -0.1
+      },
+      "count": 10
+    },
+    {
+      "name": "Modern Red Peak",
+      "radius": 1,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 1.98,
+        "G": -0.08,
+        "B": -0.1
+      },
+      "count": 10
+    },
+    {
+      "name": "Modern Green Elite",
+      "radius": 1,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.1,
+        "G": 1.95,
+        "B": -0.05
+      },
+      "count": 10
+    },
+    {
+      "name": "Modern Green Peak",
+      "radius": 1,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.1,
+        "G": 1.98,
+        "B": -0.08
+      },
+      "count": 10
+    },
+    {
+      "name": "Modern Blue Elite",
+      "radius": 1,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.05,
+        "G": -0.1,
+        "B": 1.95
+      },
+      "count": 10
+    },
+    {
+      "name": "Modern Blue Peak",
+      "radius": 1,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.08,
+        "G": -0.1,
+        "B": 1.98
+      },
+      "count": 10
+    },
+    {
+      "name": "Modern Red Apex",
+      "radius": 1,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 1.92,
+        "G": -0.06,
+        "B": -0.06
+      },
+      "count": 10
+    },
+    {
+      "name": "Modern Green Apex",
+      "radius": 1,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.06,
+        "G": 1.92,
+        "B": -0.06
+      },
+      "count": 10
+    }
+  ]
+}

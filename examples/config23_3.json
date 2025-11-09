@@ -1,0 +1,225 @@
+{
+  "seed": 3579,
+  "varieties": [
+    {
+      "name": "Clone Red Alpha",
+      "radius": 2,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 2.0,
+        "G": -0.8,
+        "B": -0.8
+      },
+      "count": 10
+    },
+    {
+      "name": "Clone Red Beta",
+      "radius": 2,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 2.0,
+        "G": -0.8,
+        "B": -0.8
+      },
+      "count": 10
+    },
+    {
+      "name": "Clone Red Gamma",
+      "radius": 2,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 2.0,
+        "G": -0.8,
+        "B": -0.8
+      },
+      "count": 10
+    },
+    {
+      "name": "Clone Red Delta",
+      "radius": 2,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 2.0,
+        "G": -0.8,
+        "B": -0.8
+      },
+      "count": 10
+    },
+    {
+      "name": "Clone Green Alpha",
+      "radius": 2,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.8,
+        "G": 2.0,
+        "B": -0.8
+      },
+      "count": 10
+    },
+    {
+      "name": "Clone Green Beta",
+      "radius": 2,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.8,
+        "G": 2.0,
+        "B": -0.8
+      },
+      "count": 10
+    },
+    {
+      "name": "Clone Green Gamma",
+      "radius": 2,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.8,
+        "G": 2.0,
+        "B": -0.8
+      },
+      "count": 10
+    },
+    {
+      "name": "Clone Green Delta",
+      "radius": 2,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.8,
+        "G": 2.0,
+        "B": -0.8
+      },
+      "count": 10
+    },
+    {
+      "name": "Clone Blue Alpha",
+      "radius": 2,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.8,
+        "G": -0.8,
+        "B": 2.0
+      },
+      "count": 10
+    },
+    {
+      "name": "Clone Blue Beta",
+      "radius": 2,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.8,
+        "G": -0.8,
+        "B": 2.0
+      },
+      "count": 10
+    },
+    {
+      "name": "Clone Blue Gamma",
+      "radius": 2,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.8,
+        "G": -0.8,
+        "B": 2.0
+      },
+      "count": 10
+    },
+    {
+      "name": "Clone Blue Delta",
+      "radius": 2,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.8,
+        "G": -0.8,
+        "B": 2.0
+      },
+      "count": 10
+    },
+    {
+      "name": "Connector Small Red",
+      "radius": 1,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 1.2,
+        "G": -0.5,
+        "B": -0.5
+      },
+      "count": 10
+    },
+    {
+      "name": "Connector Small Green",
+      "radius": 1,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.5,
+        "G": 1.2,
+        "B": -0.5
+      },
+      "count": 10
+    },
+    {
+      "name": "Connector Small Blue",
+      "radius": 1,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.5,
+        "G": -0.5,
+        "B": 1.2
+      },
+      "count": 10
+    },
+    {
+      "name": "Isolate Red Singleton",
+      "radius": 3,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 1.5,
+        "G": -0.6,
+        "B": -0.6
+      },
+      "count": 10
+    },
+    {
+      "name": "Isolate Green Singleton",
+      "radius": 3,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.6,
+        "G": 1.5,
+        "B": -0.6
+      },
+      "count": 10
+    },
+    {
+      "name": "Isolate Blue Singleton",
+      "radius": 3,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.6,
+        "G": -0.6,
+        "B": 1.5
+      },
+      "count": 10
+    },
+    {
+      "name": "Hub Central Red",
+      "radius": 2,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 2.5,
+        "G": -1.0,
+        "B": -1.0
+      },
+      "count": 10
+    },
+    {
+      "name": "Hub Central Green",
+      "radius": 2,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -1.0,
+        "G": 2.5,
+        "B": -1.0
+      },
+      "count": 10
+    }
+  ]
+}

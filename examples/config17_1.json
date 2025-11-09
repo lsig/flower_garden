@@ -1,0 +1,225 @@
+{
+  "seed": 2222,
+  "varieties": [
+    {
+      "name": "Network Red Node 1",
+      "radius": 1,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 0.3,
+        "G": -0.1,
+        "B": -0.1
+      },
+      "count": 50
+    },
+    {
+      "name": "Network Red Node 2",
+      "radius": 1,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 0.35,
+        "G": -0.12,
+        "B": -0.12
+      },
+      "count": 50
+    },
+    {
+      "name": "Network Red Node 3",
+      "radius": 1,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 0.32,
+        "G": -0.11,
+        "B": -0.11
+      },
+      "count": 50
+    },
+    {
+      "name": "Network Red Hub",
+      "radius": 2,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 0.6,
+        "G": -0.2,
+        "B": -0.2
+      },
+      "count": 50
+    },
+    {
+      "name": "Network Green Node 1",
+      "radius": 1,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.1,
+        "G": 0.3,
+        "B": -0.1
+      },
+      "count": 50
+    },
+    {
+      "name": "Network Green Node 2",
+      "radius": 1,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.12,
+        "G": 0.35,
+        "B": -0.12
+      },
+      "count": 50
+    },
+    {
+      "name": "Network Green Node 3",
+      "radius": 1,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.11,
+        "G": 0.32,
+        "B": -0.11
+      },
+      "count": 50
+    },
+    {
+      "name": "Network Green Hub",
+      "radius": 2,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.2,
+        "G": 0.6,
+        "B": -0.2
+      },
+      "count": 50
+    },
+    {
+      "name": "Network Blue Node 1",
+      "radius": 1,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.1,
+        "G": -0.1,
+        "B": 0.3
+      },
+      "count": 50
+    },
+    {
+      "name": "Network Blue Node 2",
+      "radius": 1,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.12,
+        "G": -0.12,
+        "B": 0.35
+      },
+      "count": 50
+    },
+    {
+      "name": "Network Blue Node 3",
+      "radius": 1,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.11,
+        "G": -0.11,
+        "B": 0.32
+      },
+      "count": 50
+    },
+    {
+      "name": "Network Blue Hub",
+      "radius": 2,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.2,
+        "G": -0.2,
+        "B": 0.6
+      },
+      "count": 50
+    },
+    {
+      "name": "Safe Bet Red",
+      "radius": 2,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 2.5,
+        "G": -1.0,
+        "B": -1.0
+      },
+      "count": 50
+    },
+    {
+      "name": "Safe Bet Green",
+      "radius": 2,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -1.0,
+        "G": 2.5,
+        "B": -1.0
+      },
+      "count": 50
+    },
+    {
+      "name": "Safe Bet Blue",
+      "radius": 2,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -1.0,
+        "G": -1.0,
+        "B": 2.5
+      },
+      "count": 50
+    },
+    {
+      "name": "Catalyst Red Amplifier",
+      "radius": 1,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 0.8,
+        "G": -0.35,
+        "B": -0.35
+      },
+      "count": 50
+    },
+    {
+      "name": "Catalyst Green Amplifier",
+      "radius": 1,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.35,
+        "G": 0.8,
+        "B": -0.35
+      },
+      "count": 50
+    },
+    {
+      "name": "Catalyst Blue Amplifier",
+      "radius": 1,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.35,
+        "G": -0.35,
+        "B": 0.8
+      },
+      "count": 50
+    },
+    {
+      "name": "Bridge Connector Red-Green",
+      "radius": 1,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 0.5,
+        "G": -0.2,
+        "B": -0.2
+      },
+      "count": 50
+    },
+    {
+      "name": "Bridge Connector Green-Blue",
+      "radius": 1,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.2,
+        "G": 0.5,
+        "B": -0.2
+      },
+      "count": 50
+    }
+  ]
+}

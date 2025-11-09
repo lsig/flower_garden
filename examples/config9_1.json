@@ -1,0 +1,225 @@
+{
+  "seed": 7777,
+  "varieties": [
+    {
+      "name": "Giant Red Producer RHODODENDRON",
+      "radius": 3,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 5.9,
+        "G": -2.8,
+        "B": -2.9
+      },
+      "count": 50
+    },
+    {
+      "name": "Giant Red Balanced RHODODENDRON",
+      "radius": 3,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 4.5,
+        "G": -2.0,
+        "B": -2.0
+      },
+      "count": 50
+    },
+    {
+      "name": "Giant Red Efficient RHODODENDRON",
+      "radius": 3,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 5.5,
+        "G": -1.5,
+        "B": -1.8
+      },
+      "count": 50
+    },
+    {
+      "name": "Giant Green Producer GERANIUM",
+      "radius": 3,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -2.9,
+        "G": 5.9,
+        "B": -2.8
+      },
+      "count": 50
+    },
+    {
+      "name": "Giant Green Balanced GERANIUM",
+      "radius": 3,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -2.0,
+        "G": 4.5,
+        "B": -2.0
+      },
+      "count": 50
+    },
+    {
+      "name": "Giant Green Efficient GERANIUM",
+      "radius": 3,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -1.8,
+        "G": 5.5,
+        "B": -1.5
+      },
+      "count": 50
+    },
+    {
+      "name": "Giant Blue Producer BEGONIA",
+      "radius": 3,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -2.8,
+        "G": -2.9,
+        "B": 5.9
+      },
+      "count": 50
+    },
+    {
+      "name": "Giant Blue Balanced BEGONIA",
+      "radius": 3,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -2.0,
+        "G": -2.0,
+        "B": 4.5
+      },
+      "count": 50
+    },
+    {
+      "name": "Giant Blue Efficient BEGONIA",
+      "radius": 3,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -1.5,
+        "G": -1.8,
+        "B": 5.5
+      },
+      "count": 50
+    },
+    {
+      "name": "Red Support RHODODENDRON",
+      "radius": 1,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 1.8,
+        "G": -0.3,
+        "B": -0.4
+      },
+      "count": 50
+    },
+    {
+      "name": "Red Feeder RHODODENDRON",
+      "radius": 1,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 1.9,
+        "G": -0.4,
+        "B": -0.5
+      },
+      "count": 50
+    },
+    {
+      "name": "Red Supplier RHODODENDRON",
+      "radius": 1,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 1.95,
+        "G": -0.35,
+        "B": -0.45
+      },
+      "count": 50
+    },
+    {
+      "name": "Green Support GERANIUM",
+      "radius": 1,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.4,
+        "G": 1.8,
+        "B": -0.3
+      },
+      "count": 50
+    },
+    {
+      "name": "Green Feeder GERANIUM",
+      "radius": 1,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.5,
+        "G": 1.9,
+        "B": -0.4
+      },
+      "count": 50
+    },
+    {
+      "name": "Green Supplier GERANIUM",
+      "radius": 1,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.45,
+        "G": 1.95,
+        "B": -0.35
+      },
+      "count": 50
+    },
+    {
+      "name": "Blue Support BEGONIA",
+      "radius": 1,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.3,
+        "G": -0.4,
+        "B": 1.8
+      },
+      "count": 50
+    },
+    {
+      "name": "Blue Feeder BEGONIA",
+      "radius": 1,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.4,
+        "G": -0.5,
+        "B": 1.9
+      },
+      "count": 50
+    },
+    {
+      "name": "Blue Supplier BEGONIA",
+      "radius": 1,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.35,
+        "G": -0.45,
+        "B": 1.95
+      },
+      "count": 50
+    },
+    {
+      "name": "Medium Red RHODODENDRON",
+      "radius": 2,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 3.5,
+        "G": -1.2,
+        "B": -1.3
+      },
+      "count": 50
+    },
+    {
+      "name": "Medium Green GERANIUM",
+      "radius": 2,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -1.3,
+        "G": 3.5,
+        "B": -1.2
+      },
+      "count": 50
+    }
+  ]
+}

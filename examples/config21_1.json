@@ -1,0 +1,225 @@
+{
+  "seed": 5678,
+  "varieties": [
+    {
+      "name": "Early Spring Rusher Red",
+      "radius": 1,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 1.95,
+        "G": -0.45,
+        "B": -0.45
+      },
+      "count": 50
+    },
+    {
+      "name": "Early Spring Rusher Green",
+      "radius": 1,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.45,
+        "G": 1.95,
+        "B": -0.45
+      },
+      "count": 50
+    },
+    {
+      "name": "Early Spring Rusher Blue",
+      "radius": 1,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.45,
+        "G": -0.45,
+        "B": 1.95
+      },
+      "count": 50
+    },
+    {
+      "name": "Early Spring Sprinter Red",
+      "radius": 1,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 1.9,
+        "G": -0.4,
+        "B": -0.4
+      },
+      "count": 50
+    },
+    {
+      "name": "Early Spring Sprinter Green",
+      "radius": 1,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.4,
+        "G": 1.9,
+        "B": -0.4
+      },
+      "count": 50
+    },
+    {
+      "name": "Early Spring Sprinter Blue",
+      "radius": 1,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.4,
+        "G": -0.4,
+        "B": 1.9
+      },
+      "count": 50
+    },
+    {
+      "name": "Mid Summer Grower Red",
+      "radius": 2,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 2.5,
+        "G": -1.0,
+        "B": -1.0
+      },
+      "count": 50
+    },
+    {
+      "name": "Mid Summer Grower Green",
+      "radius": 2,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -1.0,
+        "G": 2.5,
+        "B": -1.0
+      },
+      "count": 50
+    },
+    {
+      "name": "Mid Summer Grower Blue",
+      "radius": 2,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -1.0,
+        "G": -1.0,
+        "B": 2.5
+      },
+      "count": 50
+    },
+    {
+      "name": "Mid Summer Builder Red",
+      "radius": 2,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 2.8,
+        "G": -1.2,
+        "B": -1.2
+      },
+      "count": 50
+    },
+    {
+      "name": "Mid Summer Builder Green",
+      "radius": 2,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -1.2,
+        "G": 2.8,
+        "B": -1.2
+      },
+      "count": 50
+    },
+    {
+      "name": "Late Autumn Giant Red",
+      "radius": 3,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 1.5,
+        "G": -0.6,
+        "B": -0.6
+      },
+      "count": 50
+    },
+    {
+      "name": "Late Autumn Giant Green",
+      "radius": 3,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.6,
+        "G": 1.5,
+        "B": -0.6
+      },
+      "count": 50
+    },
+    {
+      "name": "Late Autumn Giant Blue",
+      "radius": 3,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.6,
+        "G": -0.6,
+        "B": 1.5
+      },
+      "count": 50
+    },
+    {
+      "name": "Late Autumn Behemoth Red",
+      "radius": 3,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 1.8,
+        "G": -0.75,
+        "B": -0.75
+      },
+      "count": 50
+    },
+    {
+      "name": "Late Autumn Behemoth Green",
+      "radius": 3,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.75,
+        "G": 1.8,
+        "B": -0.75
+      },
+      "count": 50
+    },
+    {
+      "name": "Late Autumn Behemoth Blue",
+      "radius": 3,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.75,
+        "G": -0.75,
+        "B": 1.8
+      },
+      "count": 50
+    },
+    {
+      "name": "All-Season Adapter Red",
+      "radius": 2,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 2.0,
+        "G": -0.8,
+        "B": -0.8
+      },
+      "count": 50
+    },
+    {
+      "name": "All-Season Adapter Green",
+      "radius": 2,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.8,
+        "G": 2.0,
+        "B": -0.8
+      },
+      "count": 50
+    },
+    {
+      "name": "All-Season Adapter Blue",
+      "radius": 2,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.8,
+        "G": -0.8,
+        "B": 2.0
+      },
+      "count": 50
+    }
+  ]
+}

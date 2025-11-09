@@ -1,0 +1,225 @@
+{
+  "seed": 999,
+  "varieties": [
+    {
+      "name": "Elite RHODODENDRON 1",
+      "radius": 1,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 1.9,
+        "G": -0.2,
+        "B": -0.3
+      },
+      "count": 50
+    },
+    {
+      "name": "Elite RHODODENDRON 2",
+      "radius": 2,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 3.8,
+        "G": -0.4,
+        "B": -0.6
+      },
+      "count": 50
+    },
+    {
+      "name": "Elite RHODODENDRON 3",
+      "radius": 3,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 5.7,
+        "G": -0.6,
+        "B": -0.9
+      },
+      "count": 50
+    },
+    {
+      "name": "Poor RHODODENDRON 1",
+      "radius": 1,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 0.3,
+        "G": -0.1,
+        "B": -0.1
+      },
+      "count": 50
+    },
+    {
+      "name": "Poor RHODODENDRON 2",
+      "radius": 2,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 1.5,
+        "G": -1.2,
+        "B": -0.2
+      },
+      "count": 50
+    },
+    {
+      "name": "Terrible RHODODENDRON",
+      "radius": 3,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 2.0,
+        "G": -1.8,
+        "B": -0.1
+      },
+      "count": 50
+    },
+    {
+      "name": "Elite GERANIUM 1",
+      "radius": 1,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.3,
+        "G": 1.9,
+        "B": -0.2
+      },
+      "count": 50
+    },
+    {
+      "name": "Elite GERANIUM 2",
+      "radius": 2,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.5,
+        "G": 3.7,
+        "B": -0.4
+      },
+      "count": 50
+    },
+    {
+      "name": "Elite GERANIUM 3",
+      "radius": 3,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.8,
+        "G": 5.6,
+        "B": -0.6
+      },
+      "count": 50
+    },
+    {
+      "name": "Poor GERANIUM 1",
+      "radius": 1,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.1,
+        "G": 0.3,
+        "B": -0.1
+      },
+      "count": 50
+    },
+    {
+      "name": "Poor GERANIUM 2",
+      "radius": 2,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -1.3,
+        "G": 1.6,
+        "B": -0.2
+      },
+      "count": 50
+    },
+    {
+      "name": "Terrible GERANIUM",
+      "radius": 3,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.2,
+        "G": 2.1,
+        "B": -1.8
+      },
+      "count": 50
+    },
+    {
+      "name": "Mediocre GERANIUM",
+      "radius": 2,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.8,
+        "G": 1.8,
+        "B": -0.8
+      },
+      "count": 50
+    },
+    {
+      "name": "Elite BEGONIA 1",
+      "radius": 1,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.2,
+        "G": -0.3,
+        "B": 1.9
+      },
+      "count": 50
+    },
+    {
+      "name": "Elite BEGONIA 2",
+      "radius": 2,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.4,
+        "G": -0.6,
+        "B": 3.8
+      },
+      "count": 50
+    },
+    {
+      "name": "Elite BEGONIA 3",
+      "radius": 3,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.7,
+        "G": -0.9,
+        "B": 5.6
+      },
+      "count": 50
+    },
+    {
+      "name": "Poor BEGONIA 1",
+      "radius": 1,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.1,
+        "G": -0.1,
+        "B": 0.3
+      },
+      "count": 50
+    },
+    {
+      "name": "Poor BEGONIA 2",
+      "radius": 2,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.3,
+        "G": -1.2,
+        "B": 1.6
+      },
+      "count": 50
+    },
+    {
+      "name": "Terrible BEGONIA",
+      "radius": 3,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -1.7,
+        "G": -0.3,
+        "B": 2.1
+      },
+      "count": 50
+    },
+    {
+      "name": "Mediocre BEGONIA",
+      "radius": 2,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.7,
+        "G": -0.7,
+        "B": 1.6
+      },
+      "count": 50
+    }
+  ]
+}

@@ -1,0 +1,225 @@
+{
+  "seed": 8888,
+  "varieties": [
+    {
+      "name": "Specialist Blue BEGONIA 1",
+      "radius": 1,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.02,
+        "G": -0.03,
+        "B": 1.95
+      },
+      "count": 20
+    },
+    {
+      "name": "Specialist Blue BEGONIA 2",
+      "radius": 1,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.03,
+        "G": -0.02,
+        "B": 1.9
+      },
+      "count": 20
+    },
+    {
+      "name": "Specialist Blue BEGONIA 3",
+      "radius": 2,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.05,
+        "G": -0.05,
+        "B": 3.9
+      },
+      "count": 20
+    },
+    {
+      "name": "Specialist Blue BEGONIA 4",
+      "radius": 2,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.04,
+        "G": -0.06,
+        "B": 3.8
+      },
+      "count": 20
+    },
+    {
+      "name": "Specialist Blue BEGONIA 5",
+      "radius": 3,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.08,
+        "G": -0.07,
+        "B": 5.85
+      },
+      "count": 20
+    },
+    {
+      "name": "Specialist Blue BEGONIA 6",
+      "radius": 3,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.06,
+        "G": -0.09,
+        "B": 5.75
+      },
+      "count": 20
+    },
+    {
+      "name": "Specialist Blue BEGONIA 7",
+      "radius": 1,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.025,
+        "G": -0.025,
+        "B": 1.85
+      },
+      "count": 20
+    },
+    {
+      "name": "Specialist Blue BEGONIA 8",
+      "radius": 2,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.07,
+        "G": -0.03,
+        "B": 3.7
+      },
+      "count": 20
+    },
+    {
+      "name": "Generalist Red RHODODENDRON 1",
+      "radius": 1,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 0.5,
+        "G": -0.2,
+        "B": -0.2
+      },
+      "count": 20
+    },
+    {
+      "name": "Generalist Red RHODODENDRON 2",
+      "radius": 2,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 1.0,
+        "G": -0.4,
+        "B": -0.4
+      },
+      "count": 20
+    },
+    {
+      "name": "Generalist Red RHODODENDRON 3",
+      "radius": 3,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 1.5,
+        "G": -0.6,
+        "B": -0.6
+      },
+      "count": 20
+    },
+    {
+      "name": "Generalist Red RHODODENDRON 4",
+      "radius": 1,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 0.6,
+        "G": -0.25,
+        "B": -0.25
+      },
+      "count": 20
+    },
+    {
+      "name": "Generalist Red RHODODENDRON 5",
+      "radius": 2,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 1.2,
+        "G": -0.5,
+        "B": -0.5
+      },
+      "count": 20
+    },
+    {
+      "name": "Generalist Red RHODODENDRON 6",
+      "radius": 3,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 1.8,
+        "G": -0.75,
+        "B": -0.75
+      },
+      "count": 20
+    },
+    {
+      "name": "Generalist Green GERANIUM 1",
+      "radius": 1,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.2,
+        "G": 0.5,
+        "B": -0.2
+      },
+      "count": 20
+    },
+    {
+      "name": "Generalist Green GERANIUM 2",
+      "radius": 2,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.4,
+        "G": 1.0,
+        "B": -0.4
+      },
+      "count": 20
+    },
+    {
+      "name": "Generalist Green GERANIUM 3",
+      "radius": 3,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.6,
+        "G": 1.5,
+        "B": -0.6
+      },
+      "count": 20
+    },
+    {
+      "name": "Generalist Green GERANIUM 4",
+      "radius": 1,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.25,
+        "G": 0.6,
+        "B": -0.25
+      },
+      "count": 20
+    },
+    {
+      "name": "Generalist Green GERANIUM 5",
+      "radius": 2,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.5,
+        "G": 1.2,
+        "B": -0.5
+      },
+      "count": 20
+    },
+    {
+      "name": "Generalist Green GERANIUM 6",
+      "radius": 3,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.75,
+        "G": 1.8,
+        "B": -0.75
+      },
+      "count": 20
+    }
+  ]
+}

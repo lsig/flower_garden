@@ -1,0 +1,225 @@
+{
+  "seed": 9999,
+  "varieties": [
+    {
+      "name": "Red Mutation GOD-TIER",
+      "radius": 2,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 3.95,
+        "G": -0.5,
+        "B": -0.5
+      },
+      "count": 10
+    },
+    {
+      "name": "Red Mutation Trash-1",
+      "radius": 2,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 0.35,
+        "G": -0.15,
+        "B": -0.1
+      },
+      "count": 10
+    },
+    {
+      "name": "Red Mutation Trash-2",
+      "radius": 3,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 0.5,
+        "G": -0.2,
+        "B": -0.2
+      },
+      "count": 10
+    },
+    {
+      "name": "Red Mutation Decent",
+      "radius": 1,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 1.2,
+        "G": -0.5,
+        "B": -0.5
+      },
+      "count": 10
+    },
+    {
+      "name": "Red Mutation Hidden-Gem",
+      "radius": 1,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 1.85,
+        "G": -0.35,
+        "B": -0.4
+      },
+      "count": 10
+    },
+    {
+      "name": "Red Mutation Mediocre",
+      "radius": 2,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 1.8,
+        "G": -0.8,
+        "B": -0.8
+      },
+      "count": 10
+    },
+    {
+      "name": "Red Mutation Trap",
+      "radius": 3,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 4.0,
+        "G": -3.8,
+        "B": -0.1
+      },
+      "count": 10
+    },
+    {
+      "name": "Green Mutation GOD-TIER",
+      "radius": 1,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.4,
+        "G": 1.95,
+        "B": -0.45
+      },
+      "count": 10
+    },
+    {
+      "name": "Green Mutation Trash-1",
+      "radius": 1,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.1,
+        "G": 0.3,
+        "B": -0.1
+      },
+      "count": 10
+    },
+    {
+      "name": "Green Mutation Trash-2",
+      "radius": 2,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.2,
+        "G": 0.6,
+        "B": -0.2
+      },
+      "count": 10
+    },
+    {
+      "name": "Green Mutation Decent",
+      "radius": 3,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -1.0,
+        "G": 2.5,
+        "B": -1.0
+      },
+      "count": 10
+    },
+    {
+      "name": "Green Mutation Hidden-Gem",
+      "radius": 2,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.6,
+        "G": 3.7,
+        "B": -0.7
+      },
+      "count": 10
+    },
+    {
+      "name": "Green Mutation Mediocre",
+      "radius": 2,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.8,
+        "G": 1.8,
+        "B": -0.8
+      },
+      "count": 10
+    },
+    {
+      "name": "Green Mutation Trap",
+      "radius": 3,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.15,
+        "G": 5.8,
+        "B": -5.5
+      },
+      "count": 10
+    },
+    {
+      "name": "Blue Mutation GOD-TIER",
+      "radius": 3,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.8,
+        "G": -0.9,
+        "B": 5.9
+      },
+      "count": 10
+    },
+    {
+      "name": "Blue Mutation Trash-1",
+      "radius": 3,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.2,
+        "G": -0.2,
+        "B": 0.5
+      },
+      "count": 10
+    },
+    {
+      "name": "Blue Mutation Trash-2",
+      "radius": 1,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.1,
+        "G": -0.1,
+        "B": 0.3
+      },
+      "count": 10
+    },
+    {
+      "name": "Blue Mutation Decent",
+      "radius": 2,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.7,
+        "G": -0.8,
+        "B": 2.5
+      },
+      "count": 10
+    },
+    {
+      "name": "Blue Mutation Hidden-Gem",
+      "radius": 2,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.5,
+        "G": -0.6,
+        "B": 3.8
+      },
+      "count": 10
+    },
+    {
+      "name": "Blue Mutation Trap",
+      "radius": 1,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -1.75,
+        "G": -0.1,
+        "B": 1.95
+      },
+      "count": 10
+    }
+  ]
+}

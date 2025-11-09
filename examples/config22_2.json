@@ -1,0 +1,225 @@
+{
+  "seed": 9012,
+  "varieties": [
+    {
+      "name": "Commons Exploiter Red Heavy",
+      "radius": 1,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 1.9,
+        "G": -0.9,
+        "B": -0.9
+      },
+      "count": 20
+    },
+    {
+      "name": "Commons Exploiter Red Moderate",
+      "radius": 2,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 3.8,
+        "G": -1.8,
+        "B": -1.8
+      },
+      "count": 20
+    },
+    {
+      "name": "Commons Exploiter Red Extreme",
+      "radius": 3,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 5.7,
+        "G": -2.7,
+        "B": -2.7
+      },
+      "count": 20
+    },
+    {
+      "name": "Commons Exploiter Green Heavy",
+      "radius": 1,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.9,
+        "G": 1.9,
+        "B": -0.9
+      },
+      "count": 20
+    },
+    {
+      "name": "Commons Exploiter Green Moderate",
+      "radius": 2,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -1.8,
+        "G": 3.8,
+        "B": -1.8
+      },
+      "count": 20
+    },
+    {
+      "name": "Commons Exploiter Green Extreme",
+      "radius": 3,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -2.7,
+        "G": 5.7,
+        "B": -2.7
+      },
+      "count": 20
+    },
+    {
+      "name": "Commons Exploiter Blue Heavy",
+      "radius": 1,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.9,
+        "G": -0.9,
+        "B": 1.9
+      },
+      "count": 20
+    },
+    {
+      "name": "Commons Exploiter Blue Moderate",
+      "radius": 2,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -1.8,
+        "G": -1.8,
+        "B": 3.8
+      },
+      "count": 20
+    },
+    {
+      "name": "Commons Exploiter Blue Extreme",
+      "radius": 3,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -2.7,
+        "G": -2.7,
+        "B": 5.7
+      },
+      "count": 20
+    },
+    {
+      "name": "Commons Producer Red",
+      "radius": 1,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 1.9,
+        "G": -0.4,
+        "B": -0.4
+      },
+      "count": 20
+    },
+    {
+      "name": "Commons Producer Green",
+      "radius": 1,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.4,
+        "G": 1.9,
+        "B": -0.4
+      },
+      "count": 20
+    },
+    {
+      "name": "Commons Producer Blue",
+      "radius": 1,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.4,
+        "G": -0.4,
+        "B": 1.9
+      },
+      "count": 20
+    },
+    {
+      "name": "Commons Sustainer Red",
+      "radius": 2,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 3.0,
+        "G": -1.2,
+        "B": -1.2
+      },
+      "count": 20
+    },
+    {
+      "name": "Commons Sustainer Green",
+      "radius": 2,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -1.2,
+        "G": 3.0,
+        "B": -1.2
+      },
+      "count": 20
+    },
+    {
+      "name": "Commons Sustainer Blue",
+      "radius": 2,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -1.2,
+        "G": -1.2,
+        "B": 3.0
+      },
+      "count": 20
+    },
+    {
+      "name": "Commons Conservator Red",
+      "radius": 1,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 1.2,
+        "G": -0.5,
+        "B": -0.5
+      },
+      "count": 20
+    },
+    {
+      "name": "Commons Conservator Green",
+      "radius": 1,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.5,
+        "G": 1.2,
+        "B": -0.5
+      },
+      "count": 20
+    },
+    {
+      "name": "Commons Conservator Blue",
+      "radius": 1,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.5,
+        "G": -0.5,
+        "B": 1.2
+      },
+      "count": 20
+    },
+    {
+      "name": "Commons Balanced Red",
+      "radius": 2,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 2.0,
+        "G": -0.8,
+        "B": -0.8
+      },
+      "count": 20
+    },
+    {
+      "name": "Commons Balanced Green",
+      "radius": 2,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.8,
+        "G": 2.0,
+        "B": -0.8
+      },
+      "count": 20
+    }
+  ]
+}

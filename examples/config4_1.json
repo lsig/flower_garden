@@ -1,0 +1,38 @@
+{
+  "seed": 42,
+  "varieties": [
+    {
+      "name": "Spicy RHODODENDRON",
+      "radius": 1,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 1.0,
+        "G": -0.4,
+        "B": -0.5
+      },
+      "count": 500
+    },
+    {
+      "name": "Cool GERANIUM",
+      "radius": 3,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.4,
+        "G": 0.8,
+        "B": -0.2
+      },
+      "count": 500
+    },
+    {
+      "name": "Blue BEGONIA",
+      "radius": 2,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.6,
+        "G": -0.1,
+        "B": 0.8
+      },
+      "count": 500
+    }
+  ]
+}

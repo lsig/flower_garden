@@ -1,0 +1,225 @@
+{
+  "seed": 4444,
+  "varieties": [
+    {
+      "name": "Red Prey Small",
+      "radius": 1,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 1.9,
+        "G": -0.3,
+        "B": -0.4
+      },
+      "count": 50
+    },
+    {
+      "name": "Red Prey Medium",
+      "radius": 2,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 3.7,
+        "G": -0.6,
+        "B": -0.8
+      },
+      "count": 50
+    },
+    {
+      "name": "Green Prey Small",
+      "radius": 1,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.4,
+        "G": 1.9,
+        "B": -0.3
+      },
+      "count": 50
+    },
+    {
+      "name": "Green Prey Medium",
+      "radius": 2,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.8,
+        "G": 3.7,
+        "B": -0.6
+      },
+      "count": 50
+    },
+    {
+      "name": "Blue Prey Small",
+      "radius": 1,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.3,
+        "G": -0.4,
+        "B": 1.9
+      },
+      "count": 50
+    },
+    {
+      "name": "Blue Prey Medium",
+      "radius": 2,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.6,
+        "G": -0.8,
+        "B": 3.7
+      },
+      "count": 50
+    },
+    {
+      "name": "Red Predator Alpha",
+      "radius": 3,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 0.5,
+        "G": -0.2,
+        "B": -0.2
+      },
+      "count": 50
+    },
+    {
+      "name": "Red Predator Beta",
+      "radius": 3,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 0.6,
+        "G": -0.25,
+        "B": -0.25
+      },
+      "count": 50
+    },
+    {
+      "name": "Red Predator Gamma",
+      "radius": 3,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 0.4,
+        "G": -0.15,
+        "B": -0.15
+      },
+      "count": 50
+    },
+    {
+      "name": "Green Predator Alpha",
+      "radius": 3,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.2,
+        "G": 0.5,
+        "B": -0.2
+      },
+      "count": 50
+    },
+    {
+      "name": "Green Predator Beta",
+      "radius": 3,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.25,
+        "G": 0.6,
+        "B": -0.25
+      },
+      "count": 50
+    },
+    {
+      "name": "Green Predator Gamma",
+      "radius": 3,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.15,
+        "G": 0.4,
+        "B": -0.15
+      },
+      "count": 50
+    },
+    {
+      "name": "Blue Predator Alpha",
+      "radius": 3,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.2,
+        "G": -0.2,
+        "B": 0.5
+      },
+      "count": 50
+    },
+    {
+      "name": "Blue Predator Beta",
+      "radius": 3,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.25,
+        "G": -0.25,
+        "B": 0.6
+      },
+      "count": 50
+    },
+    {
+      "name": "Red Parasite",
+      "radius": 2,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 3.0,
+        "G": -2.7,
+        "B": -0.2
+      },
+      "count": 50
+    },
+    {
+      "name": "Green Parasite",
+      "radius": 2,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -0.2,
+        "G": 3.0,
+        "B": -2.7
+      },
+      "count": 50
+    },
+    {
+      "name": "Blue Parasite",
+      "radius": 2,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -2.7,
+        "G": -0.2,
+        "B": 3.0
+      },
+      "count": 50
+    },
+    {
+      "name": "Balanced Parasite 1",
+      "radius": 2,
+      "species": "RHODODENDRON",
+      "nutrient_coefficients": {
+        "R": 2.5,
+        "G": -2.2,
+        "B": -0.2
+      },
+      "count": 50
+    },
+    {
+      "name": "Balanced Parasite 2",
+      "radius": 2,
+      "species": "GERANIUM",
+      "nutrient_coefficients": {
+        "R": -2.2,
+        "G": 2.5,
+        "B": -0.2
+      },
+      "count": 50
+    },
+    {
+      "name": "Balanced Parasite 3",
+      "radius": 2,
+      "species": "BEGONIA",
+      "nutrient_coefficients": {
+        "R": -0.2,
+        "G": -2.2,
+        "B": 2.5
+      },
+      "count": 50
+    }
+  ]
+}
